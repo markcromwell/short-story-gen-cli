@@ -1,0 +1,11 @@
+# Core for MVP: CLI + Basic AI + Testing
+argparse  # Built-in, but list if needed
+litellm>=1.45.0  # For pluggable models
+langchain>=0.2.0  # For chains (add langchain-openai if using OpenAI)
+pytest>=7.0  # For TDD
+pytest-mock  # For mocking LLMs in tests
+
+# Later additions (commented for now)
+# Pillow  # For images
+# ebooklib  # For EPUB
+# openai  # For DALL-E

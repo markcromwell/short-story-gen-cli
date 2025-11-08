@@ -1,0 +1,12 @@
+stages:
+  - test
+
+test:
+  stage: test
+  image: python:3.12
+  script:
+    - pip install -r requirements.txt
+    - pytest tests/ -v  # Run tests on push/merge
+  only:
+    - main
+    - develop
