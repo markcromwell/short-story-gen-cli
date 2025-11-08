@@ -3,10 +3,10 @@ stages:
 
 test:
   stage: test
-  image: python:3.12
+  image: python:3.12  # Latest stable Python
   script:
     - pip install -r requirements.txt
-    - pytest tests/ -v  # Run tests on push/merge
+    - pip install -e .  # Install package in development mode
+    - pytest tests/ -v  # Run all tests
   only:
     - main
-    - develop
