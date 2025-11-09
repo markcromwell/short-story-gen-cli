@@ -1,4 +1,5 @@
 # Core for MVP: CLI + Basic AI + Testing
+setuptools>=65.0.0  # For package building
 argparse  # Built-in, but list if needed
 litellm>=1.45.0  # For pluggable models
 langchain>=0.2.0  # For chains (add langchain-openai if using OpenAI)
