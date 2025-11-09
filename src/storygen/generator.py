@@ -1,7 +1,10 @@
 """
-Story Generator using LiteLLM for multi-provider support
+Story Generator with hybrid provider support
+Uses direct Ollama API for local models and LiteLLM for cloud providers
 """
 import litellm
+import requests
+import os
 from typing import Optional
 
 
@@ -26,20 +29,67 @@ class StoryGenerator:
         """
         self.provider = provider
         
-    def generate(self, prompt: str, max_tokens: Optional[int] = 1000) -> str:
-        """
-        Generate a short story from a prompt.
+    def _is_ollama_model(self) -> bool:
+        """Check if the provider is an Ollama model"""
+        return self.provider.startswith("ollama/") or self.provider.startswith("ollama_")
+    
+    def _generate_ollama(self, prompt: str, max_tokens: Optional[int]) -> str:
+        """Generate story using direct Ollama API (works better than LiteLLM)"""
+        system_message = (
+            "You are a creative short story writer. "
+            "Generate an engaging short story based on the user's prompt. "
+            "Keep it concise, vivid, and complete."
+        )
         
-        Args:
-            prompt: The story prompt or theme
-            max_tokens: Maximum length of the generated story
+        # Extract model name (remove ollama/ or ollama_ prefix)
+        model_name = self.provider.replace("ollama/", "").replace("ollama_chat/", "").replace("ollama_", "")
+        
+        # Get Ollama base URL from environment or use default
+        ollama_base = os.environ.get('OLLAMA_API_BASE', 'http://localhost:11434')
+        
+        try:
+            response = requests.post(
+                f'{ollama_base}/api/chat',
+                json={
+                    'model': model_name,
+                    'messages': [
+                        {'role': 'system', 'content': system_message},
+                        {'role': 'user', 'content': prompt}
+                    ],
+                    'stream': False,
+                    'options': {
+                        'num_predict': max_tokens if max_tokens else 1000
+                    }
+                },
+                timeout=120  # 2 minute timeout for large models
+            )
+            response.raise_for_status()
             
-        Returns:
-            Generated story as a string
+            data = response.json()
+            message = data.get('message', {})
             
-        Raises:
-            ValueError: If the response is empty or invalid
-        """
+            # Debug: print full message to understand structure
+            import sys, json
+            print(f"DEBUG: Full message: {json.dumps(message, indent=2)}", file=sys.stderr)
+            
+            content = message.get('content', '')
+            
+            # For reasoning models like qwen3, content might be in 'response' field
+            if not content and 'response' in data:
+                content = data['response']
+            
+            content = content.strip() if content else ''
+            
+            if not content:
+                raise ValueError(f"Ollama returned empty content for model {model_name}")
+            
+            return content
+            
+        except requests.exceptions.RequestException as e:
+            raise ValueError(f"Failed to connect to Ollama: {e}. Is Ollama running?")
+    
+    def _generate_cloud(self, prompt: str, max_tokens: Optional[int]) -> str:
+        """Generate story using LiteLLM for cloud providers (OpenAI, Anthropic, Grok, etc.)"""
         system_message = (
             "You are a creative short story writer. "
             "Generate an engaging short story based on the user's prompt. "
@@ -65,3 +115,23 @@ class StoryGenerator:
             raise ValueError("AI provider returned empty content")
         
         return str(content)
+    
+    def generate(self, prompt: str, max_tokens: Optional[int] = 1000) -> str:
+        """
+        Generate a short story from a prompt.
+        
+        Args:
+            prompt: The story prompt or theme
+            max_tokens: Maximum length of the generated story
+            
+        Returns:
+            Generated story as a string
+            
+        Raises:
+            ValueError: If the response is empty or invalid
+        """
+        # Route to appropriate implementation based on provider
+        if self._is_ollama_model():
+            return self._generate_ollama(prompt, max_tokens)
+        else:
+            return self._generate_cloud(prompt, max_tokens)

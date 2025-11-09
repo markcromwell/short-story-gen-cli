@@ -36,22 +36,39 @@ class TestStoryGenerator:
         """Test that we can switch between different AI providers"""
         from storygen.generator import StoryGenerator
         
+        # Mock LiteLLM for cloud providers
         mock_completion = mocker.patch('litellm.completion')
         mock_completion.return_value.choices = [
             mocker.Mock(message=mocker.Mock(content="A test story"))
         ]
         
-        # Test with different providers including Grok
-        providers = ["gpt-4", "claude-3-sonnet", "ollama/llama2", "xai/grok-2-1212"]
+        # Mock requests for Ollama
+        mock_response = mocker.Mock()
+        mock_response.json.return_value = {
+            'message': {'content': 'An Ollama test story'}
+        }
+        mock_post = mocker.patch('requests.post', return_value=mock_response)
         
-        for provider in providers:
+        # Test cloud providers (use LiteLLM)
+        cloud_providers = ["gpt-4", "claude-3-sonnet", "xai/grok-2-1212"]
+        for provider in cloud_providers:
             generator = StoryGenerator(provider=provider)
             story = generator.generate("Test prompt")
             assert isinstance(story, str)
+            assert "test story" in story.lower()
             
             # Verify LiteLLM was called with correct provider
             call_args = mock_completion.call_args
             assert call_args.kwargs['model'] == provider
+        
+        # Test Ollama provider (uses direct API)
+        generator = StoryGenerator(provider="ollama/llama2")
+        story = generator.generate("Test prompt")
+        assert isinstance(story, str)
+        assert "ollama" in story.lower()
+        
+        # Verify requests.post was called for Ollama
+        assert mock_post.called
     
     def test_generator_supports_grok_models(self, mocker):
         """Test that Grok models are supported for fast, cheap generation"""
@@ -81,13 +98,11 @@ class TestStoryGenerator:
 class TestOllamaIntegration:
     """Integration tests with real Ollama models (run with: pytest -m integration)"""
     
-    @pytest.mark.skip(reason="qwen3:30b has LiteLLM compatibility issues with reasoning models - use llama2 instead")
     def test_ollama_qwen3_generates_story(self):
         """
         Integration test: Generate a real story with Ollama qwen3:30b
         
-        Note: qwen3 is a reasoning model that returns content differently
-        LiteLLM doesn't currently handle the 'thinking' + 'response' format properly
+        Now uses direct Ollama API instead of LiteLLM - works perfectly!
         
         This test requires:
         - Ollama installed and running
@@ -107,7 +122,7 @@ class TestOllamaIntegration:
         # Verify we got a real story back
         assert isinstance(story, str)
         assert len(story) > 50, "Story should be at least 50 characters"
-        print(f"\n\nGenerated story:\n{story}\n")
+        print(f"\n\nGenerated qwen3 story:\n{story}\n")
     
     def test_ollama_llama2_generates_story(self):
         """Integration test with llama2 (smaller, faster model)"""
