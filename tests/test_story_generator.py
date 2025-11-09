@@ -36,20 +36,13 @@ class TestStoryGenerator:
         """Test that we can switch between different AI providers"""
         from storygen.generator import StoryGenerator
         
-        # Mock LiteLLM for cloud providers
+        # Mock LiteLLM for all providers (now includes Ollama)
         mock_completion = mocker.patch('litellm.completion')
         mock_completion.return_value.choices = [
             mocker.Mock(message=mocker.Mock(content="A test story"))
         ]
         
-        # Mock requests for Ollama
-        mock_response = mocker.Mock()
-        mock_response.json.return_value = {
-            'message': {'content': 'An Ollama test story'}
-        }
-        mock_post = mocker.patch('requests.post', return_value=mock_response)
-        
-        # Test cloud providers (use LiteLLM)
+        # Test cloud providers
         cloud_providers = ["gpt-4", "claude-3-sonnet", "xai/grok-2-1212"]
         for provider in cloud_providers:
             generator = StoryGenerator(provider=provider)
@@ -61,14 +54,15 @@ class TestStoryGenerator:
             call_args = mock_completion.call_args
             assert call_args.kwargs['model'] == provider
         
-        # Test Ollama provider (uses direct API)
+        # Test Ollama provider (also uses LiteLLM)
         generator = StoryGenerator(provider="ollama/llama2")
         story = generator.generate("Test prompt")
         assert isinstance(story, str)
-        assert "ollama" in story.lower()
+        assert "test story" in story.lower()
         
-        # Verify requests.post was called for Ollama
-        assert mock_post.called
+        # Verify LiteLLM was called with Ollama provider
+        call_args = mock_completion.call_args
+        assert call_args.kwargs['model'] == "ollama/llama2"
     
     def test_generator_supports_grok_models(self, mocker):
         """Test that Grok models are supported for fast, cheap generation"""
