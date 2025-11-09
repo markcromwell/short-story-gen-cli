@@ -19,15 +19,26 @@ load_dotenv()
     help="AI provider to use (e.g., gpt-4, claude-3-sonnet, ollama/llama2)",
 )
 @click.option("--max-tokens", default=1000, help="Maximum length of the generated story")
-def main(prompt: str, provider: str, max_tokens: int):
+@click.option(
+    "--structured",
+    is_flag=True,
+    help="Generate structured story with title, scenes, and metadata (JSON format)",
+)
+@click.option(
+    "--format",
+    type=click.Choice(["text", "json"], case_sensitive=False),
+    default="text",
+    help="Output format for structured stories (default: text)",
+)
+def main(prompt: str, provider: str, max_tokens: int, structured: bool, format: str):
     """
     Generate a short story from a PROMPT using AI.
 
     Examples:
         storygen "A robot learns to paint"
         storygen --provider xai/grok-2-1212 "A space adventure"
-        storygen --provider claude-3-sonnet "A mystery story"
-        storygen --provider ollama/llama2 "A time travel tale"
+        storygen --structured "A mystery story"
+        storygen --structured --format json "A time travel tale" > story.json
 
     Free/Local providers:
         - ollama/llama2 (requires local Ollama installation)
@@ -39,15 +50,26 @@ def main(prompt: str, provider: str, max_tokens: int):
         - claude-3-sonnet, claude-3-opus (requires ANTHROPIC_API_KEY)
     """
     try:
-        click.echo(f"🎨 Generating story with {provider}...")
-        click.echo()
+        mode = "structured" if structured else "plain"
+        click.echo(f"🎨 Generating {mode} story with {provider}...", err=True)
+        click.echo(err=True)
 
         generator = StoryGenerator(provider=provider)
-        story = generator.generate(prompt, max_tokens=max_tokens)
 
-        click.echo(story)
-        click.echo()
-        click.echo("✅ Story generated successfully!")
+        if structured:
+            # Use higher token limit for structured stories
+            story_obj = generator.generate_structured(prompt, max_tokens=max(max_tokens, 2000))
+
+            if format == "json":
+                click.echo(story_obj.to_json())
+            else:
+                click.echo(story_obj.to_text())
+        else:
+            story = generator.generate(prompt, max_tokens=max_tokens)
+            click.echo(story)
+
+        click.echo(err=True)
+        click.echo("✅ Story generated successfully!", err=True)
 
     except Exception as e:
         click.echo(f"❌ Error: {e}", err=True)

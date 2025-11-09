@@ -8,11 +8,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Structured story output** with title, scenes, genre, and metadata
+  - `Story` and `Scene` data models with JSON serialization
+  - `--structured` flag for CLI to generate structured stories
+  - `--format` option to output as JSON or formatted text
+  - Scene-level details: title, setting, characters, content
+  - Automatic word count calculation
 - Type checking with mypy
 - Pre-commit hooks for code quality
 - Ruff for fast linting and formatting
 - Auto-run unit tests before commit
-- Test coverage reporting (85% coverage)
+- Test coverage reporting with 9 new model tests
+- GitHub Actions CI workflow (test on Linux/Windows/macOS, Python 3.9-3.14)
 
 ## [0.1.0] - 2025-11-09
 

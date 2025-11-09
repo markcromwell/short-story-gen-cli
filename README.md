@@ -5,9 +5,11 @@ AI-powered command-line tool to generate creative short stories using multiple A
 ## Features
 
 - **Multiple AI Providers**: Switch between OpenAI, Anthropic Claude, Ollama (local), and more
-- **Test-Driven Development**: Built with TDD principles, 100% test coverage
+- **Structured Story Output**: Generate stories with title, scenes, genre, and metadata (JSON or formatted text)
+- **Test-Driven Development**: Built with TDD principles, comprehensive test coverage
 - **Agile MVP**: Minimum viable product following agile methodology
 - **Free & Paid Options**: Use free local models or premium cloud APIs
+- **Type-Safe Models**: Structured data models for stories and scenes
 - **Future**: EPUB generation with cover and interior art
 
 ## Installation
@@ -65,6 +67,22 @@ storygen --provider xai/grok-2-1212 "A space adventure"
 storygen --provider gpt-4 "A mystery in the library"
 storygen --provider claude-3-sonnet "A detective story"
 storygen --provider ollama/llama2 "A time travel tale"
+```
+
+### Structured output (with title, scenes, metadata):
+```bash
+# Generate structured story with formatted text output
+storygen --structured "A mystery in an old mansion"
+
+# Generate structured story as JSON
+storygen --structured --format json "A space adventure" > story.json
+
+# Structured stories include:
+# - Title and genre
+# - Multiple scenes with titles
+# - Scene settings and characters
+# - Story summary
+# - Automatic word count
 ```
 
 ### Get help:

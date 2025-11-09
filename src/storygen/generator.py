@@ -8,9 +8,12 @@ Supports multiple AI providers:
 - Ollama (local models like llama2, qwen3, mistral)
 """
 
+import json
 from typing import Optional
 
 import litellm
+
+from storygen.models import Story
 
 
 class StoryGenerator:
@@ -29,27 +32,52 @@ class StoryGenerator:
         """
         self.provider = provider
 
-    def generate(self, prompt: str, max_tokens: Optional[int] = 1000) -> str:
+    def generate(
+        self, prompt: str, max_tokens: Optional[int] = 1000, structured: bool = False
+    ) -> str:
         """
         Generate a short story from a prompt.
 
         Args:
             prompt: The story prompt or theme
             max_tokens: Maximum length of the generated story (use 2000+ for reasoning models)
+            structured: If True, returns JSON with title and scenes
 
         Returns:
-            Generated story as a string
+            Generated story as a string (plain text or JSON if structured=True)
 
         Raises:
             ValueError: If the response is empty or invalid
         """
+        system_content = (
+            "You are a creative writer. Write engaging short stories based on the user's prompt."
+        )
+
+        if structured:
+            system_content += """
+
+Return the story as JSON in this exact format:
+{
+    "title": "Story Title",
+    "genre": "Genre (e.g., Sci-Fi, Fantasy, Mystery)",
+    "summary": "Brief one-sentence summary",
+    "scenes": [
+        {
+            "number": 1,
+            "title": "Scene Title",
+            "setting": "Where this scene takes place",
+            "characters": ["Character1", "Character2"],
+            "content": "The actual scene content/narrative"
+        }
+    ]
+}
+
+Write 2-4 scenes with rich narrative content."""
+
         response = litellm.completion(
             model=self.provider,
             messages=[
-                {
-                    "role": "system",
-                    "content": "You are a creative writer. Write engaging short stories based on the user's prompt.",
-                },
+                {"role": "system", "content": system_content},
                 {"role": "user", "content": prompt},
             ],
             max_tokens=max_tokens,
@@ -65,3 +93,30 @@ class StoryGenerator:
             raise ValueError("AI provider returned empty content")
 
         return str(content)
+
+    def generate_structured(self, prompt: str, max_tokens: Optional[int] = 2000) -> Story:
+        """
+        Generate a structured story with title, scenes, and metadata.
+
+        Args:
+            prompt: The story prompt or theme
+            max_tokens: Maximum length (use 2000+ for detailed stories)
+
+        Returns:
+            Story object with structured data
+
+        Raises:
+            ValueError: If the response is empty, invalid, or not valid JSON
+        """
+        content = self.generate(prompt, max_tokens=max_tokens, structured=True)
+
+        # Extract JSON from markdown code blocks if present
+        if "```json" in content:
+            content = content.split("```json")[1].split("```")[0].strip()
+        elif "```" in content:
+            content = content.split("```")[1].split("```")[0].strip()
+
+        try:
+            return Story.from_json(content)
+        except (json.JSONDecodeError, KeyError) as e:
+            raise ValueError(f"Failed to parse structured story: {e}\n\nContent: {content}")
