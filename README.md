@@ -42,9 +42,18 @@ ANTHROPIC_API_KEY=your_key_here
 
 ## Usage
 
+**Important**: Make sure your virtual environment is activated first!
+```bash
+.venv\Scripts\activate  # Windows
+# source .venv/bin/activate  # Mac/Linux
+```
+
 ### Basic usage (default provider: GPT-3.5):
 ```bash
 storygen "A robot learns to paint"
+
+# Or without activating venv:
+python -m storygen.cli "A robot learns to paint"
 ```
 
 ### With specific provider:
