@@ -2,6 +2,8 @@
 Command-line interface for story generation
 """
 
+from typing import Optional
+
 import click
 from dotenv import load_dotenv
 
@@ -30,7 +32,27 @@ load_dotenv()
     default="text",
     help="Output format for structured stories (default: text)",
 )
-def main(prompt: str, provider: str, max_tokens: int, structured: bool, format: str):
+@click.option(
+    "--epub",
+    type=str,
+    metavar="FILENAME",
+    help="Generate EPUB file from structured story (implies --structured)",
+)
+@click.option(
+    "--author",
+    type=str,
+    default="AI Generated",
+    help="Author name for EPUB metadata (default: 'AI Generated')",
+)
+def main(
+    prompt: str,
+    provider: str,
+    max_tokens: int,
+    structured: bool,
+    format: str,
+    epub: Optional[str],
+    author: str,
+):
     """
     Generate a short story from a PROMPT using AI.
 
@@ -39,6 +61,8 @@ def main(prompt: str, provider: str, max_tokens: int, structured: bool, format: 
         storygen --provider xai/grok-2-1212 "A space adventure"
         storygen --structured "A mystery story"
         storygen --structured --format json "A time travel tale" > story.json
+        storygen --epub my_story.epub "A magical adventure"
+        storygen --epub story.epub --author "John Doe" "A sci-fi tale"
 
     Free/Local providers:
         - ollama/llama2 (requires local Ollama installation)
@@ -50,6 +74,10 @@ def main(prompt: str, provider: str, max_tokens: int, structured: bool, format: 
         - claude-3-sonnet, claude-3-opus (requires ANTHROPIC_API_KEY)
     """
     try:
+        # EPUB generation implies structured mode
+        if epub:
+            structured = True
+
         mode = "structured" if structured else "plain"
         click.echo(f"🎨 Generating {mode} story with {provider}...", err=True)
         click.echo(err=True)
@@ -60,6 +88,14 @@ def main(prompt: str, provider: str, max_tokens: int, structured: bool, format: 
             # Use higher token limit for structured stories
             story_obj = generator.generate_structured(prompt, max_tokens=max(max_tokens, 2000))
 
+            # Generate EPUB if requested
+            if epub:
+                from storygen.epub import generate_epub
+
+                epub_path = generate_epub(story_obj, epub, author=author)
+                click.echo(f"📚 EPUB generated: {epub_path}", err=True)
+
+            # Also output the story (unless only EPUB was requested)
             if format == "json":
                 click.echo(story_obj.to_json())
             else:

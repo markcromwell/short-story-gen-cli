@@ -12,7 +12,9 @@ mypy>=1.0.0  # Type checking
 ruff>=0.1.0  # Fast linter and formatter
 pre-commit>=3.0.0  # Git hooks for quality checks
 
+# EPUB generation
+ebooklib>=0.18
+
 # Later additions (commented for now)
 # Pillow  # For images
-# ebooklib  # For EPUB
 # openai  # For DALL-E

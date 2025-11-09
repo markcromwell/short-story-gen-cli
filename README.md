@@ -6,11 +6,12 @@ AI-powered command-line tool to generate creative short stories using multiple A
 
 - **Multiple AI Providers**: Switch between OpenAI, Anthropic Claude, Ollama (local), and more
 - **Structured Story Output**: Generate stories with title, scenes, genre, and metadata (JSON or formatted text)
+- **EPUB Generation**: Create professional ebook files from AI-generated stories
 - **Test-Driven Development**: Built with TDD principles, comprehensive test coverage
 - **Agile MVP**: Minimum viable product following agile methodology
 - **Free & Paid Options**: Use free local models or premium cloud APIs
 - **Type-Safe Models**: Structured data models for stories and scenes
-- **Future**: EPUB generation with cover and interior art
+- **Future**: AI-generated cover art and interior illustrations
 
 ## Installation
 
@@ -83,6 +84,18 @@ storygen --structured --format json "A space adventure" > story.json
 # - Scene settings and characters
 # - Story summary
 # - Automatic word count
+```
+
+### EPUB generation:
+```bash
+# Generate an EPUB ebook file
+storygen --epub my_story.epub "A magical adventure"
+
+# With custom author name
+storygen --epub story.epub --author "John Doe" "A cyberpunk detective story"
+
+# Using local Ollama (free!)
+storygen --provider ollama/llama2 --epub adventure.epub "A space odyssey"
 ```
 
 ### Get help:

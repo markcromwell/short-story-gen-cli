@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **EPUB generation** from structured stories
+  - `--epub` flag to generate ebook files
+  - `--author` option for EPUB metadata
+  - Professional formatting with CSS styling
+  - Table of contents with scene navigation
+  - Metadata support (title, author, genre)
 - **Structured story output** with title, scenes, genre, and metadata
   - `Story` and `Scene` data models with JSON serialization
   - `--structured` flag for CLI to generate structured stories

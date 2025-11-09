@@ -32,6 +32,7 @@ dependencies = [
     "litellm>=1.45.0",
     "click>=8.0.0",
     "python-dotenv>=1.0.0",
+    "ebooklib>=0.18",
 ]
 
 [project.optional-dependencies]
