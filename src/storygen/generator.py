@@ -36,6 +36,9 @@ class StoryGenerator:
             
         Returns:
             Generated story as a string
+            
+        Raises:
+            ValueError: If the response is empty or invalid
         """
         system_message = (
             "You are a creative short story writer. "
@@ -52,4 +55,13 @@ class StoryGenerator:
             max_tokens=max_tokens
         )
         
-        return response.choices[0].message.content
+        # Type-safe access to response content
+        # Note: LiteLLM returns dynamic types, suppress type checker warnings
+        if not response or not hasattr(response, 'choices') or not response.choices:  # type: ignore
+            raise ValueError("Invalid response from AI provider")
+        
+        content = response.choices[0].message.content  # type: ignore
+        if content is None:
+            raise ValueError("AI provider returned empty content")
+        
+        return str(content)
