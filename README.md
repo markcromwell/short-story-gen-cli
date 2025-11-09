@@ -95,6 +95,13 @@ storygen --help
 
 ## Development
 
+### Setup development environment:
+```bash
+pip install -r requirements.txt
+pip install -e .
+pre-commit install  # Install git hooks for code quality
+```
+
 ### Run tests:
 ```bash
 pytest tests/ -v
@@ -102,12 +109,38 @@ pytest tests/ -v
 
 ### Run tests with coverage:
 ```bash
-pytest tests/ --cov=storygen --cov-report=term-missing
+pytest tests/ --cov=storygen --cov-report=term-missing --cov-report=html
+# Open htmlcov/index.html to see detailed coverage report
 ```
 
 ### Run only unit tests (skip integration tests):
 ```bash
 pytest tests/ -v -m "not integration"
+```
+
+### Code quality checks:
+```bash
+# Type checking
+mypy src/storygen
+
+# Linting and formatting (auto-fix)
+ruff check --fix src/ tests/
+ruff format src/ tests/
+
+# Run all pre-commit hooks manually
+pre-commit run --all-files
+```
+
+### Pre-commit Hooks
+Pre-commit hooks automatically run on every commit:
+- **Ruff**: Fast linting and auto-formatting
+- **Mypy**: Type checking
+- **Pytest**: Unit tests (integration tests skipped for speed)
+- **Standard checks**: Trailing whitespace, file endings, YAML validation, etc.
+
+To skip hooks temporarily:
+```bash
+git commit --no-verify
 ```
 
 ## Roadmap

@@ -1,6 +1,6 @@
 {
     "python-envs.pythonProjects": [],
-    
+
     // Python Testing Configuration
     "python.testing.pytestEnabled": true,
     "python.testing.unittestEnabled": false,
@@ -9,19 +9,19 @@
         "-v",
         "--tb=short"
     ],
-    
+
     // Python Environment
     "python.defaultInterpreterPath": "${workspaceFolder}/.venv/Scripts/python.exe",
-    
+
     // Test Explorer
     "testing.openTesting": "neverOpen",
-    
+
     // Editor settings for Python
     "python.analysis.typeCheckingMode": "basic",
     "python.linting.enabled": true,
     "python.linting.pylintEnabled": false,
     "python.formatting.provider": "none",
-    
+
     // Files to exclude from explorer
     "files.exclude": {
         "**/__pycache__": true,
