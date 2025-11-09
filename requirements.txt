@@ -1,8 +1,8 @@
 # Core for MVP: CLI + Basic AI + Testing
 setuptools>=65.0.0  # For package building
-argparse  # Built-in, but list if needed
-litellm>=1.45.0  # For pluggable models
-langchain>=0.2.0  # For chains (add langchain-openai if using OpenAI)
+click>=8.0.0  # CLI framework
+python-dotenv>=1.0.0  # Environment variables
+litellm>=1.45.0  # Unified AI provider interface
 pytest>=7.0  # For TDD
 pytest-mock  # For mocking LLMs in tests
 

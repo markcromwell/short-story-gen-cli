@@ -1,0 +1,142 @@
+"""
+Story Generator with hybrid provider support
+Uses direct Ollama API for local models and LiteLLM for cloud providers
+"""
+import litellm
+import requests
+import os
+from typing import Optional
+
+
+class StoryGenerator:
+    """
+    Generate short stories using various AI providers via LiteLLM.
+    
+    Supports:
+    - OpenAI: gpt-4, gpt-3.5-turbo
+    - Anthropic: claude-3-sonnet, claude-3-opus
+    - xAI: xai/grok-2-1212, xai/grok-beta (fast, cheap, large context)
+    - Local: ollama/llama2, ollama/mistral
+    - Free: openrouter free models
+    """
+    
+    def __init__(self, provider: str = "gpt-3.5-turbo"):
+        """
+        Initialize the story generator with a specific AI provider.
+        
+        Args:
+            provider: Model identifier (e.g., "gpt-4", "claude-3-sonnet", "ollama/llama2")
+        """
+        self.provider = provider
+        
+    def _is_ollama_model(self) -> bool:
+        """Check if the provider is an Ollama model"""
+        return self.provider.startswith("ollama/") or self.provider.startswith("ollama_")
+    
+    def _generate_ollama(self, prompt: str, max_tokens: Optional[int]) -> str:
+        """Generate story using direct Ollama API (works better than LiteLLM)"""
+        system_message = (
+            "You are a creative short story writer. "
+            "Write the complete story directly. "
+            "Output ONLY the story itself - no explanations, no reasoning, no meta-commentary."
+        )
+        
+        # Extract model name (remove ollama/ or ollama_ prefix)
+        model_name = self.provider.replace("ollama/", "").replace("ollama_chat/", "").replace("ollama_", "")
+        
+        # Get Ollama base URL from environment or use default
+        ollama_base = os.environ.get('OLLAMA_API_BASE', 'http://localhost:11434')
+        
+        try:
+            response = requests.post(
+                f'{ollama_base}/api/chat',
+                json={
+                    'model': model_name,
+                    'messages': [
+                        {'role': 'system', 'content': system_message},
+                        {'role': 'user', 'content': prompt}
+                    ],
+                    'stream': False,
+                    'options': {
+                        'num_predict': max_tokens if max_tokens else 1000
+                    }
+                },
+                timeout=120  # 2 minute timeout for large models
+            )
+            response.raise_for_status()
+            
+            data = response.json()
+            message = data.get('message', {})
+            
+            # Get content - prefer actual content over reasoning/thinking
+            content = message.get('content', '').strip()
+            
+            # Fallback: some models use 'response' at the top level  
+            if not content and 'response' in data:
+                content = data['response'].strip()
+            
+            # Last resort: for reasoning models, use thinking if content is truly empty
+            # (though this usually means meta-reasoning, not the actual output)
+            if not content and 'thinking' in message:
+                thinking = message['thinking'].strip()
+                # Only use thinking if it looks like actual content (not meta-reasoning)
+                if thinking and not thinking.startswith(('Okay', 'Hmm', 'The user wants', 'I need to')):
+                    content = thinking
+            
+            if not content:
+                import sys, json
+                print(f"DEBUG: No content found. Message structure: {json.dumps(message, indent=2)}", file=sys.stderr)
+                raise ValueError(f"Ollama returned empty content for model {model_name}")
+            
+            return content
+            
+        except requests.exceptions.RequestException as e:
+            raise ValueError(f"Failed to connect to Ollama: {e}. Is Ollama running?")
+    
+    def _generate_cloud(self, prompt: str, max_tokens: Optional[int]) -> str:
+        """Generate story using LiteLLM for cloud providers (OpenAI, Anthropic, Grok, etc.)"""
+        system_message = (
+            "You are a creative short story writer. "
+            "Generate an engaging short story based on the user's prompt. "
+            "Keep it concise, vivid, and complete."
+        )
+        
+        response = litellm.completion(
+            model=self.provider,
+            messages=[
+                {"role": "system", "content": system_message},
+                {"role": "user", "content": prompt}
+            ],
+            max_tokens=max_tokens
+        )
+        
+        # Type-safe access to response content
+        # Note: LiteLLM returns dynamic types, suppress type checker warnings
+        if not response or not hasattr(response, 'choices') or not response.choices:  # type: ignore
+            raise ValueError("Invalid response from AI provider")
+        
+        content = response.choices[0].message.content  # type: ignore
+        if content is None:
+            raise ValueError("AI provider returned empty content")
+        
+        return str(content)
+    
+    def generate(self, prompt: str, max_tokens: Optional[int] = 1000) -> str:
+        """
+        Generate a short story from a prompt.
+        
+        Args:
+            prompt: The story prompt or theme
+            max_tokens: Maximum length of the generated story
+            
+        Returns:
+            Generated story as a string
+            
+        Raises:
+            ValueError: If the response is empty or invalid
+        """
+        # Route to appropriate implementation based on provider
+        if self._is_ollama_model():
+            return self._generate_ollama(prompt, max_tokens)
+        else:
+            return self._generate_cloud(prompt, max_tokens)

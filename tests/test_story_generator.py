@@ -102,21 +102,19 @@ class TestOllamaIntegration:
         """
         Integration test: Generate a real story with Ollama qwen3:30b
         
-        Now uses direct Ollama API instead of LiteLLM - works perfectly!
+        qwen3 is a reasoning model that uses more tokens for thinking.
+        Need higher token limit to allow it to finish reasoning and output the story.
         
         This test requires:
         - Ollama installed and running
         - qwen3:30b model pulled (ollama pull qwen3:30b)
-        
-        Run with: pytest tests/test_story_generator.py -m integration -v
-        Skip by default to keep fast unit tests
         """
         from storygen.generator import StoryGenerator
         
         generator = StoryGenerator(provider="ollama/qwen3:30b")
         story = generator.generate(
             prompt="Write a very short story about a cat who learns to code",
-            max_tokens=200
+            max_tokens=2000  # Higher limit for reasoning models
         )
         
         # Verify we got a real story back
