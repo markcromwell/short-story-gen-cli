@@ -75,3 +75,46 @@ class TestStoryGenerator:
             # Verify correct model was used
             call_args = mock_completion.call_args
             assert call_args.kwargs['model'] == model
+
+
+@pytest.mark.integration
+class TestOllamaIntegration:
+    """Integration tests with real Ollama models (run with: pytest -m integration)"""
+    
+    def test_ollama_qwen3_generates_story(self):
+        """
+        Integration test: Generate a real story with Ollama qwen3:30b
+        
+        This test requires:
+        - Ollama installed and running
+        - qwen3:30b model pulled (ollama pull qwen3:30b)
+        
+        Run with: pytest tests/test_story_generator.py -m integration -v
+        Skip by default to keep fast unit tests
+        """
+        from storygen.generator import StoryGenerator
+        
+        generator = StoryGenerator(provider="ollama/qwen3:30b")
+        story = generator.generate(
+            prompt="Write a very short story about a cat who learns to code",
+            max_tokens=200
+        )
+        
+        # Verify we got a real story back
+        assert isinstance(story, str)
+        assert len(story) > 50, "Story should be at least 50 characters"
+        print(f"\n\nGenerated story:\n{story}\n")
+    
+    def test_ollama_llama2_generates_story(self):
+        """Integration test with llama2 (smaller, faster model)"""
+        from storygen.generator import StoryGenerator
+        
+        generator = StoryGenerator(provider="ollama/llama2")
+        story = generator.generate(
+            prompt="Write a two-sentence story about a robot",
+            max_tokens=100
+        )
+        
+        assert isinstance(story, str)
+        assert len(story) > 20
+        print(f"\n\nLlama2 story:\n{story}\n")
