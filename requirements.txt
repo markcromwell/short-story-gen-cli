@@ -5,6 +5,7 @@ python-dotenv>=1.0.0  # Environment variables
 litellm>=1.45.0  # Unified AI provider interface
 pytest>=7.0  # For TDD
 pytest-mock  # For mocking LLMs in tests
+pytest-cov  # For test coverage reporting
 
 # Later additions (commented for now)
 # Pillow  # For images

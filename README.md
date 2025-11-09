@@ -105,9 +105,10 @@ pytest tests/ -v
 pytest tests/ --cov=storygen --cov-report=term-missing
 ```
 
-## CI/CD
-
-GitLab CI automatically runs tests on every push to `main` branch.
+### Run only unit tests (skip integration tests):
+```bash
+pytest tests/ -v -m "not integration"
+```
 
 ## Roadmap
 
@@ -122,15 +123,14 @@ GitLab CI automatically runs tests on every push to `main` branch.
 
 ## Tech Stack
 
-- **Python 3.12+**
+- **Python 3.9+** (tested on 3.14)
 - **LiteLLM**: Multi-provider AI abstraction
 - **Click**: CLI framework
 - **Pytest**: Testing framework
-- **GitLab CI**: Continuous integration
 
 ## License
 
-MIT
+MIT - See [LICENSE](LICENSE) file for details
 
 ## Author
 
