@@ -12,6 +12,7 @@ class StoryGenerator:
     Supports:
     - OpenAI: gpt-4, gpt-3.5-turbo
     - Anthropic: claude-3-sonnet, claude-3-opus
+    - xAI: xai/grok-2-1212, xai/grok-beta (fast, cheap, large context)
     - Local: ollama/llama2, ollama/mistral
     - Free: openrouter free models
     """

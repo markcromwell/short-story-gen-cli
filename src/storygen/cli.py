@@ -27,14 +27,16 @@ def main(prompt: str, provider: str, max_tokens: int):
     
     Examples:
         storygen "A robot learns to paint"
-        storygen --provider claude-3-sonnet "A space adventure"
-        storygen --provider ollama/llama2 "A mystery in the library"
+        storygen --provider xai/grok-2-1212 "A space adventure"
+        storygen --provider claude-3-sonnet "A mystery story"
+        storygen --provider ollama/llama2 "A time travel tale"
     
-    Free providers for testing:
+    Free/Local providers:
         - ollama/llama2 (requires local Ollama installation)
         - ollama/mistral
         
     Premium providers:
+        - xai/grok-2-1212, xai/grok-beta (requires XAI_API_KEY - fast & cheap!)
         - gpt-4, gpt-3.5-turbo (requires OPENAI_API_KEY)
         - claude-3-sonnet, claude-3-opus (requires ANTHROPIC_API_KEY)
     """

@@ -41,8 +41,8 @@ class TestStoryGenerator:
             mocker.Mock(message=mocker.Mock(content="A test story"))
         ]
         
-        # Test with different providers
-        providers = ["gpt-4", "claude-3-sonnet", "ollama/llama2"]
+        # Test with different providers including Grok
+        providers = ["gpt-4", "claude-3-sonnet", "ollama/llama2", "xai/grok-2-1212"]
         
         for provider in providers:
             generator = StoryGenerator(provider=provider)
@@ -52,3 +52,26 @@ class TestStoryGenerator:
             # Verify LiteLLM was called with correct provider
             call_args = mock_completion.call_args
             assert call_args.kwargs['model'] == provider
+    
+    def test_generator_supports_grok_models(self, mocker):
+        """Test that Grok models are supported for fast, cheap generation"""
+        from storygen.generator import StoryGenerator
+        
+        mock_completion = mocker.patch('litellm.completion')
+        mock_completion.return_value.choices = [
+            mocker.Mock(message=mocker.Mock(content="A Grok-generated story with large context!"))
+        ]
+        
+        # Test Grok models
+        grok_models = ["xai/grok-2-1212", "xai/grok-beta"]
+        
+        for model in grok_models:
+            generator = StoryGenerator(provider=model)
+            story = generator.generate("Write a story", max_tokens=2000)
+            
+            assert isinstance(story, str)
+            assert len(story) > 0
+            
+            # Verify correct model was used
+            call_args = mock_completion.call_args
+            assert call_args.kwargs['model'] == model

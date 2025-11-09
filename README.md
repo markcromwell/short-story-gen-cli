@@ -49,9 +49,13 @@ storygen "A robot learns to paint"
 
 ### With specific provider:
 ```bash
-storygen --provider gpt-4 "A space adventure"
-storygen --provider claude-3-sonnet "A mystery in the library"
-storygen --provider ollama/llama2 "A time travel story"
+# Grok (fast, cheap, large context - recommended!)
+storygen --provider xai/grok-2-1212 "A space adventure"
+
+# Other providers
+storygen --provider gpt-4 "A mystery in the library"
+storygen --provider claude-3-sonnet "A detective story"
+storygen --provider ollama/llama2 "A time travel tale"
 ```
 
 ### Get help:
@@ -61,13 +65,22 @@ storygen --help
 
 ## Supported AI Providers
 
-### Free Options (for testing):
+### Free/Local Options:
 - **Ollama (local)**: `ollama/llama2`, `ollama/mistral`
   - Install Ollama from https://ollama.ai
   - Run `ollama pull llama2` to download models
   - No API key needed!
 
 ### Premium Options:
+
+**Recommended: xAI Grok** ⚡
+- **xAI Grok**: `xai/grok-2-1212`, `xai/grok-beta`
+  - **Fast** - Low latency responses
+  - **Cheap** - Cost-effective pricing
+  - **Large Context** - 128K+ token context window
+  - Get API key from: https://console.x.ai
+
+**Other Premium Providers:**
 - **OpenAI**: `gpt-4`, `gpt-3.5-turbo`, `gpt-4-turbo`
 - **Anthropic**: `claude-3-opus`, `claude-3-sonnet`, `claude-3-haiku`
 
