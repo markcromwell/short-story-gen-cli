@@ -42,8 +42,8 @@ class TestCLI:
         result = runner.invoke(main, ["--provider", "claude-3-sonnet", "Test prompt"])
 
         assert result.exit_code == 0
-        # Verify the generator was initialized with the correct provider
-        mock_generator.assert_called_once_with(provider="claude-3-sonnet")
+        # Verify the generator was initialized with the correct provider and verbose=False
+        mock_generator.assert_called_once_with(provider="claude-3-sonnet", verbose=False)
 
     def test_cli_shows_help(self):
         """Test: CLI should show help with --help flag"""

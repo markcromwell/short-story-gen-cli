@@ -183,6 +183,7 @@ cython_debug/
 
 # Generated files
 *.epub
+output/
 
 # Visual Studio Code
 #  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore

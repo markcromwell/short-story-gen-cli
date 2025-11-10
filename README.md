@@ -86,13 +86,81 @@ storygen --structured --format json "A space adventure" > story.json
 # - Automatic word count
 ```
 
+### Story Structure Options:
+Choose from classic narrative structures to guide the AI:
+
+```bash
+# Three-Act Structure (default): Setup → Confrontation → Resolution
+storygen --epub story.epub --structure three_act "A heist gone wrong"
+
+# Freytag's Pyramid: Exposition → Rising Action → Climax → Falling Action → Denouement
+storygen --structure freytag "A tragic romance"
+
+# Hero's Journey: Ordinary World → Call to Adventure → Trials → Return
+storygen --structure heros_journey "A reluctant hero's quest"
+
+# Fichtean Curve: Immediate crisis → Rising crises → Climax (great for thrillers!)
+storygen --structure fichtean "A detective races against time"
+
+# Seven-Point Structure: Hook → Plot Turns → Pinches → Midpoint → Resolution
+storygen --structure seven_point "A mystery with a twist"
+
+# Let AI Choose: AI picks the best structure for your story
+storygen --structure ai_choice "A mysterious disappearance"
+```
+
+### Point of View (POV) Options:
+```bash
+# First person (I/we)
+storygen --pov first_person "My journey through the wasteland"
+
+# Third person deep POV (intimate access to character thoughts - default)
+storygen --pov third_person_deep "Her secret would change everything"
+
+# Multiple POV (switching perspectives)
+storygen --pov multiple_pov "A thriller from three perspectives"
+
+# Stream of consciousness
+storygen --pov stream_of_consciousness "A mind unraveling"
+
+# 11 POV options available! Use --help for full list
+```
+
+### Control Story Length:
+```bash
+# Request minimum word count
+storygen --min-words 2000 "A detailed fantasy epic"
+storygen --min-words 5000 --epub novel.epub "A long-form mystery"
+```
+
+### Debug Mode:
+```bash
+# Show detailed information about what's sent to the AI
+storygen --verbose "A mystery story"
+
+# Verbose mode shows:
+# - Full system prompt with structure instructions
+# - User prompt with word count requirements
+# - Model and token settings
+# - Raw AI response (first/last 500 chars for long responses)
+# - Token usage statistics
+
+# Perfect for debugging or understanding how structures work
+storygen --verbose --structure fichtean --min-words 1000 "A bank heist"
+```
+
 ### EPUB generation:
 ```bash
-# Generate an EPUB ebook file
+# Generate an EPUB ebook file (auto-saved to output/ folder)
 storygen --epub my_story.epub "A magical adventure"
 
 # With custom author name
 storygen --epub story.epub --author "John Doe" "A cyberpunk detective story"
+
+# Combine all options
+storygen --epub heist.epub --author "Mark Cromwell" \
+  --structure fichtean --pov third_person_deep \
+  --min-words 3000 "A bank heist with unexpected twists"
 
 # Using local Ollama (free!)
 storygen --provider ollama/llama2 --epub adventure.epub "A space odyssey"

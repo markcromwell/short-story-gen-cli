@@ -44,14 +44,65 @@ load_dotenv()
     default="AI Generated",
     help="Author name for EPUB metadata (default: 'AI Generated')",
 )
+@click.option(
+    "--min-words",
+    type=int,
+    help="Minimum word count to request from AI (e.g., 1000, 2000, 5000)",
+)
+@click.option(
+    "--pov",
+    type=click.Choice(
+        [
+            "first_person",
+            "first_person_plural",
+            "second_person",
+            "third_person_limited",
+            "third_person_deep",
+            "third_person_omniscient",
+            "third_person_objective",
+            "multiple_pov",
+            "epistolary",
+            "free_indirect",
+            "stream_of_consciousness",
+        ],
+        case_sensitive=False,
+    ),
+    default="third_person_deep",
+    help="Point of view/narrative perspective (default: third_person_deep)",
+)
+@click.option(
+    "--structure",
+    type=click.Choice(
+        [
+            "three_act",
+            "freytag",
+            "heros_journey",
+            "fichtean",
+            "seven_point",
+            "ai_choice",
+        ],
+        case_sensitive=False,
+    ),
+    default="three_act",
+    help="Story structure to follow (default: three_act)",
+)
+@click.option(
+    "--verbose",
+    is_flag=True,
+    help="Show detailed debug information (prompts, responses, token usage)",
+)
 def main(
     prompt: str,
     provider: str,
     max_tokens: int,
     structured: bool,
+    min_words: Optional[int],
     format: str,
     epub: Optional[str],
     author: str,
+    pov: str,
+    structure: str,
+    verbose: bool,
 ):
     """
     Generate a short story from a PROMPT using AI.
@@ -63,6 +114,12 @@ def main(
         storygen --structured --format json "A time travel tale" > story.json
         storygen --epub my_story.epub "A magical adventure"
         storygen --epub story.epub --author "John Doe" "A sci-fi tale"
+        storygen --structured --min-words 2000 "A detailed fantasy epic"
+        storygen --structured --pov first_person "A detective's case"
+        storygen --epub story.epub --pov multiple_pov "A thriller with shifting perspectives"
+        storygen --epub heist.epub --structure fichtean "A bank heist gone wrong"
+        storygen --structure heros_journey --min-words 3000 "A reluctant hero's quest"
+        storygen --structure ai_choice "A mysterious disappearance" (AI picks best structure)
 
     Free/Local providers:
         - ollama/llama2 (requires local Ollama installation)
@@ -79,20 +136,44 @@ def main(
             structured = True
 
         mode = "structured" if structured else "plain"
-        click.echo(f"🎨 Generating {mode} story with {provider}...", err=True)
-        click.echo(err=True)
+        if not verbose:
+            click.echo(f"🎨 Generating {mode} story with {provider}...", err=True)
+            click.echo(err=True)
 
-        generator = StoryGenerator(provider=provider)
+        generator = StoryGenerator(provider=provider, verbose=verbose)
 
         if structured:
-            # Use higher token limit for structured stories
-            story_obj = generator.generate_structured(prompt, max_tokens=max(max_tokens, 2000))
+            # Use 50k token limit for structured stories (sufficient for long-form content)
+            story_obj = generator.generate_structured(
+                prompt, max_tokens=50000, min_words=min_words, pov=pov, structure=structure
+            )
 
             # Generate EPUB if requested
             if epub:
+                from pathlib import Path
+
                 from storygen.epub import generate_epub
 
-                epub_path = generate_epub(story_obj, epub, author=author)
+                # Ensure output directory exists
+                output_dir = Path("output")
+                output_dir.mkdir(exist_ok=True)
+
+                # Determine output path - prepend output/ if not already a path
+                epub_path_obj = Path(epub)
+                if len(epub_path_obj.parts) == 1:  # Just a filename, no directory
+                    epub_path_obj = output_dir / epub
+
+                # Check if file exists and create unique name if needed
+                if epub_path_obj.exists():
+                    stem = epub_path_obj.stem
+                    suffix = epub_path_obj.suffix
+                    counter = 1
+                    while epub_path_obj.exists():
+                        epub_path_obj = epub_path_obj.parent / f"{stem}_{counter}{suffix}"
+                        counter += 1
+                    click.echo(f"⚠️  File exists, using: {epub_path_obj.name}", err=True)
+
+                epub_path = generate_epub(story_obj, str(epub_path_obj), author=author)
                 click.echo(f"📚 EPUB generated: {epub_path}", err=True)
 
             # Also output the story (unless only EPUB was requested)
@@ -101,11 +182,12 @@ def main(
             else:
                 click.echo(story_obj.to_text())
         else:
-            story = generator.generate(prompt, max_tokens=max_tokens)
+            story = generator.generate(prompt, max_tokens=max_tokens, pov=pov, structure=structure)
             click.echo(story)
 
-        click.echo(err=True)
-        click.echo("✅ Story generated successfully!", err=True)
+        if not verbose:
+            click.echo(err=True)
+            click.echo("✅ Story generated successfully!", err=True)
 
     except Exception as e:
         click.echo(f"❌ Error: {e}", err=True)
