@@ -138,10 +138,9 @@ def generate_epub(story: Story, output_path: str, author: str = "AI Generated") 
         text-indent: 0;
         font-size: 1.1em;
     }
-    hr.scene {
-        border: none;
-        border-top: 1px solid #666;
+    .scene-gap {
         margin: 1.8em 0 1.2em 0;
+        text-indent: 0;
     }
     ul {
         margin-left: 1.5em;
@@ -188,9 +187,13 @@ def generate_epub(story: Story, output_path: str, author: str = "AI Generated") 
         lang="en",
     )
 
-    story_parts = [f'<h1 class="book-title">{safe_title}</h1>']
+    # Story content starts without redundant title (we have a dedicated title page)
+    story_parts = []
 
     for i, scene in enumerate(story.scenes):
+        # Add scene wrapper with ID for navigation
+        story_parts.append(f'<section id="scene-{scene.number}">')
+
         if i > 0:
             prev = story.scenes[i - 1]
 
@@ -209,11 +212,12 @@ def generate_epub(story: Story, output_path: str, author: str = "AI Generated") 
             location_changed = scene.location and prev.location and scene.location != prev.location
 
             if pov_changed:
-                # Strong visual break for POV shift
+                # Strong visual break for POV shift (ornament)
                 story_parts.append('<p class="scene-break">— • —</p>')
             elif time_gap or location_changed:
-                # Subtle break with semantic <hr>
-                story_parts.append('<hr class="scene" />')
+                # Subtle vertical space only (no visible rule)
+                story_parts.append('<p class="scene-gap"></p>')
+            # else: continuous flow
 
         raw_content = scene.content or ""
         blocks = [b.strip() for b in raw_content.split("\n\n") if b.strip()]
@@ -222,10 +226,12 @@ def generate_epub(story: Story, output_path: str, author: str = "AI Generated") 
             # Escape HTML first, then apply markdown-ish formatting
             safe_block = html.escape(block)
             formatted = convert_markdown_to_html(safe_block)
-            # First paragraph after scene start: no indent
-            css_class = "no-indent" if (i == 0 and j == 0) else ""
+            # First paragraph of each scene: no indent
+            css_class = "no-indent" if j == 0 else ""
             class_attr = f' class="{css_class}"' if css_class else ""
             story_parts.append(f"<p{class_attr}>{formatted}</p>")
+
+        story_parts.append("</section>")
 
     story_chapter.content = "".join(story_parts)
     book.add_item(story_chapter)
