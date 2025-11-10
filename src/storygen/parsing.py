@@ -12,6 +12,44 @@ from typing import Any
 JSON_OBJ_RE = re.compile(r"\{.*\}", re.DOTALL)
 
 
+def _balanced_json_object(text: str) -> str | None:
+    """
+    Return the first top-level {...} block using brace counting with basic
+    string/escape handling. Returns None if no complete object is found.
+    """
+    start = None
+    depth = 0
+    in_string = False
+    escape = False
+
+    for i, ch in enumerate(text):
+        if start is None:
+            if ch == "{":
+                start = i
+                depth = 1
+            continue
+
+        # After we've seen a '{', track until we close it.
+        if in_string:
+            if escape:
+                escape = False
+            elif ch == "\\":
+                escape = True
+            elif ch == '"':
+                in_string = False
+        else:
+            if ch == '"':
+                in_string = True
+            elif ch == "{":
+                depth += 1
+            elif ch == "}":
+                depth -= 1
+                if depth == 0 and start is not None:
+                    return text[start : i + 1]
+
+    return None
+
+
 def _escape_newlines_in_strings(s: str) -> str:
     """
     Walk through the text and replace raw newlines inside double-quoted strings
@@ -57,7 +95,8 @@ def _escape_newlines_in_strings(s: str) -> str:
 
 def extract_json_block(text: str) -> str:
     """
-    Grab the first {...} block, assuming that's the JSON.
+    Grab the first {...} block using brace balancing.
+    Falls back to greedy regex if balanced approach fails.
 
     Args:
         text: Raw text that may contain JSON embedded in other content
@@ -68,6 +107,12 @@ def extract_json_block(text: str) -> str:
     Raises:
         ValueError: If no JSON object is found
     """
+    # Try brace-balanced extraction first
+    balanced = _balanced_json_object(text)
+    if balanced:
+        return balanced
+
+    # Fallback to greedy regex
     m = JSON_OBJ_RE.search(text)
     if not m:
         raise ValueError("No JSON object found in model output.")
