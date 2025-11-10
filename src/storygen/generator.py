@@ -145,7 +145,7 @@ Return the story as JSON in this EXACT format:
             "pov_character": "Character Name (whose perspective/POV this scene is from)",
             "location": "Where this scene takes place",
             "time_hours": 0.0,
-            "content": "The actual scene content/narrative. Use markdown for emphasis: *italics* for thoughts/emphasis, **bold** for strong emphasis, ***bold italic*** for very strong emphasis."
+            "content": "The actual scene content/narrative. You may use markdown: *text* for italics, **text** for bold, ***text*** for bold+italic."
         },
         {
             "number": 2,
