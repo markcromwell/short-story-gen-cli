@@ -98,6 +98,9 @@ def extract_json_block(text: str) -> str:
     Grab the first {...} block using brace balancing.
     Falls back to greedy regex if balanced approach fails.
 
+    Handles reasoning model outputs (like qwen3) that include "Thinking..." sections
+    before the actual JSON output.
+
     Args:
         text: Raw text that may contain JSON embedded in other content
 
@@ -107,6 +110,16 @@ def extract_json_block(text: str) -> str:
     Raises:
         ValueError: If no JSON object is found
     """
+    # Strip reasoning model "thinking" blocks (qwen3, deepseek-r1, etc.)
+    # These models output their reasoning process before the actual response
+    # Pattern: "Thinking...\n<reasoning>\n...done thinking.\n<actual output>"
+    thinking_pattern = r"Thinking\.{3}.*?\.{3}done thinking\."
+    text = re.sub(thinking_pattern, "", text, flags=re.DOTALL | re.IGNORECASE)
+
+    # Also strip simpler thinking markers
+    text = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    text = re.sub(r"\[thinking\].*?\[/thinking\]", "", text, flags=re.DOTALL | re.IGNORECASE)
+
     # Try brace-balanced extraction first
     balanced = _balanced_json_object(text)
     if balanced:

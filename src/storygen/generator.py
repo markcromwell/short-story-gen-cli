@@ -200,11 +200,10 @@ while maintaining these quality standards throughout."""
         # Add JSON mode hints for structured output
         extra_args: dict = {}
         if structured:
-            # For OpenAI-style / compatible providers
-            extra_args["response_format"] = {"type": "json_object"}
-            # For Ollama and similar (LiteLLM will pass this through where supported)
-            if self.provider.startswith("ollama/"):
-                extra_args["format"] = "json"
+            # For OpenAI-style / compatible providers (but NOT Ollama)
+            # Ollama's format="json" seems to break streaming and reasoning models
+            if not self.provider.startswith("ollama/"):
+                extra_args["response_format"] = {"type": "json_object"}
 
         # Generous timeout for heavy local models
         # Ollama models (especially 30B+) can be slow, so give them plenty of time
@@ -215,16 +214,30 @@ while maintaining these quality standards throughout."""
         )
 
         try:
-            response = litellm.completion(
-                model=self.provider,
-                messages=[
-                    {"role": "system", "content": system_content},
-                    {"role": "user", "content": prompt},
-                ],
-                max_tokens=max_tokens,
-                timeout=timeout_seconds,
-                **extra_args,
-            )
+            # Use streaming for verbose mode to show real-time output
+            if self.verbose:
+                response = litellm.completion(
+                    model=self.provider,
+                    messages=[
+                        {"role": "system", "content": system_content},
+                        {"role": "user", "content": prompt},
+                    ],
+                    max_tokens=max_tokens,
+                    timeout=timeout_seconds,
+                    stream=True,
+                    **extra_args,
+                )
+            else:
+                response = litellm.completion(
+                    model=self.provider,
+                    messages=[
+                        {"role": "system", "content": system_content},
+                        {"role": "user", "content": prompt},
+                    ],
+                    max_tokens=max_tokens,
+                    timeout=timeout_seconds,
+                    **extra_args,
+                )
         except Exception as e:
             # Handle timeout and API errors gracefully
             error_name = type(e).__name__
@@ -242,42 +255,74 @@ while maintaining these quality standards throughout."""
                 # Re-raise unexpected errors
                 raise
 
+        # Handle streaming vs non-streaming responses
+        # Check if we requested streaming (verbose mode) - response will be a generator
         if self.verbose:
+            # Streaming response - collect chunks and display in real-time
             print("\n" + "=" * 80)
-            print("RESPONSE RECEIVED")
+            print("STREAMING RESPONSE (real-time output)")
             print("=" * 80)
-            if hasattr(response, "usage"):
-                usage = response.usage  # type: ignore
-                print("Token Usage:")
-                if hasattr(usage, "prompt_tokens"):
-                    print(f"   - Prompt tokens: {usage.prompt_tokens}")
-                if hasattr(usage, "completion_tokens"):
-                    print(f"   - Completion tokens: {usage.completion_tokens}")
-                if hasattr(usage, "total_tokens"):
-                    print(f"   - Total tokens: {usage.total_tokens}")
-            print("\n" + "-" * 80)
-            print("RAW AI RESPONSE:")
-            print("-" * 80)
+            print()
 
-        # Type-safe access to response content
-        # Note: LiteLLM returns dynamic types, suppress type checker warnings
-        if not response or not hasattr(response, "choices") or not response.choices:  # type: ignore
-            raise ValueError("Invalid response from AI provider")
+            collected_content = []
+            chunk_count = 0
+            for chunk in response:
+                chunk_count += 1
+                if chunk_count == 1:
+                    print("[First chunk received]", flush=True)
+                if hasattr(chunk, "choices") and chunk.choices:  # type: ignore
+                    delta = chunk.choices[0].delta  # type: ignore
+                    if hasattr(delta, "content") and delta.content:
+                        content_piece = delta.content
+                        print(content_piece, end="", flush=True)
+                        collected_content.append(content_piece)
 
-        content = response.choices[0].message.content  # type: ignore
-        if content is None:
-            raise ValueError("AI provider returned empty content")
+            print(f"\n\n[Received {chunk_count} chunks total]")
+            print("=" * 80)
+            content = "".join(collected_content)
+            print(f"\nTotal content length: {len(content)} characters")
+            print("=" * 80 + "\n")
+        else:
+            # Non-streaming response
+            if self.verbose:
+                print("\n" + "=" * 80)
+                print("RESPONSE RECEIVED")
+                print("=" * 80)
+                if hasattr(response, "usage"):
+                    usage = response.usage  # type: ignore
+                    print("Token Usage:")
+                    if hasattr(usage, "prompt_tokens"):
+                        print(f"   - Prompt tokens: {usage.prompt_tokens}")
+                    if hasattr(usage, "completion_tokens"):
+                        print(f"   - Completion tokens: {usage.completion_tokens}")
+                    if hasattr(usage, "total_tokens"):
+                        print(f"   - Total tokens: {usage.total_tokens}")
+                print("\n" + "-" * 80)
+                print("RAW AI RESPONSE:")
+                print("-" * 80)
 
-        if self.verbose:
-            # Show first 500 chars of response to avoid overwhelming output
-            content_str = str(content)
-            if len(content_str) > 1000:
-                print(content_str[:500])
-                print(f"\n... ({len(content_str) - 1000} more characters) ...\n")
-                print(content_str[-500:])
-            else:
-                print(content_str)
-            print("\n" + "=" * 80 + "\n")
+            # Type-safe access to response content
+            # Note: LiteLLM returns dynamic types, suppress type checker warnings
+            if not response or not hasattr(response, "choices") or not response.choices:  # type: ignore
+                raise ValueError("Invalid response from AI provider")
+
+            content = response.choices[0].message.content  # type: ignore
+            if content is None:
+                raise ValueError("AI provider returned empty content")
+
+            if self.verbose:
+                # Show response with proper representation of whitespace/empty content
+                content_str = str(content)
+                print(f"Content length: {len(content_str)} characters")
+                print(f"Content repr: {repr(content_str[:200])}")  # Show escaped version
+                print()
+                if len(content_str) > 2000:
+                    print(content_str[:1000])
+                    print(f"\n... ({len(content_str) - 2000} more characters) ...\n")
+                    print(content_str[-1000:])
+                else:
+                    print(content_str)
+                print("\n" + "=" * 80 + "\n")
 
         return str(content)
 
