@@ -196,6 +196,15 @@ while maintaining these quality standards throughout."""
             print("Sending request to AI...")
             print("-" * 80 + "\n")
 
+        # Add JSON mode hints for structured output
+        extra_args: dict = {}
+        if structured:
+            # For OpenAI-style / compatible providers
+            extra_args["response_format"] = {"type": "json_object"}
+            # For Ollama and similar (LiteLLM will pass this through where supported)
+            if self.provider.startswith("ollama/"):
+                extra_args["format"] = "json"
+
         response = litellm.completion(
             model=self.provider,
             messages=[
@@ -203,6 +212,7 @@ while maintaining these quality standards throughout."""
                 {"role": "user", "content": prompt},
             ],
             max_tokens=max_tokens,
+            **extra_args,
         )
 
         if self.verbose:

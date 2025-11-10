@@ -12,6 +12,49 @@ from typing import Any
 JSON_OBJ_RE = re.compile(r"\{.*\}", re.DOTALL)
 
 
+def _escape_newlines_in_strings(s: str) -> str:
+    """
+    Walk through the text and replace raw newlines inside double-quoted strings
+    with literal '\\n', so json.loads won't die on 'invalid control character'.
+    This is a minimal streaming tokenizer, not a full JSON parser, but good enough
+    for typical LLM output.
+    """
+    out = []
+    in_string = False
+    escape = False
+
+    for ch in s:
+        if not in_string:
+            if ch == '"':
+                in_string = True
+                out.append(ch)
+            else:
+                out.append(ch)
+        else:
+            if escape:
+                # whatever comes after a backslash is taken literally
+                out.append(ch)
+                escape = False
+            elif ch == "\\":
+                out.append(ch)
+                escape = True
+            elif ch == '"':
+                in_string = False
+                out.append(ch)
+            elif ch == "\n":
+                # newline inside a string → escape it
+                out.append("\\n")
+            elif ch == "\t":
+                out.append("\\t")
+            elif ord(ch) < 0x20:
+                # drop other control chars inside strings
+                continue
+            else:
+                out.append(ch)
+
+    return "".join(out)
+
+
 def extract_json_block(text: str) -> str:
     """
     Grab the first {...} block, assuming that's the JSON.
@@ -55,8 +98,9 @@ def sanitize_llm_json(text: str) -> str:
     # Extract just the outer JSON object if there's surrounding prose/markdown
     text = extract_json_block(text)
 
-    # Remove code fences if present
+    # Remove code fences if present (both opening and closing)
     text = re.sub(r"```[a-zA-Z0-9]*", "", text)
+    text = text.replace("```", "")
 
     # Replace triple-quoted strings (Python-style) with proper JSON strings
     # """...""" -> "..."
@@ -85,6 +129,9 @@ def sanitize_llm_json(text: str) -> str:
         0x2019: ord("'"),  # Right single quotation mark
     }
     text = text.translate(trans)
+
+    # Ensure raw newlines inside strings are escaped
+    text = _escape_newlines_in_strings(text)
 
     # Sometimes models break a key like: `" - : 3,`
     # We can't fully auto-fix arbitrary nonsense, but we can drop lines that are obviously invalid.
