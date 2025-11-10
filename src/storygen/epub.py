@@ -172,21 +172,12 @@ def generate_epub(story: Story, output_path: str, author: str = "AI Generated") 
         file_name="title.xhtml",
         lang="en",
     )
-    title_chapter.content = f"""<?xml version="1.0" encoding="utf-8"?>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
-  <head>
-    <title>{safe_title}</title>
-    <link rel="stylesheet" type="text/css" href="style/book.css" />
-  </head>
-  <body epub:type="titlepage">
-    <div class="title-page">
-      <h1 class="book-title">{safe_title}</h1>
-      <div class="author">by {safe_author}</div>
-      {f'<div class="meta">{safe_genre}</div>' if safe_genre else ''}
-      {f'<div class="summary">{safe_summary}</div>' if safe_summary else ''}
-    </div>
-  </body>
-</html>
+    title_chapter.content = f"""<div class="title-page">
+  <h1 class="book-title">{safe_title}</h1>
+  <div class="author">by {safe_author}</div>
+  {f'<div class="meta">{safe_genre}</div>' if safe_genre else ''}
+  {f'<div class="summary">{safe_summary}</div>' if safe_summary else ''}
+</div>
 """
     book.add_item(title_chapter)
 
@@ -236,17 +227,7 @@ def generate_epub(story: Story, output_path: str, author: str = "AI Generated") 
             class_attr = f' class="{css_class}"' if css_class else ""
             story_parts.append(f"<p{class_attr}>{formatted}</p>")
 
-    story_chapter.content = f"""<?xml version="1.0" encoding="utf-8"?>
-<html xmlns="http://www.w3.org/1999/xhtml">
-  <head>
-    <title>{safe_title}</title>
-    <link rel="stylesheet" type="text/css" href="style/book.css" />
-  </head>
-  <body>
-    {''.join(story_parts)}
-  </body>
-</html>
-"""
+    story_chapter.content = "".join(story_parts)
     book.add_item(story_chapter)
 
     # Dramatis Personae page at the end if characters are defined
@@ -265,17 +246,8 @@ def generate_epub(story: Story, output_path: str, author: str = "AI Generated") 
             characters_html += f"<li>{safe_character}</li>"
         characters_html += "</ul>"
 
-        dramatis_personae.content = f"""<?xml version="1.0" encoding="utf-8"?>
-<html xmlns="http://www.w3.org/1999/xhtml">
-  <head>
-    <title>Dramatis Personae</title>
-    <link rel="stylesheet" type="text/css" href="style/book.css" />
-  </head>
-  <body>
-    <h2 class="section-title">Dramatis Personae</h2>
-    {characters_html}
-  </body>
-</html>
+        dramatis_personae.content = f"""<h2 class="section-title">Dramatis Personae</h2>
+{characters_html}
 """
         book.add_item(dramatis_personae)
 
@@ -295,7 +267,8 @@ def generate_epub(story: Story, output_path: str, author: str = "AI Generated") 
     book.add_item(epub.EpubNcx())
     book.add_item(epub.EpubNav())
 
-    # Define reading order (spine) - use actual objects to avoid ID mismatch
+    # Define reading order (spine)
+    # Note: Using "nav" string works because EpubNav() has id="nav" by default
     spine_items = ["nav", title_chapter, story_chapter]
     if dramatis_personae:
         spine_items.append(dramatis_personae)

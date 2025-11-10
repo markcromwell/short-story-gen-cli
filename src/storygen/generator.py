@@ -205,15 +205,37 @@ while maintaining these quality standards throughout."""
             if self.provider.startswith("ollama/"):
                 extra_args["format"] = "json"
 
-        response = litellm.completion(
-            model=self.provider,
-            messages=[
-                {"role": "system", "content": system_content},
-                {"role": "user", "content": prompt},
-            ],
-            max_tokens=max_tokens,
-            **extra_args,
-        )
+        # Generous timeout for heavy local models
+        # Ollama models (especially 30B+) can be slow, so give them plenty of time
+        timeout_seconds = 600 if self.provider.startswith("ollama/") else 120
+
+        try:
+            response = litellm.completion(
+                model=self.provider,
+                messages=[
+                    {"role": "system", "content": system_content},
+                    {"role": "user", "content": prompt},
+                ],
+                max_tokens=max_tokens,
+                timeout=timeout_seconds,
+                **extra_args,
+            )
+        except Exception as e:
+            # Handle timeout and API errors gracefully
+            error_name = type(e).__name__
+            if "timeout" in error_name.lower() or "timeout" in str(e).lower():
+                raise ValueError(
+                    f"Model request timed out after {timeout_seconds}s. "
+                    f"Try a smaller local model or lower max_tokens. "
+                    f"(Provider: {self.provider})"
+                ) from e
+            elif "api" in error_name.lower() or "connection" in str(e).lower():
+                raise ValueError(
+                    f"Upstream model/transport error from provider '{self.provider}': {e}"
+                ) from e
+            else:
+                # Re-raise unexpected errors
+                raise
 
         if self.verbose:
             print("\n" + "=" * 80)
@@ -257,7 +279,7 @@ while maintaining these quality standards throughout."""
     def generate_structured(
         self,
         prompt: str,
-        max_tokens: Optional[int] = 50000,
+        max_tokens: Optional[int] = 4000,
         min_words: Optional[int] = None,
         pov: str = "third_person_deep",
         structure: str = "three_act",
@@ -267,7 +289,7 @@ while maintaining these quality standards throughout."""
 
         Args:
             prompt: The story prompt or theme
-            max_tokens: Maximum length (default 50000 tokens - very high limit for detailed stories)
+            max_tokens: Maximum length (default 4000 tokens - suitable for short stories)
             min_words: Minimum word count to request (e.g., 1000, 2000, 5000)
             pov: Point of view/narrative perspective (e.g., "first_person", "third_person_deep")
             structure: Story structure to use (e.g., "three_act", "freytag", "heros_journey", "fichtean", "seven_point", "ai_choice")
@@ -282,6 +304,11 @@ while maintaining these quality standards throughout."""
         enhanced_prompt = prompt
         if min_words:
             enhanced_prompt = f"{prompt}\n\nIMPORTANT: Generate at least {min_words} words of narrative content across all scenes."
+            # Scale max_tokens based on requested word count
+            # Rule of thumb: ~1.3 tokens per word + overhead for JSON structure
+            # Add 1000 tokens for metadata (title, summary, etc.)
+            estimated_tokens = int(min_words * 1.5) + 1000
+            max_tokens = max(max_tokens or 0, estimated_tokens)
 
         content = self.generate(
             enhanced_prompt, max_tokens=max_tokens, structured=True, pov=pov, structure=structure

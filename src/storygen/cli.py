@@ -143,9 +143,10 @@ def main(
         generator = StoryGenerator(provider=provider, verbose=verbose)
 
         if structured:
-            # Use 50k token limit for structured stories (sufficient for long-form content)
+            # Let generate_structured auto-scale max_tokens based on min_words
+            # Default is 4000 tokens, scales up if min_words is specified
             story_obj = generator.generate_structured(
-                prompt, max_tokens=50000, min_words=min_words, pov=pov, structure=structure
+                prompt, min_words=min_words, pov=pov, structure=structure
             )
 
             # Generate EPUB if requested
