@@ -4,7 +4,6 @@ Data models for structured story output.
 
 import json
 from dataclasses import dataclass
-from typing import Optional
 
 
 @dataclass
@@ -14,9 +13,9 @@ class Scene:
     number: int
     title: str
     content: str
-    pov_character: Optional[str] = None
-    location: Optional[str] = None
-    time_hours: Optional[float] = None  # Hours since story start
+    pov_character: str | None = None
+    location: str | None = None
+    time_hours: float | None = None  # Hours since story start
 
     def to_dict(self) -> dict:
         """Convert scene to dictionary."""
@@ -36,10 +35,10 @@ class Story:
 
     title: str
     scenes: list[Scene]
-    genre: Optional[str] = None
-    summary: Optional[str] = None
-    word_count: Optional[int] = None
-    characters: Optional[list[str]] = None
+    genre: str | None = None
+    summary: str | None = None
+    word_count: int | None = None
+    characters: list[str] | None = None
 
     def to_dict(self) -> dict:
         """Convert story to dictionary."""

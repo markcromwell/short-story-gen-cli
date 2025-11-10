@@ -5,7 +5,6 @@ EPUB generation from Story models.
 import html
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from ebooklib import epub  # type: ignore
 
@@ -138,10 +137,6 @@ def generate_epub(story: Story, output_path: str, author: str = "AI Generated") 
         text-indent: 0;
         font-size: 1.1em;
     }
-    .scene-gap {
-        margin: 1.8em 0 1.2em 0;
-        text-indent: 0;
-    }
     ul {
         margin-left: 1.5em;
         margin-bottom: 1em;
@@ -190,10 +185,9 @@ def generate_epub(story: Story, output_path: str, author: str = "AI Generated") 
     # Story content starts without redundant title (we have a dedicated title page)
     story_parts = []
 
-    for i, scene in enumerate(story.scenes):
-        # Add scene wrapper with ID for navigation
-        story_parts.append(f'<section id="scene-{scene.number}">')
+    at_scene_start = True  # first scene starts immediately
 
+    for i, scene in enumerate(story.scenes):
         if i > 0:
             prev = story.scenes[i - 1]
 
@@ -212,26 +206,32 @@ def generate_epub(story: Story, output_path: str, author: str = "AI Generated") 
             location_changed = scene.location and prev.location and scene.location != prev.location
 
             if pov_changed:
-                # Strong visual break for POV shift (ornament)
+                # Strong scene break marker (ornament for POV shifts)
                 story_parts.append('<p class="scene-break">— • —</p>')
+                at_scene_start = True
             elif time_gap or location_changed:
-                # Subtle vertical space only (no visible rule)
-                story_parts.append('<p class="scene-gap"></p>')
-            # else: continuous flow
+                # Just add vertical space (no visible line)
+                story_parts.append('<p class="scene-break">&#160;</p>')
+                at_scene_start = True
+            else:
+                # Continuation of same scene flow
+                at_scene_start = True
 
         raw_content = scene.content or ""
         blocks = [b.strip() for b in raw_content.split("\n\n") if b.strip()]
 
         for j, block in enumerate(blocks):
-            # Escape HTML first, then apply markdown-ish formatting
             safe_block = html.escape(block)
             formatted = convert_markdown_to_html(safe_block)
-            # First paragraph of each scene: no indent
-            css_class = "no-indent" if j == 0 else ""
+
+            first_para_of_block = at_scene_start and j == 0
+            css_class = "no-indent" if first_para_of_block else ""
             class_attr = f' class="{css_class}"' if css_class else ""
+
             story_parts.append(f"<p{class_attr}>{formatted}</p>")
 
-        story_parts.append("</section>")
+        # After we've emitted paragraphs for this scene, further paragraphs are not "scene start"
+        at_scene_start = False
 
     story_chapter.content = "".join(story_parts)
     book.add_item(story_chapter)
@@ -288,7 +288,7 @@ def generate_epub(story: Story, output_path: str, author: str = "AI Generated") 
 
 
 def story_to_epub_cli(
-    story: Story, output_filename: Optional[str] = None, author: str = "AI Generated"
+    story: Story, output_filename: str | None = None, author: str = "AI Generated"
 ) -> Path:
     """
     Convenience function for CLI usage - generates EPUB with sensible defaults.

@@ -8,8 +8,6 @@ Supports multiple AI providers:
 - Ollama (local models like llama2, qwen3, mistral)
 """
 
-from typing import Optional
-
 import litellm
 
 from storygen.models import Story
@@ -36,7 +34,7 @@ class StoryGenerator:
     def generate(
         self,
         prompt: str,
-        max_tokens: Optional[int] = 1000,
+        max_tokens: int | None = 1000,
         structured: bool = False,
         pov: str = "third_person_deep",
         structure: str = "three_act",
@@ -279,8 +277,8 @@ while maintaining these quality standards throughout."""
     def generate_structured(
         self,
         prompt: str,
-        max_tokens: Optional[int] = 4000,
-        min_words: Optional[int] = None,
+        max_tokens: int | None = 4000,
+        min_words: int | None = None,
         pov: str = "third_person_deep",
         structure: str = "three_act",
     ) -> Story:

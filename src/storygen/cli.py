@@ -2,8 +2,6 @@
 Command-line interface for story generation
 """
 
-from typing import Optional
-
 import click
 from dotenv import load_dotenv
 
@@ -96,9 +94,9 @@ def main(
     provider: str,
     max_tokens: int,
     structured: bool,
-    min_words: Optional[int],
+    min_words: int | None,
     format: str,
-    epub: Optional[str],
+    epub: str | None,
     author: str,
     pov: str,
     structure: str,
