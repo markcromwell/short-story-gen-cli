@@ -16,6 +16,9 @@ from storygen.models import Story
 class StoryGenerator:
     """Generate creative short stories using various AI models."""
 
+    OLLAMA_TIMEOUT_SECONDS = 600
+    DEFAULT_TIMEOUT_SECONDS = 120
+
     def __init__(self, provider: str = "gpt-4o-mini", verbose: bool = False):
         """
         Initialize the story generator.
@@ -205,7 +208,11 @@ while maintaining these quality standards throughout."""
 
         # Generous timeout for heavy local models
         # Ollama models (especially 30B+) can be slow, so give them plenty of time
-        timeout_seconds = 600 if self.provider.startswith("ollama/") else 120
+        timeout_seconds = (
+            self.OLLAMA_TIMEOUT_SECONDS
+            if self.provider.startswith("ollama/")
+            else self.DEFAULT_TIMEOUT_SECONDS
+        )
 
         try:
             response = litellm.completion(
@@ -277,7 +284,7 @@ while maintaining these quality standards throughout."""
     def generate_structured(
         self,
         prompt: str,
-        max_tokens: int | None = 4000,
+        max_tokens: int | None = 50000,
         min_words: int | None = None,
         pov: str = "third_person_deep",
         structure: str = "three_act",

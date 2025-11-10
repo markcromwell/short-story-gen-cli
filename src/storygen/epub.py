@@ -20,8 +20,6 @@ def convert_markdown_to_html(text: str) -> str:
     - *italic* or _italic_ → <em>italic</em>
     - ***bold italic*** → <strong><em>bold italic</em></strong>
 
-    Note: Input should be HTML-escaped first; this function only handles markdown.
-
     Args:
         text: Text with markdown formatting (already HTML-escaped)
 
@@ -30,15 +28,15 @@ def convert_markdown_to_html(text: str) -> str:
     """
     import re
 
-    # Handle bold italic (must come first to avoid conflicting with bold/italic alone)
+    # Bold + italic first
     text = re.sub(r"\*\*\*(.+?)\*\*\*", r"<strong><em>\1</em></strong>", text)
     text = re.sub(r"___(.+?)___", r"<strong><em>\1</em></strong>", text)
 
-    # Handle bold
+    # Bold
     text = re.sub(r"\*\*(.+?)\*\*", r"<strong>\1</strong>", text)
     text = re.sub(r"__(.+?)__", r"<strong>\1</strong>", text)
 
-    # Handle italic
+    # Italic
     text = re.sub(r"\*(.+?)\*", r"<em>\1</em>", text)
     text = re.sub(r"_(.+?)_", r"<em>\1</em>", text)
 
@@ -48,20 +46,7 @@ def convert_markdown_to_html(text: str) -> str:
 def generate_epub(story: Story, output_path: str, author: str = "AI Generated") -> Path:
     """
     Generate an EPUB file from a Story object with clean structure & metadata.
-
-    Args:
-        story: Story object with title, scenes, and metadata
-        output_path: Path where the EPUB file should be saved
-        author: Author name for the EPUB metadata
-
-    Returns:
-        Path object pointing to the created EPUB file
-
-    Example:
-        >>> story = Story(title="My Story", scenes=[...])
-        >>> epub_path = generate_epub(story, "my_story.epub", author="John Doe")
     """
-    # Create EPUB book
     book = epub.EpubBook()
 
     # Core metadata
@@ -73,11 +58,10 @@ def generate_epub(story: Story, output_path: str, author: str = "AI Generated") 
 
     if story.genre:
         book.add_metadata("DC", "subject", story.genre)
-
     if story.summary:
         book.add_metadata("DC", "description", story.summary)
 
-    # Shared CSS stylesheet
+    # Shared CSS
     base_css = """
     body {
         font-family: Georgia, "Times New Roman", serif;
@@ -154,7 +138,6 @@ def generate_epub(story: Story, output_path: str, author: str = "AI Generated") 
     )
     book.add_item(style_item)
 
-    # Escape HTML in metadata
     safe_title = html.escape(story.title)
     safe_author = html.escape(author)
     safe_genre = html.escape(story.genre) if story.genre else ""
@@ -175,17 +158,15 @@ def generate_epub(story: Story, output_path: str, author: str = "AI Generated") 
 """
     book.add_item(title_chapter)
 
-    # Story content with proper structure and scene breaks
+    # Story content
     story_chapter = epub.EpubHtml(
         title=story.title,
         file_name="story.xhtml",
         lang="en",
     )
 
-    # Story content starts without redundant title (we have a dedicated title page)
-    story_parts = []
-
-    at_scene_start = True  # first scene starts immediately
+    story_parts: list[str] = []
+    at_scene_start = True
 
     for i, scene in enumerate(story.scenes):
         if i > 0:
@@ -196,25 +177,20 @@ def generate_epub(story: Story, output_path: str, author: str = "AI Generated") 
                 and prev.pov_character
                 and scene.pov_character != prev.pov_character
             )
-
             time_gap = (
                 scene.time_hours is not None
                 and prev.time_hours is not None
                 and abs(scene.time_hours - prev.time_hours) > 2.0
             )
-
             location_changed = scene.location and prev.location and scene.location != prev.location
 
             if pov_changed:
-                # Strong scene break marker (ornament for POV shifts)
                 story_parts.append('<p class="scene-break">— • —</p>')
                 at_scene_start = True
             elif time_gap or location_changed:
-                # Just add vertical space (no visible line)
                 story_parts.append('<p class="scene-break">&#160;</p>')
                 at_scene_start = True
             else:
-                # Continuation of same scene flow
                 at_scene_start = True
 
         raw_content = scene.content or ""
@@ -224,19 +200,18 @@ def generate_epub(story: Story, output_path: str, author: str = "AI Generated") 
             safe_block = html.escape(block)
             formatted = convert_markdown_to_html(safe_block)
 
-            first_para_of_block = at_scene_start and j == 0
-            css_class = "no-indent" if first_para_of_block else ""
+            first_para = at_scene_start and j == 0
+            css_class = "no-indent" if first_para else ""
             class_attr = f' class="{css_class}"' if css_class else ""
 
             story_parts.append(f"<p{class_attr}>{formatted}</p>")
 
-        # After we've emitted paragraphs for this scene, further paragraphs are not "scene start"
         at_scene_start = False
 
     story_chapter.content = "".join(story_parts)
     book.add_item(story_chapter)
 
-    # Dramatis Personae page at the end if characters are defined
+    # Dramatis Personae
     dramatis_personae = None
     characters = story.get_characters()
     if characters:
@@ -246,65 +221,52 @@ def generate_epub(story: Story, output_path: str, author: str = "AI Generated") 
             lang="en",
         )
 
-        characters_html = "<ul>"
-        for character in characters:
-            safe_character = html.escape(character)
-            characters_html += f"<li>{safe_character}</li>"
-        characters_html += "</ul>"
+        items = "".join(f"<li>{html.escape(name)}</li>" for name in characters)
 
         dramatis_personae.content = f"""<h2 class="section-title">Dramatis Personae</h2>
-{characters_html}
+<ul>
+  {items}
+</ul>
 """
         book.add_item(dramatis_personae)
 
-    # Define Table of Contents
+    # TOC
     toc_items = [
         epub.Link("title.xhtml", "Title Page", "title"),
         epub.Link("story.xhtml", story.title, "story"),
     ]
     if dramatis_personae:
         toc_items.append(
-            epub.Link("dramatis_personae.xhtml", "Dramatis Personae", "dramatis_personae")
+            epub.Link(
+                "dramatis_personae.xhtml",
+                "Dramatis Personae",
+                "dramatis_personae",
+            )
         )
-
     book.toc = tuple(toc_items)
 
-    # Add default NCX and Nav files
+    # NCX / Nav
     book.add_item(epub.EpubNcx())
     book.add_item(epub.EpubNav())
 
-    # Define reading order (spine)
-    # Note: Using "nav" string works because EpubNav() has id="nav" by default
-    spine_items = ["nav", title_chapter, story_chapter]
+    # Spine
+    spine: list = ["nav", title_chapter, story_chapter]
     if dramatis_personae:
-        spine_items.append(dramatis_personae)
-    book.spine = spine_items
+        spine.append(dramatis_personae)
+    book.spine = spine
 
-    # Write EPUB file
     output_file = Path(output_path)
     epub.write_epub(output_file, book)
-
     return output_file
 
 
 def story_to_epub_cli(
-    story: Story, output_filename: str | None = None, author: str = "AI Generated"
+    story: Story,
+    output_filename: str | None = None,
+    author: str = "AI Generated",
 ) -> Path:
-    """
-    Convenience function for CLI usage - generates EPUB with sensible defaults.
-
-    Args:
-        story: Story object to convert
-        output_filename: Optional custom filename (defaults to story title)
-        author: Author name for metadata
-
-    Returns:
-        Path to the generated EPUB file
-    """
     if output_filename is None:
-        # Generate filename from story title
         safe_title = "".join(c if c.isalnum() or c in (" ", "_") else "" for c in story.title)
         safe_title = safe_title.replace(" ", "_").lower()
         output_filename = f"{safe_title}.epub"
-
     return generate_epub(story, output_filename, author)

@@ -2,9 +2,12 @@
 Command-line interface for story generation
 """
 
+from pathlib import Path
+
 import click
 from dotenv import load_dotenv
 
+from storygen.epub import generate_epub
 from storygen.generator import StoryGenerator
 
 # Load environment variables (for API keys)
@@ -18,7 +21,11 @@ load_dotenv()
     default="gpt-3.5-turbo",
     help="AI provider to use (e.g., gpt-4, claude-3-sonnet, ollama/llama2)",
 )
-@click.option("--max-tokens", default=1000, help="Maximum length of the generated story")
+@click.option(
+    "--max-tokens",
+    default=1000,
+    help="Maximum length of the generated story (ignored for --structured mode)",
+)
 @click.option(
     "--structured",
     is_flag=True,
@@ -118,54 +125,36 @@ def main(
         storygen --epub heist.epub --structure fichtean "A bank heist gone wrong"
         storygen --structure heros_journey --min-words 3000 "A reluctant hero's quest"
         storygen --structure ai_choice "A mysterious disappearance" (AI picks best structure)
-
-    Free/Local providers:
-        - ollama/llama2 (requires local Ollama installation)
-        - ollama/mistral
-
-    Premium providers:
-        - xai/grok-2-1212, xai/grok-beta (requires XAI_API_KEY - fast & cheap!)
-        - gpt-4, gpt-3.5-turbo (requires OPENAI_API_KEY)
-        - claude-3-sonnet, claude-3-opus (requires ANTHROPIC_API_KEY)
     """
     try:
-        # EPUB generation implies structured mode
+        # EPUB implies structured
         if epub:
             structured = True
 
         mode = "structured" if structured else "plain"
         if not verbose:
             click.echo(f"🎨 Generating {mode} story with {provider}...", err=True)
-            click.echo(err=True)
 
         generator = StoryGenerator(provider=provider, verbose=verbose)
 
         if structured:
             # Let generate_structured auto-scale max_tokens based on min_words
-            # Default is 4000 tokens, scales up if min_words is specified
             story_obj = generator.generate_structured(
                 prompt, min_words=min_words, pov=pov, structure=structure
             )
 
             # Generate EPUB if requested
             if epub:
-                from pathlib import Path
-
-                from storygen.epub import generate_epub
-
-                # Ensure output directory exists
                 output_dir = Path("output")
                 output_dir.mkdir(exist_ok=True)
 
-                # Determine output path - prepend output/ if not already a path
                 epub_path_obj = Path(epub)
-                if len(epub_path_obj.parts) == 1:  # Just a filename, no directory
+                if len(epub_path_obj.parts) == 1:  # filename only, no dir
                     epub_path_obj = output_dir / epub
 
-                # Check if file exists and create unique name if needed
+                # Avoid overwriting existing file
                 if epub_path_obj.exists():
-                    stem = epub_path_obj.stem
-                    suffix = epub_path_obj.suffix
+                    stem, suffix = epub_path_obj.stem, epub_path_obj.suffix
                     counter = 1
                     while epub_path_obj.exists():
                         epub_path_obj = epub_path_obj.parent / f"{stem}_{counter}{suffix}"
@@ -175,17 +164,18 @@ def main(
                 epub_path = generate_epub(story_obj, str(epub_path_obj), author=author)
                 click.echo(f"📚 EPUB generated: {epub_path}", err=True)
 
-            # Also output the story (unless only EPUB was requested)
-            if format == "json":
-                click.echo(story_obj.to_json())
-            else:
-                click.echo(story_obj.to_text())
+            # Print story content only if user didn’t explicitly request EPUB-only
+            if not epub:
+                if format == "json":
+                    click.echo(story_obj.to_json())
+                else:
+                    click.echo(story_obj.to_text())
+
         else:
             story = generator.generate(prompt, max_tokens=max_tokens, pov=pov, structure=structure)
             click.echo(story)
 
         if not verbose:
-            click.echo(err=True)
             click.echo("✅ Story generated successfully!", err=True)
 
     except Exception as e:
