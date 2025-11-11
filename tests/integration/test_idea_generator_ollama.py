@@ -20,7 +20,7 @@ import pytest
 from storygen.iterative.generators.character import CharacterGenerator
 from storygen.iterative.generators.idea import IdeaGenerator
 from storygen.iterative.generators.location import LocationGenerator
-from storygen.iterative.models import StoryIdea
+from storygen.iterative.models import Character, Location, StoryIdea
 
 # Mark all tests in this file as integration tests
 pytestmark = pytest.mark.integration
@@ -432,3 +432,228 @@ class TestLocationGeneratorOllama:
 
         print(f"\n✓ Story 1 locations: {[loc.name for loc in locs1]}")
         print(f"  Story 2 locations: {[loc.name for loc in locs2]}")
+
+
+class TestOutlineGeneratorOllama:
+    """Integration tests for OutlineGenerator with real Ollama model calls."""
+
+    @pytest.fixture
+    def ollama_model(self):
+        """Return the Ollama model to use for testing."""
+        import os
+
+        return os.getenv("OLLAMA_TEST_MODEL", "qwen2.5:7b")
+
+    @pytest.fixture
+    def check_ollama(self):
+        """Check if Ollama is available before running tests."""
+        import subprocess
+
+        try:
+            # Check if ollama is running
+            result = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=5)
+            if result.returncode != 0:
+                pytest.skip("Ollama is not running. Start with: ollama serve")
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pytest.skip("Ollama is not installed or not responding")
+
+    @pytest.fixture
+    def story_idea(self):
+        """Create a sample story idea for outline generation."""
+        return StoryIdea(
+            raw_idea="A detective who can read minds investigates her own murder",
+            one_sentence="A telepathic detective must solve the mystery of her own death while racing against time.",
+            expanded="In a noir-tinged cityscape, Detective Sarah Chen discovers she has the unique ability to read minds - a gift that becomes a curse when she finds herself investigating her own murder. As she navigates between life and death, Sarah must piece together the fragments of her final hours, confronting dark secrets and dangerous enemies. Time is running out as her consciousness begins to fade, and she must identify her killer before she loses herself forever.",
+            genres=["noir", "psychological thriller", "mystery"],
+            tone="Dark, suspenseful, introspective",
+            themes=[
+                "identity and consciousness",
+                "justice vs revenge",
+                "mortality and legacy",
+            ],
+        )
+
+    @pytest.fixture
+    def characters(self):
+        """Create sample characters for outline generation."""
+        return [
+            Character(
+                name="Detective Sarah Chen",
+                role="protagonist",
+                bio="A brilliant telepathic detective investigating her own murder",
+                goal="Identify her killer before fading away",
+                flaw="Too obsessed with justice to see personal cost",
+            ),
+            Character(
+                name="The Killer",
+                role="antagonist",
+                bio="A cunning murderer with secrets to hide",
+                goal="Escape justice and cover tracks",
+                flaw="Overconfident in their planning",
+            ),
+            Character(
+                name="Marcus",
+                role="ally",
+                bio="Sarah's partner who doesn't know she's dead",
+                goal="Solve the case",
+                flaw="Too trusting",
+            ),
+        ]
+
+    @pytest.fixture
+    def locations(self):
+        """Create sample locations for outline generation."""
+        return [
+            Location(
+                name="Crime Scene Alley",
+                description="A dark, rain-slicked alley where Sarah was killed",
+                significance="The starting point of the mystery",
+                atmosphere="Tense, ominous, foreboding",
+            ),
+            Location(
+                name="Police Precinct",
+                description="Busy police station with flickering fluorescent lights",
+                significance="Sarah's workplace and base of operations",
+                atmosphere="Professional, bureaucratic, haunted",
+            ),
+        ]
+
+    def test_generate_outline_ollama(
+        self, ollama_model, check_ollama, story_idea, characters, locations
+    ):
+        """Test generating real outline with Ollama."""
+        from storygen.iterative.generators.outline import OutlineGenerator
+
+        generator = OutlineGenerator(model=f"ollama/{ollama_model}", max_retries=2, timeout=300)
+
+        outline = generator.generate(story_idea, characters, locations)
+
+        # Validate structure - all 7 plot points must be present
+        assert hasattr(outline, "act1_setup")
+        assert hasattr(outline, "act1_inciting_incident")
+        assert hasattr(outline, "act2_rising_action")
+        assert hasattr(outline, "act2_midpoint")
+        assert hasattr(outline, "act2_crisis")
+        assert hasattr(outline, "act3_climax")
+        assert hasattr(outline, "act3_resolution")
+
+        # Validate each is a non-empty string
+        assert len(outline.act1_setup) > 0
+        assert len(outline.act1_inciting_incident) > 0
+        assert len(outline.act2_rising_action) > 0
+        assert len(outline.act2_midpoint) > 0
+        assert len(outline.act2_crisis) > 0
+        assert len(outline.act3_climax) > 0
+        assert len(outline.act3_resolution) > 0
+
+        print("\n✓ Generated outline with all 7 plot points")
+        print(f"  Act 1 Setup: {outline.act1_setup[:60]}...")
+        print(f"  Act 3 Resolution: {outline.act3_resolution[:60]}...")
+
+    def test_outline_quality(self, ollama_model, check_ollama, story_idea, characters, locations):
+        """Test that generated outline has quality content."""
+        from storygen.iterative.generators.outline import OutlineGenerator
+
+        generator = OutlineGenerator(model=f"ollama/{ollama_model}", timeout=300)
+
+        outline = generator.generate(story_idea, characters, locations)
+
+        # Each plot point should be substantive (at least 50 characters)
+        assert len(outline.act1_setup) > 50, "Act 1 setup should be detailed"
+        assert len(outline.act1_inciting_incident) > 50, "Inciting incident should be detailed"
+        assert len(outline.act2_rising_action) > 50, "Rising action should be detailed"
+        assert len(outline.act2_midpoint) > 50, "Midpoint should be detailed"
+        assert len(outline.act2_crisis) > 50, "Crisis should be detailed"
+        assert len(outline.act3_climax) > 50, "Climax should be detailed"
+        assert len(outline.act3_resolution) > 50, "Resolution should be detailed"
+
+        # Total outline text should be substantial
+        total_length = sum(
+            [
+                len(outline.act1_setup),
+                len(outline.act1_inciting_incident),
+                len(outline.act2_rising_action),
+                len(outline.act2_midpoint),
+                len(outline.act2_crisis),
+                len(outline.act3_climax),
+                len(outline.act3_resolution),
+            ]
+        )
+        assert total_length > 500, "Outline should be comprehensive"
+
+        print("\n✓ Outline quality validated")
+        print(f"  Total length: {total_length} chars")
+
+    def test_different_story_different_outline(self, ollama_model, check_ollama):
+        """Test that different stories produce different outlines."""
+        from storygen.iterative.generators.outline import OutlineGenerator
+
+        generator = OutlineGenerator(model=f"ollama/{ollama_model}", timeout=300)
+
+        # Story 1: Space mystery
+        idea1 = StoryIdea(
+            raw_idea="Space station murder",
+            one_sentence="A murder on a remote space station.",
+            expanded="On a distant orbital station, a crew member is found dead.",
+            genres=["sci-fi", "mystery"],
+            tone="tense",
+            themes=["isolation"],
+        )
+        chars1 = [
+            Character(
+                name="Captain",
+                role="protagonist",
+                bio="Station commander",
+                goal="Find killer",
+                flaw="Trusting",
+            )
+        ]
+        locs1 = [
+            Location(
+                name="Command Deck",
+                description="The bridge",
+                significance="Control center",
+                atmosphere="Tense",
+            )
+        ]
+
+        # Story 2: Medieval fantasy
+        idea2 = StoryIdea(
+            raw_idea="Knight's quest",
+            one_sentence="A knight seeks the holy grail.",
+            expanded="A brave knight ventures through enchanted forests.",
+            genres=["fantasy"],
+            tone="epic",
+            themes=["honor"],
+        )
+        chars2 = [
+            Character(
+                name="Sir Roland",
+                role="protagonist",
+                bio="A noble knight",
+                goal="Find grail",
+                flaw="Pride",
+            )
+        ]
+        locs2 = [
+            Location(
+                name="Enchanted Forest",
+                description="Mystical woods",
+                significance="Path to grail",
+                atmosphere="Magical",
+            )
+        ]
+
+        outline1 = generator.generate(idea1, chars1, locs1)
+        outline2 = generator.generate(idea2, chars2, locs2)
+
+        # Both should be valid
+        assert len(outline1.act1_setup) > 0
+        assert len(outline2.act1_setup) > 0
+
+        # Outlines should be different
+        assert outline1.act1_setup != outline2.act1_setup
+        assert outline1.act3_climax != outline2.act3_climax
+
+        print(f"\n✓ Story 1 setup: {outline1.act1_setup[:60]}...")
+        print(f"  Story 2 setup: {outline2.act1_setup[:60]}...")

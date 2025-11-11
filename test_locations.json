@@ -1,0 +1,32 @@
+[
+  {
+    "name": "The Rain-Slicked Alley",
+    "description": "A narrow, forgotten passageway between crumbling brick buildings, slick with oily rainwater reflecting neon signs from a distant club. The air reeks of wet concrete, stale beer, and the metallic tang of blood pooling near a dumpster. Distant sirens wail, but the usual city hum is unnervingly absent.",
+    "atmosphere": "The alley breathes with the damp dread of the unsolved.",
+    "significance": "The site of Elara's murder and the moment her mind-reading ability fails catastrophically; it's where she first realizes her body is cold and lifeless while her mind remains trapped."
+  },
+  {
+    "name": "The Silent Apartment",
+    "description": "Elara's minimalist loft apartment, now unnervingly quiet. Sunlight slants through dusty windows onto unmade sheets, while the scent of cold coffee and old paper hangs in the air. The usual mental chatter of neighbors is gone, replaced by a suffocating void.",
+    "atmosphere": "A tomb of forgotten thoughts and echoing silence.",
+    "significance": "Her last safe haven, now corrupted by her own power's failure; she retreats here to process the murder and confront her isolation, realizing her ability to hear others is gone."
+  },
+  {
+    "name": "The Precinct's Echo Chamber",
+    "description": "The abandoned detective's office from Elara's past, filled with the dusty smell of old files and stale coffee. Faded crime scene photos line the walls, and the flickering fluorescent light casts long, shifting shadows over empty desks.",
+    "atmosphere": "A museum of half-remembered confessions and crumbling trust.",
+    "significance": "Where she interrogated the estranged partner and the vengeful witness; now a ghostly stage for fragmented memories and the only place she can partially hear residual thoughts from the past."
+  },
+  {
+    "name": "The City's Silent Market",
+    "description": "A bustling street market at dusk, usually alive with vendors shouting and crowds murmuring. Now, the mental noise is deadened to a whisper, leaving only the clatter of carts and the scent of overripe fruit hanging in the unnaturally still air.",
+    "atmosphere": "A marketplace of silence, where every shadow feels like a threat.",
+    "significance": "A public space where her mind-reading should work, but the absence of thought amplifies her paranoia; it's where she encounters the shadowy figure who knew her darkest secret."
+  },
+  {
+    "name": "The Abandoned Lighthouse",
+    "description": "A crumbling coastal lighthouse, its lantern room shattered. Salt spray mingles with the damp rot of seaweed and mildew. The rhythmic crash of waves is the only sound, broken only by the occasional creak of the rusted metal stairs.",
+    "atmosphere": "A lonely sentinel of hidden truths and impending dissolution.",
+    "significance": "The location of her darkest secret, where she was betrayed; it's the place she must confront the shadowy figure, and where she realizes her killer exploited her power to orchestrate her death."
+  }
+]

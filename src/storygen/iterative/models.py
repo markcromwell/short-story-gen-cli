@@ -98,6 +98,33 @@ class Location:
 
 
 @dataclass
+class Outline:
+    """A 3-act story outline with 7 key plot points."""
+
+    # Act 1: Setup (25%)
+    act1_setup: str  # Introduce protagonist, world, and status quo
+    act1_inciting_incident: str  # Event that disrupts the status quo
+
+    # Act 2: Confrontation (50%)
+    act2_rising_action: str  # Protagonist pursues goal, faces obstacles
+    act2_midpoint: str  # Major revelation or turning point
+    act2_crisis: str  # All seems lost, darkest moment
+
+    # Act 3: Resolution (25%)
+    act3_climax: str  # Final confrontation with antagonist
+    act3_resolution: str  # New status quo, aftermath
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Outline":
+        """Deserialize from dictionary."""
+        return cls(**data)
+
+
+@dataclass
 class WorldBuilding:
     """Optional world-building for speculative fiction."""
 

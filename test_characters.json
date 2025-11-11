@@ -1,0 +1,34 @@
+[
+  {
+    "name": "Detective Elara Vance",
+    "role": "protagonist",
+    "bio": "A brilliant but haunted detective whose mind-reading ability made her legendary in solving cases, but now torments her with the constant noise of others' thoughts. She's fiercely intelligent yet emotionally isolated, struggling with the burden of her power and the guilt over past mistakes.",
+    "goal": "Prove she's alive and identify her murderer before fading from reality, while resisting the temptation to trust her own fractured perceptions.",
+    "flaw": "Overwhelming trust in others' intentions, making her vulnerable to manipulation by those who exploit her vulnerability.",
+    "arc": "Learning to trust her instincts over others' words and accepting that her power isn't a curse but part of her identity."
+  },
+  {
+    "name": "Silas Thorne",
+    "role": "antagonist",
+    "bio": "A reclusive tech mogul who funded Elara's controversial neural research project, secretly using her mind-reading to exploit corporate secrets. He views her ability as a tool to be weaponized, not a burden.",
+    "goal": "Eliminate Elara before she exposes his illegal use of her power to manipulate corporate rivals and cover up his own crimes.",
+    "flaw": "Obsessive need for control, leading him to underestimate human unpredictability and overestimate his own influence.",
+    "arc": "His confidence shatters when Elara's 'ghost' challenges his belief in his own invincibility."
+  },
+  {
+    "name": "Detective Marcus Reed",
+    "role": "ally",
+    "bio": "Elara's estranged former partner, now a skeptical homicide detective who resents her power for driving them apart. He's pragmatic, emotionally guarded, and convinced her ability made her reckless.",
+    "goal": "Solve Elara's murder to clear his own name (he was blamed for her 'sudden' disappearance) and prove her ability was a liability, not a gift.",
+    "flaw": "Emotional detachment rooted in past betrayal, causing him to dismiss evidence that contradicts his rigid worldview.",
+    "arc": "Gradually confronting his own role in their fractured relationship and learning to trust Elara's perspective again."
+  },
+  {
+    "name": "Dr. Aris Thorne",
+    "role": "foil",
+    "bio": "Silas's estranged sister and a neuroscientist who once collaborated with Elara on her research. She's consumed by guilt over her brother's actions and a vengeful obsession with the murder of her own mentor (a victim Elara failed to save).",
+    "goal": "Use her knowledge of Elara's abilities to expose Silas's crimes, but unwittingly becomes his pawn by feeding him information about Elara's 'ghost' state.",
+    "flaw": "Bitter resentment that clouds her judgment, making her susceptible to Silas's manipulation.",
+    "arc": "Realizing she's been used and choosing to help Elara instead of seeking revenge."
+  }
+]
