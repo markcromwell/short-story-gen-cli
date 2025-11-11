@@ -4685,6 +4685,877 @@ editor_model: str | None = None        # Optional separate model for Editor
 
 ---
 
+## Implementation Plan: MVPs & Test-Driven Development
+
+This section outlines a phased approach to building the iterative generation system using Test-Driven Development (TDD) and Minimum Viable Products (MVPs).
+
+### Implementation Philosophy
+
+**Test-Driven Development (TDD) Approach:**
+1. **Red**: Write failing test first
+2. **Green**: Write minimal code to pass test
+3. **Refactor**: Clean up implementation
+4. **Repeat**: Next feature
+
+**MVP Strategy:**
+- Each MVP is a **working, usable system**
+- Each MVP adds **one major feature**
+- Each MVP can be **used in production** (even if limited)
+- Tests accumulate (each MVP builds on previous test suite)
+
+### MVP Roadmap Overview
+
+```
+MVP 1: Data Models & JSON Serialization       [3-5 days]
+  ↓
+MVP 2: Story Idea Generation                  [3-5 days]
+  ↓
+MVP 3: Character Generation                   [2-3 days]
+  ↓
+MVP 4: Location Generation                    [2-3 days]
+  ↓
+MVP 5: Outline Generation                     [3-4 days]
+  ↓
+MVP 6: Scene-Sequel Breakdown                 [4-5 days]
+  ↓
+MVP 7: Prose Generation (Simple)              [3-4 days]
+  ↓
+MVP 8: Writer-Editor Pattern                  [4-5 days]
+  ↓
+MVP 9: Project Management & Persistence       [4-5 days]
+  ↓
+MVP 10: Time Tracking & Validation            [3-4 days]
+  ↓
+MVP 11: Chapter Support                       [2-3 days]
+  ↓
+MVP 12: World-Building (Optional)             [3-4 days]
+  ↓
+MVP 13: CLI Enhancement & Polish              [3-4 days]
+
+Total Estimated Time: 40-55 days (~8-11 weeks)
+```
+
+---
+
+### MVP 1: Data Models & JSON Serialization
+
+**Goal:** Establish core data structures with serialization/deserialization.
+
+**Features:**
+- All data models as Python dataclasses
+- `.to_dict()` and `.from_dict()` methods
+- JSON serialization/deserialization
+- Type validation
+
+**Test Suite:**
+
+```python
+# tests/test_models_mvp1.py
+
+def test_story_idea_creation():
+    """Test StoryIdea can be created with required fields"""
+    idea = StoryIdea(
+        raw_idea="A detective solves crimes",
+        one_sentence="A detective must solve her own murder.",
+        expanded="...",
+        genre="Mystery",
+        tone="Dark",
+        themes=["mortality", "justice"]
+    )
+    assert idea.one_sentence == "A detective must solve her own murder."
+
+def test_story_idea_to_dict():
+    """Test StoryIdea serializes to dict"""
+    idea = StoryIdea(...)
+    data = idea.to_dict()
+    assert isinstance(data, dict)
+    assert data["one_sentence"] == "A detective must solve her own murder."
+
+def test_story_idea_from_dict():
+    """Test StoryIdea deserializes from dict"""
+    data = {"raw_idea": "...", "one_sentence": "...", ...}
+    idea = StoryIdea.from_dict(data)
+    assert isinstance(idea, StoryIdea)
+
+def test_story_idea_json_roundtrip():
+    """Test StoryIdea survives JSON serialization"""
+    original = StoryIdea(...)
+    json_str = json.dumps(original.to_dict())
+    restored = StoryIdea.from_dict(json.loads(json_str))
+    assert original == restored
+
+def test_character_with_all_fields():
+    """Test Character model with complete data"""
+    char = Character(
+        name="Detective Maya",
+        role="protagonist",
+        bio="...",
+        goal="Solve the case",
+        flaw="Trust issues",
+        arc="Learns to trust"
+    )
+    assert char.role == "protagonist"
+
+def test_scene_sequel_time_calculation():
+    """Test SceneSequel auto-calculates time fields"""
+    ss = SceneSequel(
+        id="ss_001",
+        type="scene",
+        start_hours=0.0,
+        duration_hours=0.5,
+        # ... other fields
+    )
+    assert ss.end_hours == 0.5
+    assert ss.day_number == 1
+    assert ss.time_of_day in ["dead of night", "pre-dawn", "early morning"]
+
+def test_working_doc_complete():
+    """Test WorkingDoc holds all story components"""
+    doc = WorkingDoc(
+        id="test-story",
+        created_at=datetime.now()
+    )
+    doc.idea = StoryIdea(...)
+    doc.characters = [Character(...), Character(...)]
+    doc.locations = [Location(...)]
+
+    assert len(doc.characters) == 2
+    assert doc.idea is not None
+
+def test_working_doc_json_roundtrip():
+    """Test complete WorkingDoc serialization"""
+    original = WorkingDoc(...)
+    # Populate with idea, characters, locations, etc.
+
+    json_str = json.dumps(original.to_dict())
+    restored = WorkingDoc.from_dict(json.loads(json_str))
+
+    assert len(restored.characters) == len(original.characters)
+    assert restored.idea.one_sentence == original.idea.one_sentence
+```
+
+**Implementation Steps:**
+
+1. **Day 1-2: Core Models**
+   ```bash
+   # Create models file
+   touch src/storygen/iterative/models.py
+
+   # Write tests first (TDD Red)
+   pytest tests/test_models_mvp1.py::test_story_idea_creation -v
+   # Should fail: No StoryIdea class
+
+   # Implement StoryIdea dataclass (TDD Green)
+   # Add to_dict(), from_dict() methods
+
+   # Test passes
+   pytest tests/test_models_mvp1.py::test_story_idea_creation -v
+   ```
+
+2. **Day 2-3: Serialization**
+   - Implement JSON serialization for all models
+   - Test roundtrip for each model
+   - Handle nested objects (WorkingDoc contains Characters, etc.)
+
+3. **Day 3-4: Time Calculations**
+   - Implement `__post_init__` for SceneSequel
+   - Test time_of_day calculation
+   - Test day_number calculation
+
+4. **Day 4-5: Validation & Edge Cases**
+   - Test missing required fields raise errors
+   - Test invalid enum values raise errors
+   - Test nested serialization (WorkingDoc → JSON → WorkingDoc)
+
+**Deliverable:**
+- ✅ All data models defined
+- ✅ JSON serialization working
+- ✅ 100% test coverage for models
+- ✅ Documentation strings for all classes
+
+**Exit Criteria:**
+```bash
+pytest tests/test_models_mvp1.py -v --cov=src/storygen/iterative/models --cov-report=term-missing
+# Coverage: 100%
+# All tests passing
+```
+
+---
+
+### MVP 2: Story Idea Generation
+
+**Goal:** Generate story ideas using AI (single-step, no Writer-Editor yet).
+
+**Features:**
+- AI call to generate StoryIdea
+- Prompt engineering for idea generation
+- Basic error handling (retry on failure)
+- CLI command: `storygen-iter idea "prompt"`
+
+**Test Suite:**
+
+```python
+# tests/test_idea_generation_mvp2.py
+
+@pytest.fixture
+def mock_llm_response():
+    """Mock AI response for idea generation"""
+    return {
+        "raw_idea": "A detective solves crimes",
+        "one_sentence": "A telepath detective must solve her own murder.",
+        "expanded": "Detective Maya Reeves dies during...",
+        "genre": "Mystery / Supernatural",
+        "tone": "Tense, emotional",
+        "themes": ["mortality", "trust", "identity"]
+    }
+
+def test_generate_idea_basic(mock_llm_response, monkeypatch):
+    """Test idea generation with mocked AI"""
+    def mock_completion(*args, **kwargs):
+        return MockResponse(content=json.dumps(mock_llm_response))
+
+    monkeypatch.setattr(litellm, 'completion', mock_completion)
+
+    generator = IdeaGenerator(model="gpt-4")
+    idea = generator.generate("A detective solves her own murder")
+
+    assert isinstance(idea, StoryIdea)
+    assert "telepath" in idea.one_sentence.lower()
+
+def test_generate_idea_retry_on_failure(monkeypatch):
+    """Test retry logic when AI fails"""
+    call_count = 0
+
+    def mock_completion_failing(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        if call_count < 3:
+            raise Exception("AI timeout")
+        return MockResponse(content=json.dumps({...}))
+
+    monkeypatch.setattr(litellm, 'completion', mock_completion_failing)
+
+    generator = IdeaGenerator(model="gpt-4", max_retries=3)
+    idea = generator.generate("...")
+
+    assert call_count == 3  # Failed twice, succeeded third time
+
+def test_generate_idea_missing_fields(monkeypatch):
+    """Test handling when AI returns incomplete data"""
+    def mock_completion_incomplete(*args, **kwargs):
+        return MockResponse(content=json.dumps({
+            "one_sentence": "...",
+            # Missing other required fields
+        }))
+
+    monkeypatch.setattr(litellm, 'completion', mock_completion_incomplete)
+
+    generator = IdeaGenerator(model="gpt-4")
+    with pytest.raises(ValueError, match="Missing required field"):
+        generator.generate("...")
+
+def test_generate_idea_prompt_structure():
+    """Test prompt includes all necessary instructions"""
+    generator = IdeaGenerator(model="gpt-4")
+    prompt = generator._build_prompt("A hacker discovers a secret")
+
+    assert "one_sentence" in prompt
+    assert "expanded" in prompt
+    assert "genre" in prompt
+    assert "themes" in prompt
+    assert "JSON" in prompt
+
+def test_cli_idea_command(runner):
+    """Test CLI idea generation command"""
+    result = runner.invoke(cli, ['idea', 'A wizard turns into a frog'])
+
+    assert result.exit_code == 0
+    assert "Story Idea Generated" in result.output
+    # Should output JSON or pretty-printed idea
+```
+
+**Implementation Steps:**
+
+1. **Day 1: Prompt Engineering**
+   ```python
+   # src/storygen/iterative/generators/idea.py
+   class IdeaGenerator:
+       def _build_prompt(self, user_prompt: str) -> str:
+           return f"""Generate a story idea based on: {user_prompt}
+
+           Return JSON with these fields:
+           - raw_idea: The original prompt
+           - one_sentence: A compelling one-sentence summary
+           - expanded: 2-3 paragraphs expanding the concept
+           - genre: Specific genre(s)
+           - tone: Descriptive tone
+           - themes: 2-4 major themes
+
+           Requirements:
+           - One-sentence must be a single sentence with a hook
+           - Expanded must be 2-3 full paragraphs
+           - Themes must connect to the premise
+
+           Return ONLY valid JSON, no other text.
+           """
+   ```
+
+2. **Day 2: AI Integration**
+   - Integrate with litellm
+   - Parse JSON response
+   - Handle malformed responses
+
+3. **Day 3: Error Handling & Retry**
+   - Retry logic for timeouts
+   - Retry logic for malformed JSON
+   - Max retry limit
+
+4. **Day 4: CLI Command**
+   - Add Click command
+   - Pretty-print output
+   - Save to file option
+
+**Deliverable:**
+- ✅ `storygen-iter idea` CLI command works
+- ✅ Generates valid StoryIdea objects
+- ✅ Retry logic handles failures
+- ✅ Tests cover success and failure cases
+
+**Exit Criteria:**
+```bash
+# Manual test
+storygen-iter idea "A robot learns to love" --model ollama/qwen3:30b
+
+# Automated tests
+pytest tests/test_idea_generation_mvp2.py -v
+# All tests passing
+```
+
+---
+
+### MVP 3: Character Generation
+
+**Goal:** Generate characters based on story idea.
+
+**Features:**
+- Generate 3-5 characters
+- Use story idea as context
+- Validate character fields (goal, flaw, arc)
+
+**Test Suite:**
+
+```python
+# tests/test_character_generation_mvp3.py
+
+def test_generate_characters_count(mock_llm, story_idea):
+    """Test generates 3-5 characters"""
+    generator = CharacterGenerator(model="gpt-4")
+    characters = generator.generate(story_idea)
+
+    assert 3 <= len(characters) <= 5
+
+def test_generate_characters_required_fields(mock_llm, story_idea):
+    """Test all characters have required fields"""
+    generator = CharacterGenerator(model="gpt-4")
+    characters = generator.generate(story_idea)
+
+    for char in characters:
+        assert char.name
+        assert char.role in ["protagonist", "antagonist", "mentor", "ally", "foil"]
+        assert char.bio
+        assert char.goal
+        assert char.flaw
+        # arc is optional for some characters
+
+def test_generate_characters_uses_story_context(story_idea):
+    """Test prompt includes story idea context"""
+    generator = CharacterGenerator(model="gpt-4")
+    prompt = generator._build_prompt(story_idea)
+
+    assert story_idea.one_sentence in prompt
+    assert story_idea.genre in prompt
+    assert any(theme in prompt for theme in story_idea.themes)
+
+def test_characters_have_distinct_roles(mock_llm, story_idea):
+    """Test no duplicate roles"""
+    generator = CharacterGenerator(model="gpt-4")
+    characters = generator.generate(story_idea)
+
+    roles = [c.role for c in characters]
+    assert len(roles) == len(set(roles))  # No duplicates
+
+def test_cli_characters_command(runner):
+    """Test CLI character generation"""
+    # First generate idea, save to file
+    # Then generate characters from that idea
+    result = runner.invoke(cli, ['characters', 'story_idea.json'])
+
+    assert result.exit_code == 0
+    assert "Characters Generated" in result.output
+```
+
+**Implementation Steps:**
+
+1. **Day 1: Character Prompt**
+   - Build prompt with story context
+   - Specify character fields required
+
+2. **Day 2: Generation & Parsing**
+   - Call AI with prompt
+   - Parse character array
+   - Validate each character
+
+3. **Day 3: CLI Integration**
+   - Add `characters` command
+   - Load idea from file
+   - Save characters to file
+
+**Deliverable:**
+- ✅ Character generation works
+- ✅ Characters have all required fields
+- ✅ CLI command functional
+
+---
+
+### MVP 4-7: Continue Pattern
+
+Each subsequent MVP follows the same pattern:
+
+1. **Write tests first** (TDD Red)
+2. **Implement minimal code** (TDD Green)
+3. **Refactor & polish**
+4. **CLI command**
+5. **Integration test with previous steps**
+
+---
+
+### MVP 8: Writer-Editor Pattern
+
+**Goal:** Add dual-AI collaboration with critique and revision.
+
+**Features:**
+- Editor AI critiques Writer output
+- Rating system (failure/acceptable/good/excellent)
+- Automatic revision on failure
+- Max 2 revision cycles
+
+**Test Suite:**
+
+```python
+# tests/test_writer_editor_mvp8.py
+
+def test_editor_critiques_writer_output():
+    """Test Editor AI provides feedback"""
+    writer = WriterAI(model="gpt-4")
+    editor = EditorAI(model="gpt-4")
+
+    content = {"one_sentence": "A detective."}  # Too generic
+    feedback = editor.critique(content, criteria=IDEA_CRITERIA)
+
+    assert feedback.rating in ["failure", "acceptable", "good", "excellent"]
+    assert len(feedback.issues) > 0  # Should identify genericness
+
+def test_writer_revises_based_on_feedback():
+    """Test Writer responds to Editor feedback"""
+    writer = WriterAI(model="gpt-4")
+    editor = EditorAI(model="gpt-4")
+
+    original = {"one_sentence": "A detective."}
+    feedback = editor.critique(original, IDEA_CRITERIA)
+
+    revised = writer.revise(original, feedback)
+    assert revised != original
+    assert len(revised["one_sentence"]) > len(original["one_sentence"])
+
+def test_revision_cycle_stops_after_max_attempts():
+    """Test revision stops after max cycles"""
+    generator = IdeaGeneratorWithEditor(max_revision_cycles=2)
+
+    # Mock Editor that always returns FAILURE
+    with patch_editor_always_fails():
+        idea, feedback_history = generator.generate_with_editor("...")
+
+        assert len(feedback_history) == 3  # Initial + 2 revisions
+
+def test_accepts_on_good_rating():
+    """Test accepts immediately on good/excellent rating"""
+    generator = IdeaGeneratorWithEditor(max_revision_cycles=2)
+
+    # Mock Editor that returns EXCELLENT
+    with patch_editor_excellent():
+        idea, feedback_history = generator.generate_with_editor("...")
+
+        assert len(feedback_history) == 1  # No revisions needed
+
+def test_cli_with_editor_flag(runner):
+    """Test CLI with --use-editor flag"""
+    result = runner.invoke(cli, ['idea', 'A robot', '--use-editor'])
+
+    assert "Writer AI:" in result.output
+    assert "Editor AI:" in result.output
+    assert "Rating:" in result.output
+```
+
+**Implementation Steps:**
+
+1. **Day 1-2: Editor AI Class**
+   - Build critique prompts
+   - Parse editor responses
+   - Return EditorialFeedback objects
+
+2. **Day 3: Writer Revision**
+   - Modify prompts to include feedback
+   - Test revision improves content
+
+3. **Day 4: Integration Loop**
+   - Writer → Editor → Writer (if needed)
+   - Track feedback history
+   - Respect max cycles
+
+4. **Day 5: CLI Integration**
+   - Add `--use-editor` flag
+   - Verbose output showing dialogue
+
+**Deliverable:**
+- ✅ Writer-Editor collaboration works
+- ✅ Quality improves after revision
+- ✅ Max cycles respected
+
+---
+
+### MVP 9: Project Management & Persistence
+
+**Goal:** Save/load projects, version history, resume capability.
+
+**Features:**
+- Create project directory structure
+- Save working_doc.json after each step
+- Version snapshots
+- List/load/resume projects
+
+**Test Suite:**
+
+```python
+# tests/test_project_manager_mvp9.py
+
+def test_create_project_directory():
+    """Test creates proper directory structure"""
+    manager = ProjectManager(base_dir=tmp_path)
+    project = manager.create_project(
+        title="Test Story",
+        config=ProjectConfig(...)
+    )
+
+    assert (tmp_path / "test-story").exists()
+    assert (tmp_path / "test-story" / "versions").exists()
+    assert (tmp_path / "test-story" / "output").exists()
+    assert (tmp_path / "test-story" / "project.json").exists()
+
+def test_save_working_doc():
+    """Test saves working doc atomically"""
+    manager = ProjectManager()
+    project = manager.create_project("Test", config)
+
+    working_doc = WorkingDoc(...)
+    working_doc.idea = StoryIdea(...)
+
+    manager.save_working_doc(project, working_doc)
+
+    assert (project.project_dir / "working_doc.json").exists()
+
+def test_save_version_snapshot():
+    """Test creates version snapshot"""
+    manager = ProjectManager()
+    project = manager.create_project("Test", config)
+    working_doc = WorkingDoc(...)
+
+    version = manager.save_version(
+        project,
+        step="idea",
+        working_doc=working_doc,
+        editorial_feedback=[]
+    )
+
+    assert (project.versions_dir / f"001_idea.json").exists()
+
+def test_load_project():
+    """Test loads project from disk"""
+    manager = ProjectManager()
+
+    # Create and save project
+    project1 = manager.create_project("Test", config)
+    # ... populate and save ...
+
+    # Load project
+    project2 = manager.load_project("test")
+
+    assert project2.title == project1.title
+    assert project2.current_step == project1.current_step
+
+def test_list_projects():
+    """Test lists all projects"""
+    manager = ProjectManager(base_dir=tmp_path)
+
+    manager.create_project("Story 1", config)
+    manager.create_project("Story 2", config)
+
+    projects = manager.list_projects()
+
+    assert len(projects) == 2
+    assert "story-1" in [p.id for p in projects]
+
+def test_resume_from_checkpoint():
+    """Test resumes generation from last step"""
+    manager = ProjectManager()
+
+    # Create project, generate idea, save
+    project = manager.create_project("Test", config)
+    # ... generate idea, save checkpoint ...
+
+    # Simulate restart
+    project_resumed = manager.load_project("test")
+    assert project_resumed.current_step == "idea"
+    assert project_resumed.working_doc.idea is not None
+
+def test_rollback_to_version():
+    """Test rollback to previous version"""
+    manager = ProjectManager()
+    project = manager.create_project("Test", config)
+
+    # Generate idea, save version 1
+    # Generate characters, save version 2
+    # Rollback to version 1
+
+    manager.rollback(project, to_version="001_idea.json")
+
+    reloaded = manager.load_project("test")
+    assert reloaded.current_step == "idea"
+    assert len(reloaded.working_doc.characters) == 0
+```
+
+**Implementation Steps:**
+
+1. **Day 1-2: File Operations**
+   - Create directory structure
+   - Atomic file writes (temp + rename)
+   - JSON save/load
+
+2. **Day 3: Version Management**
+   - Snapshot creation
+   - Version numbering
+   - Rollback logic
+
+3. **Day 4: CLI Commands**
+   - `storygen-iter create`
+   - `storygen-iter work <project>`
+   - `storygen-iter list`
+   - `storygen-iter rollback`
+
+4. **Day 5: Integration**
+   - Integrate with generation pipeline
+   - Auto-save after each step
+   - Resume capability
+
+**Deliverable:**
+- ✅ Projects persist to disk
+- ✅ Can resume interrupted generation
+- ✅ Version history works
+- ✅ CLI commands functional
+
+---
+
+### MVP 10-13: Final Features
+
+Following same TDD pattern for:
+
+**MVP 10: Time Tracking**
+- Time calculations
+- Travel validation
+- Human needs tracking
+
+**MVP 11: Chapter Support**
+- Chapter metadata
+- Break detection
+- EPUB export with chapters
+
+**MVP 12: World-Building**
+- Optional world generation
+- Magic system validation
+- Integration with characters/locations
+
+**MVP 13: CLI Polish**
+- Progress bars
+- Color output
+- Better error messages
+- `--verbose` mode
+
+---
+
+### Testing Strategy
+
+**Unit Tests:**
+- Each component in isolation
+- Mock AI responses
+- Fast execution (<1s)
+
+**Integration Tests:**
+- Full generation pipeline
+- Real file I/O (temp directories)
+- Multiple steps chained
+
+**End-to-End Tests:**
+- Complete story generation
+- With real AI (slow, optional)
+- Validates full workflow
+
+**Test Organization:**
+
+```
+tests/
+├── unit/
+│   ├── test_models.py
+│   ├── test_idea_generator.py
+│   ├── test_character_generator.py
+│   ├── test_editor_ai.py
+│   └── test_project_manager.py
+├── integration/
+│   ├── test_generation_pipeline.py
+│   ├── test_writer_editor_flow.py
+│   └── test_project_persistence.py
+└── e2e/
+    ├── test_full_story_generation.py
+    └── test_resume_capability.py
+```
+
+**Coverage Goals:**
+- Unit tests: >90% coverage
+- Integration tests: Critical paths covered
+- E2E tests: One full happy path
+
+---
+
+### Development Workflow
+
+**Daily Workflow:**
+
+```bash
+# 1. Start with tests (TDD Red)
+pytest tests/test_<feature>.py -v
+# Tests fail (not implemented yet)
+
+# 2. Implement feature (TDD Green)
+# ... write code ...
+
+# 3. Run tests until passing
+pytest tests/test_<feature>.py -v
+# Tests pass
+
+# 4. Refactor & clean up
+# ... improve code quality ...
+
+# 5. Run full test suite
+pytest tests/ -v --cov
+
+# 6. Commit
+git add .
+git commit -m "MVP X: Feature Y complete"
+```
+
+**Code Quality Checks:**
+
+```bash
+# Type checking
+mypy src/storygen/iterative/
+
+# Linting
+ruff check src/storygen/iterative/
+
+# Formatting
+ruff format src/storygen/iterative/
+
+# Test coverage
+pytest --cov=src/storygen/iterative --cov-report=html
+```
+
+---
+
+### Continuous Integration
+
+**GitHub Actions Workflow:**
+
+```yaml
+# .github/workflows/test-iterative.yml
+name: Iterative Generation Tests
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -e .
+          pip install pytest pytest-cov
+
+      - name: Run unit tests
+        run: pytest tests/unit/ -v --cov=src/storygen/iterative
+
+      - name: Run integration tests
+        run: pytest tests/integration/ -v
+
+      - name: Check coverage
+        run: pytest --cov=src/storygen/iterative --cov-report=term --cov-fail-under=90
+```
+
+---
+
+### Success Metrics
+
+**Per MVP:**
+- ✅ All tests passing
+- ✅ Feature works end-to-end
+- ✅ CLI command functional
+- ✅ Documentation updated
+- ✅ Code coverage >85%
+
+**Overall Project:**
+- ✅ Can generate complete story from prompt
+- ✅ Stories saved and resumable
+- ✅ Writer-Editor improves quality
+- ✅ Time tracking prevents plot holes
+- ✅ Chapter support for longer works
+- ✅ Full test suite (unit + integration + e2e)
+
+---
+
+### Risk Mitigation
+
+**Risk: AI calls are slow/expensive**
+- Mitigation: Extensive mocking in tests
+- Mitigation: Local Ollama for development
+
+**Risk: MVP scope creep**
+- Mitigation: Strict feature definition per MVP
+- Mitigation: "Nice to have" deferred to later MVPs
+
+**Risk: Breaking changes between MVPs**
+- Mitigation: Comprehensive test suite catches regressions
+- Mitigation: Semantic versioning
+
+**Risk: Complex integration issues**
+- Mitigation: Integration tests from MVP 2 onward
+- Mitigation: E2E test added early (MVP 5)
+
+---
+
 ## References
 
 - **Swain, Dwight V.** *Techniques of the Selling Writer.* University of Oklahoma Press, 1965.
