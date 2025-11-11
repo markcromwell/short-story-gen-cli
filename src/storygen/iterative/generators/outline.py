@@ -177,9 +177,32 @@ Return the complete structure as valid JSON."""
             if text.startswith("json"):
                 text = text[4:].strip()
 
+        # Try to extract JSON array - look for outermost [ ]
+        # This handles cases where AI adds explanatory text before/after JSON
+        start_idx = text.find("[")
+        if start_idx == -1:
+            raise OutlineGenerationError("No JSON array found in response")
+        
+        # Find matching closing bracket
+        bracket_count = 0
+        end_idx = -1
+        for i in range(start_idx, len(text)):
+            if text[i] == "[":
+                bracket_count += 1
+            elif text[i] == "]":
+                bracket_count -= 1
+                if bracket_count == 0:
+                    end_idx = i + 1
+                    break
+        
+        if end_idx == -1:
+            raise OutlineGenerationError("Malformed JSON array - no closing bracket")
+        
+        json_text = text[start_idx:end_idx]
+
         # Parse JSON
         try:
-            data = json.loads(text)
+            data = json.loads(json_text)
         except json.JSONDecodeError as e:
             raise OutlineGenerationError(f"Invalid JSON response: {e}")
 
