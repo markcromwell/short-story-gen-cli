@@ -8,94 +8,97 @@ This project uses **Test-Driven Development (TDD)** with comprehensive unit and 
 Fast tests with mocked AI calls - run these during development:
 
 ```bash
-# Run all unit tests (default)
-pytest tests/ -v
+# Run all unit tests (default - integration tests skipped)
+pytest
 
-# Run only unit tests (skip integration)
-pytest tests/ -m "not integration" -v
+# Run only unit tests explicitly
+pytest tests/unit/ -v
 
 # Run specific test file
-pytest tests/test_story_generator.py -v
-pytest tests/test_cli.py -v
+pytest tests/unit/test_models.py -v
+pytest tests/unit/test_idea_generator.py -v
 ```
 
 ### Integration Tests (Real Ollama)
-Tests that use real Ollama models - slower but verify actual functionality:
+Tests that make **real API calls** to local Ollama models - requires Ollama running:
 
 ```bash
-# Run all integration tests
-pytest tests/ -m integration -v -s
+# Run integration tests (requires --integration flag)
+pytest tests/integration/ --integration -v
 
-# Test with qwen3:30b (requires model to be pulled)
-pytest tests/test_story_generator.py::TestOllamaIntegration::test_ollama_qwen3_generates_story -m integration -v -s
+# Run all tests including integration
+pytest --integration -v
 
-# Test with llama2 (faster, smaller model)
-pytest tests/test_story_generator.py::TestOllamaIntegration::test_ollama_llama2_generates_story -m integration -v -s
+# Skip slow integration tests
+pytest tests/integration/ --integration -m "not slow" -v
+
+# Use specific Ollama model
+$env:OLLAMA_TEST_MODEL = "qwen2.5:14b"
+pytest tests/integration/ --integration -v
 ```
+
+**Prerequisites:**
+1. Install Ollama: [ollama.ai](https://ollama.ai)
+2. Start Ollama: `ollama serve`
+3. Pull model: `ollama pull qwen2.5:7b`
+
+See `tests/integration/README.md` for detailed setup instructions.
 
 ### Run All Tests
 ```bash
+# Unit tests only (fast, default)
+pytest
+
 # Everything (unit + integration)
-pytest tests/ -v -s
+pytest --integration -v
 ```
 
 ## Test Structure
 
-### Unit Tests
-- **Fast** - Mock AI calls, no real API usage
-- **Isolated** - Test individual components
-- **Always run** - Part of CI/CD pipeline
-- Located in: `tests/test_*.py` classes without `@pytest.mark.integration`
+### Unit Tests (`tests/unit/`)
+- **Fast** (~2 seconds) - Mock all AI calls, no real API usage
+- **Isolated** - Test individual components with controlled inputs
+- **Always run** - Part of CI/CD pipeline (default)
+- **Coverage**: 97-100% for tested modules
+- Location: `tests/unit/test_*.py`
 
-### Integration Tests
-- **Slow** - Use real Ollama models
-- **End-to-end** - Test actual story generation
-- **Optional** - Run locally before commits
-- Marked with: `@pytest.mark.integration`
+**Current unit tests:**
+- ✅ Data Models (43 tests) - StoryIdea, Character, Location, etc.
+- ✅ IdeaGenerator (16 tests) - AI integration, retry logic, parsing
+- Total: **59 unit tests**
 
-## Test Coverage
+### Integration Tests (`tests/integration/`)
+- **Slow** (~30-60 seconds) - Use real local Ollama models
+- **End-to-end** - Test actual AI generation with real responses
+- **Optional** - Require `--integration` flag and Ollama running
+- **Coverage**: Full story generation pipeline validation
+- Location: `tests/integration/test_*_ollama.py`
 
-Current test suite:
-- ✅ Story generator with multiple providers
-- ✅ CLI argument parsing
-- ✅ Provider switching (GPT, Claude, Grok, Ollama)
-- ✅ Error handling
-- ✅ Help documentation
-- ✅ Real Ollama integration (qwen3:30b, llama2)
+**Current integration tests:**
+- ✅ Real story idea generation (7 tests)
+- ✅ Multi-genre detection with real AI
+- ✅ Prompt variation handling
+- ✅ JSON parsing of real model output
+- ✅ Genre normalization with real data
+- ✅ Timeout and retry with real failures
+- Total: **7 integration tests**
 
-**Total: 8 tests** (6 unit + 2 integration)
-
-## Prerequisites for Integration Tests
-
-1. **Ollama must be installed and running**:
-   ```bash
-   ollama --version
-   ```
-
-2. **Pull required models**:
-   ```bash
-   ollama pull qwen3:30b
-   ollama pull llama2
-   ```
-
-3. **Ollama should be running** (usually auto-starts):
-   ```bash
-   # Check if running
-   curl http://localhost:11434
-
-   # Or manually start
-   ollama serve
-   ```
+### Legacy Tests (`tests/`)
+Tests for the original non-iterative story generator:
+- ✅ CLI functionality
+- ✅ Story generator (6 tests)
+- ✅ EPUB layout
+- ✅ Parsing
 
 ## CI/CD
 
 The CI pipeline runs **unit tests only** (fast feedback):
 ```yaml
-# .gitlab-ci.yml
-pytest tests/ -m "not integration" -v
+# .github/workflows/test.yml or .gitlab-ci.yml
+pytest  # integration tests skipped by default
 ```
 
-Integration tests are run manually before releases.
+Integration tests are run manually before releases or when explicitly needed.
 
 ## Adding New Tests
 

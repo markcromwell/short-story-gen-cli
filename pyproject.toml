@@ -51,6 +51,7 @@ Issues = "https://github.com/markcromwell/short-story-gen-cli/issues"
 
 [project.scripts]
 storygen = "storygen.cli:main"
+storygen-iter = "storygen.iterative.cli:cli"
 
 [tool.setuptools]
 package-dir = {"" = "src"}
@@ -65,6 +66,11 @@ python_classes = ["Test*"]
 python_functions = ["test_*"]
 markers = [
     "integration: marks tests as integration tests (deselect with '-m \"not integration\"')",
+    "slow: marks tests as slow running (deselect with '-m \"not slow\"')",
+]
+addopts = "-m 'not integration'"  # Skip integration tests by default
+filterwarnings = [
+    "ignore::DeprecationWarning:litellm.*",  # Ignore litellm's internal deprecation warnings
 ]
 
 [tool.coverage.run]
