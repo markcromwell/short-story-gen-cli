@@ -19,6 +19,7 @@ import pytest
 
 from storygen.iterative.generators.character import CharacterGenerator
 from storygen.iterative.generators.idea import IdeaGenerator
+from storygen.iterative.generators.location import LocationGenerator
 from storygen.iterative.models import StoryIdea
 
 # Mark all tests in this file as integration tests
@@ -312,3 +313,122 @@ class TestCharacterGeneratorOllama:
 
         print(f"\n✓ Story 1 characters: {[c.name for c in chars1]}")
         print(f"  Story 2 characters: {[c.name for c in chars2]}")
+
+
+class TestLocationGeneratorOllama:
+    """Integration tests for LocationGenerator with real Ollama model calls."""
+
+    @pytest.fixture
+    def ollama_model(self):
+        """Return the Ollama model to use for testing."""
+        import os
+
+        return os.getenv("OLLAMA_TEST_MODEL", "qwen2.5:7b")
+
+    @pytest.fixture
+    def check_ollama(self):
+        """Check if Ollama is available before running tests."""
+        import subprocess
+
+        try:
+            # Check if ollama is running
+            result = subprocess.run(["ollama", "list"], capture_output=True, text=True, timeout=5)
+            if result.returncode != 0:
+                pytest.skip("Ollama is not running. Start with: ollama serve")
+        except (FileNotFoundError, subprocess.TimeoutExpired):
+            pytest.skip("Ollama is not installed or not responding")
+
+    @pytest.fixture
+    def story_idea(self):
+        """Create a sample story idea for location generation."""
+        return StoryIdea(
+            raw_idea="A detective who can read minds investigates her own murder",
+            one_sentence="A telepathic detective must solve the mystery of her own death while racing against time.",
+            expanded="In a noir-tinged cityscape, Detective Sarah Chen discovers she has the unique ability to read minds - a gift that becomes a curse when she finds herself investigating her own murder. As she navigates between life and death, Sarah must piece together the fragments of her final hours, confronting dark secrets and dangerous enemies. Time is running out as her consciousness begins to fade, and she must identify her killer before she loses herself forever.",
+            genres=["noir", "psychological thriller", "mystery"],
+            tone="Dark, suspenseful, introspective",
+            themes=[
+                "identity and consciousness",
+                "justice vs revenge",
+                "mortality and legacy",
+            ],
+        )
+
+    def test_generate_locations_ollama(self, ollama_model, check_ollama, story_idea):
+        """Test generating real locations with Ollama."""
+        generator = LocationGenerator(model=f"ollama/{ollama_model}", max_retries=2, timeout=300)
+
+        locations = generator.generate(story_idea)
+
+        # Validate structure
+        assert len(locations) >= 3, "Should generate at least 3 locations"
+        assert len(locations) <= 7, "Should generate at most 7 locations"
+
+        # Validate each location has required fields
+        for loc in locations:
+            assert len(loc.name) > 0, f"Location {loc.name} has no name"
+            assert len(loc.description) > 0, f"Location {loc.name} has no description"
+            assert len(loc.significance) > 0, f"Location {loc.name} has no significance"
+            assert len(loc.atmosphere) > 0, f"Location {loc.name} has no atmosphere"
+
+        print(f"\n✓ Generated {len(locations)} locations")
+        for loc in locations:
+            print(f"  - {loc.name}")
+
+    def test_location_quality(self, ollama_model, check_ollama, story_idea):
+        """Test that generated locations are vivid and coherent."""
+        generator = LocationGenerator(model=f"ollama/{ollama_model}", timeout=300)
+
+        locations = generator.generate(story_idea)
+
+        # Locations should have substantive descriptions
+        for loc in locations:
+            assert len(loc.description) > 50, f"Location {loc.name} description should be detailed"
+            assert len(loc.significance) > 20, f"Location {loc.name} significance should be clear"
+            assert len(loc.atmosphere) > 10, f"Location {loc.name} atmosphere should be specific"
+
+        # At least one location should be relevant to the noir/mystery theme
+        all_text = " ".join(
+            f"{loc.name} {loc.description} {loc.significance}".lower() for loc in locations
+        )
+        assert len(all_text) > 500, "Location descriptions should be substantive"
+
+        print("\n✓ Location quality validated")
+        print(f"  Total description length: {len(all_text)} chars")
+
+    def test_different_story_different_locations(self, ollama_model, check_ollama):
+        """Test that different stories produce different location sets."""
+        generator = LocationGenerator(model=f"ollama/{ollama_model}", timeout=300)
+
+        idea1 = StoryIdea(
+            raw_idea="A space station mystery",
+            one_sentence="A murder on a remote space station.",
+            expanded="On a distant orbital station, a crew member is found dead and everyone is a suspect.",
+            genres=["sci-fi", "mystery"],
+            tone="tense",
+            themes=["isolation"],
+        )
+
+        idea2 = StoryIdea(
+            raw_idea="A medieval fantasy quest",
+            one_sentence="A knight seeks a legendary artifact.",
+            expanded="In medieval times, a brave knight ventures through enchanted forests and dragon lairs.",
+            genres=["fantasy"],
+            tone="epic",
+            themes=["honor"],
+        )
+
+        locs1 = generator.generate(idea1)
+        locs2 = generator.generate(idea2)
+
+        # Both should be valid
+        assert len(locs1) >= 3
+        assert len(locs2) >= 3
+
+        # Locations should be different
+        names1 = set(loc.name for loc in locs1)
+        names2 = set(loc.name for loc in locs2)
+        assert names1 != names2, "Different stories should produce different locations"
+
+        print(f"\n✓ Story 1 locations: {[loc.name for loc in locs1]}")
+        print(f"  Story 2 locations: {[loc.name for loc in locs2]}")
