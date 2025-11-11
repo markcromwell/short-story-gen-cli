@@ -521,74 +521,93 @@ class TestOutlineGeneratorOllama:
     def test_generate_outline_ollama(
         self, ollama_model, check_ollama, story_idea, characters, locations
     ):
-        """Test generating real outline with Ollama."""
+        """Test generating real outline with Ollama using recursive structure."""
         from storygen.iterative.generators.outline import OutlineGenerator
 
-        generator = OutlineGenerator(model=f"ollama/{ollama_model}", max_retries=2, timeout=300)
+        generator = OutlineGenerator(
+            model=f"ollama/{ollama_model}",
+            structure_type="three-act",
+            max_retries=2,
+            timeout=300,
+        )
 
         outline = generator.generate(story_idea, characters, locations)
 
-        # Validate structure - all 7 plot points must be present
-        assert hasattr(outline, "act1_setup")
-        assert hasattr(outline, "act1_inciting_incident")
-        assert hasattr(outline, "act2_rising_action")
-        assert hasattr(outline, "act2_midpoint")
-        assert hasattr(outline, "act2_crisis")
-        assert hasattr(outline, "act3_climax")
-        assert hasattr(outline, "act3_resolution")
+        # Validate recursive structure
+        assert outline.structure_type == "three-act"
+        assert hasattr(outline, "acts")
+        assert len(outline.acts) > 0
 
-        # Validate each is a non-empty string
-        assert len(outline.act1_setup) > 0
-        assert len(outline.act1_inciting_incident) > 0
-        assert len(outline.act2_rising_action) > 0
-        assert len(outline.act2_midpoint) > 0
-        assert len(outline.act2_crisis) > 0
-        assert len(outline.act3_climax) > 0
-        assert len(outline.act3_resolution) > 0
+        # Validate act structure
+        for act in outline.acts:
+            assert hasattr(act, "title")
+            assert hasattr(act, "description")
+            assert hasattr(act, "story_application")
+            assert hasattr(act, "percentage")
+            assert len(act.title) > 0
+            assert len(act.story_application) > 0, f"Act '{act.title}' missing story_application"
 
-        print("\n✓ Generated outline with all 7 plot points")
-        print(f"  Act 1 Setup: {outline.act1_setup[:60]}...")
-        print(f"  Act 3 Resolution: {outline.act3_resolution[:60]}...")
+        # Validate all story_applications are filled
+        def check_story_application(act):
+            assert (
+                len(act.story_application.strip()) > 0
+            ), f"Act '{act.title}' has empty story_application"
+            for sub_act in act.sub_acts:
+                check_story_application(sub_act)
+
+        for act in outline.acts:
+            check_story_application(act)
+
+        print("\n✓ Generated outline with recursive act structure")
+        print(f"  Structure type: {outline.structure_type}")
+        print(f"  Top-level acts: {len(outline.acts)}")
+        print(f"  First act: {outline.acts[0].title}")
+        if outline.acts[0].sub_acts:
+            print(f"  First act has {len(outline.acts[0].sub_acts)} sub-acts")
 
     def test_outline_quality(self, ollama_model, check_ollama, story_idea, characters, locations):
         """Test that generated outline has quality content."""
         from storygen.iterative.generators.outline import OutlineGenerator
 
-        generator = OutlineGenerator(model=f"ollama/{ollama_model}", timeout=300)
+        generator = OutlineGenerator(
+            model=f"ollama/{ollama_model}", structure_type="three-act", timeout=300
+        )
 
         outline = generator.generate(story_idea, characters, locations)
 
-        # Each plot point should be substantive (at least 50 characters)
-        assert len(outline.act1_setup) > 50, "Act 1 setup should be detailed"
-        assert len(outline.act1_inciting_incident) > 50, "Inciting incident should be detailed"
-        assert len(outline.act2_rising_action) > 50, "Rising action should be detailed"
-        assert len(outline.act2_midpoint) > 50, "Midpoint should be detailed"
-        assert len(outline.act2_crisis) > 50, "Crisis should be detailed"
-        assert len(outline.act3_climax) > 50, "Climax should be detailed"
-        assert len(outline.act3_resolution) > 50, "Resolution should be detailed"
+        # Collect all story_application texts recursively
+        def collect_story_applications(act):
+            texts = [act.story_application]
+            for sub_act in act.sub_acts:
+                texts.extend(collect_story_applications(sub_act))
+            return texts
+
+        all_applications = []
+        for act in outline.acts:
+            all_applications.extend(collect_story_applications(act))
+
+        # Each story_application should be substantive (at least 50 characters)
+        for i, app in enumerate(all_applications):
+            assert (
+                len(app) > 50
+            ), f"Story application {i+1} should be detailed (got {len(app)} chars)"
 
         # Total outline text should be substantial
-        total_length = sum(
-            [
-                len(outline.act1_setup),
-                len(outline.act1_inciting_incident),
-                len(outline.act2_rising_action),
-                len(outline.act2_midpoint),
-                len(outline.act2_crisis),
-                len(outline.act3_climax),
-                len(outline.act3_resolution),
-            ]
-        )
+        total_length = sum(len(app) for app in all_applications)
         assert total_length > 500, "Outline should be comprehensive"
 
         print("\n✓ Outline quality validated")
+        print(f"  Total acts (including sub-acts): {len(all_applications)}")
         print(f"  Total length: {total_length} chars")
+        print(f"  Average per act: {total_length // len(all_applications)} chars")
 
     def test_different_story_different_outline(self, ollama_model, check_ollama):
         """Test that different stories produce different outlines."""
         from storygen.iterative.generators.outline import OutlineGenerator
 
-        generator = OutlineGenerator(model=f"ollama/{ollama_model}", timeout=300)
+        generator = OutlineGenerator(
+            model=f"ollama/{ollama_model}", structure_type="three-act", timeout=300
+        )
 
         # Story 1: Space mystery
         idea1 = StoryIdea(
@@ -648,12 +667,18 @@ class TestOutlineGeneratorOllama:
         outline2 = generator.generate(idea2, chars2, locs2)
 
         # Both should be valid
-        assert len(outline1.act1_setup) > 0
-        assert len(outline2.act1_setup) > 0
+        assert len(outline1.acts) > 0
+        assert len(outline2.acts) > 0
+        assert len(outline1.acts[0].story_application) > 0
+        assert len(outline2.acts[0].story_application) > 0
 
         # Outlines should be different
-        assert outline1.act1_setup != outline2.act1_setup
-        assert outline1.act3_climax != outline2.act3_climax
+        assert outline1.acts[0].story_application != outline2.acts[0].story_application
 
-        print(f"\n✓ Story 1 setup: {outline1.act1_setup[:60]}...")
-        print(f"  Story 2 setup: {outline2.act1_setup[:60]}...")
+        # Get last act (resolution)
+        last_act1 = outline1.acts[-1]
+        last_act2 = outline2.acts[-1]
+        assert last_act1.story_application != last_act2.story_application
+
+        print(f"\n✓ Story 1 first act: {outline1.acts[0].story_application[:60]}...")
+        print(f"  Story 2 first act: {outline2.acts[0].story_application[:60]}...")
