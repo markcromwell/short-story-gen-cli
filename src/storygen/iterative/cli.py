@@ -10,6 +10,7 @@ from dotenv import load_dotenv
 
 from storygen.iterative.generators.character import CharacterGenerator
 from storygen.iterative.generators.idea import IdeaGenerator
+from storygen.iterative.generators.location import LocationGenerator
 from storygen.iterative.models import StoryIdea
 
 # Load environment variables (for API keys)
@@ -140,12 +141,19 @@ def idea(prompt: str, model: str, output: str | None, retries: int, verbose: boo
     help="Maximum retry attempts on failure (default: 3)",
 )
 @click.option(
+    "--timeout",
+    default=60,
+    help="Timeout in seconds for AI generation (default: 60)",
+)
+@click.option(
     "--verbose",
     "-v",
     is_flag=True,
     help="Show detailed generation process",
 )
-def characters(idea_file: str, model: str, output: str | None, retries: int, verbose: bool):
+def characters(
+    idea_file: str, model: str, output: str | None, retries: int, timeout: int, verbose: bool
+):
     """
     Generate characters based on a story idea.
 
@@ -176,7 +184,7 @@ def characters(idea_file: str, model: str, output: str | None, retries: int, ver
             click.echo(f"🎨 Generating characters with {model}...", err=True)
 
         # Generate characters
-        generator = CharacterGenerator(model=model, max_retries=retries)
+        generator = CharacterGenerator(model=model, max_retries=retries, timeout=timeout)
         characters_list = generator.generate(story_idea)
 
         if verbose:
@@ -208,6 +216,121 @@ def characters(idea_file: str, model: str, output: str | None, retries: int, ver
                     click.echo(f"Arc: {char.arc}")
 
             click.echo("\n" + "=" * 70 + "\n")
+
+    except FileNotFoundError:
+        click.echo(f"❌ Error: File not found: {idea_file}", err=True)
+        raise click.Abort()
+    except json.JSONDecodeError as e:
+        click.echo(f"❌ Error: Invalid JSON in {idea_file}: {e}", err=True)
+        raise click.Abort()
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        if verbose:
+            import traceback
+
+            traceback.print_exc()
+        raise click.Abort()
+
+
+@cli.command()
+@click.option(
+    "--idea-file",
+    "-i",
+    required=True,
+    help="Path to story idea JSON file",
+)
+@click.option(
+    "--model",
+    default="gpt-4",
+    help="AI model to use (default: gpt-4)",
+)
+@click.option(
+    "--output",
+    "-o",
+    default=None,
+    help="Output JSON file path (default: print to console)",
+)
+@click.option(
+    "--retries",
+    default=3,
+    help="Maximum retry attempts on failure (default: 3)",
+)
+@click.option(
+    "--timeout",
+    default=60,
+    help="Timeout in seconds for AI generation (default: 60)",
+)
+@click.option(
+    "--verbose",
+    "-v",
+    is_flag=True,
+    help="Show detailed generation process",
+)
+def locations(
+    idea_file: str, model: str, output: str | None, retries: int, timeout: int, verbose: bool
+):
+    """
+    Generate locations based on a story idea.
+
+    Takes a story idea JSON file and generates 3-7 key locations including:
+    - Name and physical description
+    - Significance to the story
+    - Atmosphere and mood
+
+    Each location is vivid, atmospheric, and serves narrative needs.
+
+    Examples:
+        storygen-iter locations --idea-file my_idea.json
+        storygen-iter locations -i idea.json --model ollama/qwen3:30b
+        storygen-iter locations -i idea.json -o locations.json
+        storygen-iter locations -i idea.json --timeout 300 --verbose
+    """
+    try:
+        # Load story idea
+        if verbose:
+            click.echo(f"📖 Loading story idea from {idea_file}...", err=True)
+
+        with open(idea_file, encoding="utf-8") as f:
+            idea_data = json.load(f)
+        story_idea = StoryIdea.from_dict(idea_data)
+
+        if verbose:
+            click.echo(f"✅ Loaded: {story_idea.one_sentence[:60]}...", err=True)
+            click.echo(f"🗺️  Generating locations with {model}...", err=True)
+
+        # Generate locations
+        generator = LocationGenerator(model=model, max_retries=retries, timeout=timeout)
+        locations_list = generator.generate(story_idea)
+
+        if verbose:
+            click.echo(f"✅ Generated {len(locations_list)} locations!", err=True)
+
+        # Output results
+        if output:
+            # Save to JSON file
+            locations_dicts = [loc.to_dict() for loc in locations_list]
+            output_path = Path(output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(locations_dicts, f, indent=2, ensure_ascii=False)
+
+            click.echo(f"💾 Saved to: {output}")
+        else:
+            # Pretty print to console
+            click.echo("\n" + "=" * 70)
+            click.echo(f"🗺️  LOCATIONS ({len(locations_list)} generated)")
+            click.echo("=" * 70 + "\n")
+
+            for i, loc in enumerate(locations_list, 1):
+                click.echo(f"{i}. {loc.name}")
+                click.echo("-" * 70)
+                click.echo(f"Description: {loc.description}")
+                click.echo(f"Significance: {loc.significance}")
+                click.echo(f"Atmosphere: {loc.atmosphere}")
+                click.echo()
+
+            click.echo("=" * 70 + "\n")
 
     except FileNotFoundError:
         click.echo(f"❌ Error: File not found: {idea_file}", err=True)
