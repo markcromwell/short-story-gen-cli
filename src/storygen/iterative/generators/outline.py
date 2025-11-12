@@ -5,17 +5,18 @@ import time
 
 import litellm
 
+from storygen.iterative.generators.base import BaseGenerator, GenerationError
 from storygen.iterative.models import Act, Character, Location, Outline, StoryIdea
 from storygen.iterative.outline_templates import get_template, list_available_structures
 
 
-class OutlineGenerationError(Exception):
+class OutlineGenerationError(GenerationError):
     """Raised when outline generation fails."""
 
     pass
 
 
-class OutlineGenerator:
+class OutlineGenerator(BaseGenerator[Outline]):
     """
     Generate story outlines using flexible structure templates.
 
@@ -46,9 +47,8 @@ class OutlineGenerator:
         Raises:
             ValueError: If structure_type is not recognized
         """
-        self.model = model
+        super().__init__(model=model, max_retries=max_retries, timeout=timeout, verbose=verbose)
         self.structure_type = structure_type
-        self.max_retries = max_retries
         self.timeout = timeout
         self.verbose = verbose
 

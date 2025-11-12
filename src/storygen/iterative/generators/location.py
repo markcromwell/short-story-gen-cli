@@ -1,20 +1,19 @@
 """Location generator for story creation."""
 
 import json
-import time
+from typing import Any
 
-import litellm
-
+from storygen.iterative.generators.base import BaseGenerator, GenerationError
 from storygen.iterative.models import Location, StoryIdea
 
 
-class LocationGenerationError(Exception):
+class LocationGenerationError(GenerationError):
     """Raised when location generation fails."""
 
     pass
 
 
-class LocationGenerator:
+class LocationGenerator(BaseGenerator[list[Location]]):
     """
     Generate locations for a story using AI.
 
@@ -38,10 +37,7 @@ class LocationGenerator:
             timeout: Timeout in seconds for AI calls (default: 600 = 10 minutes)
             verbose: Enable verbose logging of prompts and responses (default: False)
         """
-        self.model = model
-        self.max_retries = max_retries
-        self.timeout = timeout
-        self.verbose = verbose
+        super().__init__(model=model, max_retries=max_retries, timeout=timeout, verbose=verbose)
 
     def _build_prompt(
         self, story_idea: StoryIdea, story_type: str = "short-story"
@@ -195,91 +191,41 @@ Generate {min_locs}-{max_locs} key locations that fit this {story_type}'s world 
         """
         system_prompt, user_prompt = self._build_prompt(story_idea, story_type)
 
-        last_error = None
-        for attempt in range(self.max_retries):
-            try:
-                if self.verbose:
-                    print("\n" + "=" * 80)
-                    print("SENDING TO AI MODEL:")
-                    print("=" * 80)
-                    print(f"\nSYSTEM PROMPT:\n{system_prompt}\n")
-                    print(f"\nUSER PROMPT:\n{user_prompt}\n")
-                    print("=" * 80)
-
-                # Call AI
-                response = litellm.completion(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    timeout=self.timeout,
-                    temperature=0.8,
-                    stream=False,
+        # Parser that converts response text to list of Locations
+        def parse_to_locations(response_text: str) -> list[Location]:
+            loc_dicts = self._parse_response(response_text)
+            locations: list[Location] = []
+            for loc_data in loc_dicts:
+                loc = Location(  # type: ignore
+                    name=loc_data["name"],
+                    description=loc_data["description"],
+                    significance=loc_data["significance"],
+                    atmosphere=loc_data["atmosphere"],
                 )
+                locations.append(loc)  # type: ignore
+            return locations
 
-                # Extract response
-                if not hasattr(response, "choices") or not response.choices:  # type: ignore[union-attr]
-                    raise LocationGenerationError("Invalid response format from AI model")
+        # Use base class retry logic
+        return self._generate_with_retry(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            parser=parse_to_locations,
+            temperature=0.8,
+            error_class=LocationGenerationError,
+        )
 
-                response_text = response.choices[0].message.content  # type: ignore[union-attr]
-                if not response_text:
-                    raise LocationGenerationError("Empty response from AI model")
-
-                if self.verbose:
-                    print("\n" + "=" * 80)
-                    print("RECEIVED FROM AI MODEL:")
-                    print("=" * 80)
-                    print(f"\n{response_text}\n")
-                    print("=" * 80)
-
-                # Parse and validate
-                loc_dicts = self._parse_response(response_text)
-
-                if self.verbose:
-                    print("\n" + "=" * 80)
-                    print("PARSED LOCATIONS:")
-                    print("=" * 80)
-                    for i, loc in enumerate(loc_dicts, 1):
+    def _log_parsed(self, parsed_data: Any) -> None:
+        """Override to provide custom logging for location data."""
+        if self.verbose:
+            print("\n" + "=" * 80)
+            print("PARSED LOCATIONS:")
+            print("=" * 80)
+            if isinstance(parsed_data, list):
+                for i, loc in enumerate(parsed_data, 1):
+                    if isinstance(loc, Location):
+                        print(f"\n{i}. {loc.name}")
+                        print(f"   Atmosphere: {loc.atmosphere}")
+                    elif isinstance(loc, dict):
                         print(f"\n{i}. {loc['name']}")
                         print(f"   Atmosphere: {loc['atmosphere']}")
-                    print("=" * 80)
-
-                # Create Location objects
-                locations: list[Location] = []
-                for loc_data in loc_dicts:
-                    loc = Location(  # type: ignore
-                        name=loc_data["name"],
-                        description=loc_data["description"],
-                        significance=loc_data["significance"],
-                        atmosphere=loc_data["atmosphere"],
-                    )
-                    locations.append(loc)  # type: ignore
-
-                return locations
-
-            except Exception as e:
-                last_error = e
-
-                # Don't retry on validation errors (bad prompt/model)
-                if isinstance(e, LocationGenerationError | ValueError):
-                    # Wait briefly before retry
-                    if attempt < self.max_retries - 1:
-                        wait_time = 2**attempt  # Exponential backoff
-                        time.sleep(wait_time)
-                    continue
-
-                # Retry on network/timeout errors
-                if attempt < self.max_retries - 1:
-                    wait_time = 2**attempt
-                    time.sleep(wait_time)
-                    continue
-
-                # Last attempt failed
-                break
-
-        # All retries exhausted
-        raise LocationGenerationError(
-            f"Failed to generate locations after {self.max_retries} attempts. "
-            f"Last error: {last_error}"
-        )
+            print("=" * 80)

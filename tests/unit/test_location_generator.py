@@ -153,7 +153,7 @@ class TestLocationGenerator:
         with pytest.raises(LocationGenerationError, match="missing required fields.*atmosphere"):
             generator._parse_response(response)
 
-    @patch("storygen.iterative.generators.location.litellm.completion")
+    @patch("storygen.iterative.generators.base.litellm.completion")
     def test_generate_success(self, mock_completion):
         """Test successful location generation."""
         # Mock AI response
@@ -191,8 +191,8 @@ class TestLocationGenerator:
         assert locations[0].name == "Lab"
         assert "Murder" in locations[0].significance
 
-    @patch("storygen.iterative.generators.location.litellm.completion")
-    @patch("storygen.iterative.generators.location.time.sleep")
+    @patch("storygen.iterative.generators.base.litellm.completion")
+    @patch("storygen.iterative.generators.base.time.sleep")
     def test_generate_retry_on_timeout(self, mock_sleep, mock_completion):
         """Test retry on timeout error."""
         # First call times out, second succeeds
@@ -224,8 +224,8 @@ class TestLocationGenerator:
         assert len(locations) == 3
         assert mock_sleep.called
 
-    @patch("storygen.iterative.generators.location.litellm.completion")
-    @patch("storygen.iterative.generators.location.time.sleep")
+    @patch("storygen.iterative.generators.base.litellm.completion")
+    @patch("storygen.iterative.generators.base.time.sleep")
     def test_generate_retry_on_malformed_json(self, mock_sleep, mock_completion):
         """Test retry on malformed JSON."""
         # First call returns bad JSON, second succeeds
@@ -256,7 +256,7 @@ class TestLocationGenerator:
         locations = generator.generate(story_idea)
         assert len(locations) == 3
 
-    @patch("storygen.iterative.generators.location.litellm.completion")
+    @patch("storygen.iterative.generators.base.litellm.completion")
     def test_generate_fails_after_max_retries(self, mock_completion):
         """Test failure after exhausting retries."""
         mock_completion.side_effect = Exception("Persistent error")
@@ -275,8 +275,8 @@ class TestLocationGenerator:
         with pytest.raises(LocationGenerationError, match="Failed to generate"):
             generator.generate(story_idea)
 
-    @patch("storygen.iterative.generators.location.litellm.completion")
-    @patch("storygen.iterative.generators.location.time.sleep")
+    @patch("storygen.iterative.generators.base.litellm.completion")
+    @patch("storygen.iterative.generators.base.time.sleep")
     def test_generate_exponential_backoff(self, mock_sleep, mock_completion):
         """Test exponential backoff between retries."""
         mock_completion.side_effect = [
@@ -311,7 +311,7 @@ class TestLocationGenerator:
         assert mock_sleep.call_args_list[0][0][0] == 1  # 2^0
         assert mock_sleep.call_args_list[1][0][0] == 2  # 2^1
 
-    @patch("storygen.iterative.generators.location.litellm.completion")
+    @patch("storygen.iterative.generators.base.litellm.completion")
     def test_generate_with_different_model(self, mock_completion):
         """Test generation with custom model."""
         mock_response = MagicMock()

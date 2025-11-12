@@ -3,21 +3,19 @@ Story idea generation using AI.
 """
 
 import json
-import time
 from typing import Any
 
-import litellm
-
+from storygen.iterative.generators.base import BaseGenerator, GenerationError
 from storygen.iterative.models import StoryIdea
 
 
-class IdeaGenerationError(Exception):
+class IdeaGenerationError(GenerationError):
     """Raised when idea generation fails."""
 
     pass
 
 
-class IdeaGenerator:
+class IdeaGenerator(BaseGenerator[StoryIdea]):
     """Generates story ideas using AI with retry logic."""
 
     def __init__(
@@ -32,10 +30,7 @@ class IdeaGenerator:
             timeout: Timeout in seconds for each API call (default: 600 = 10 minutes)
             verbose: Enable verbose logging of prompts and responses (default: False)
         """
-        self.model = model
-        self.max_retries = max_retries
-        self.timeout = timeout
-        self.verbose = verbose
+        super().__init__(model=model, max_retries=max_retries, timeout=timeout, verbose=verbose)
 
     def _build_prompt(self, user_prompt: str, story_type: str) -> str:
         """
@@ -142,6 +137,19 @@ Return ONLY valid JSON, no other text or markdown formatting."""
 
         return data  # type: ignore[no-any-return]
 
+    def _log_parsed(self, parsed_data: Any) -> None:
+        """Override to provide custom logging for idea data."""
+        if self.verbose:
+            print("\n" + "=" * 80)
+            print("PARSED STORY IDEA:")
+            print("=" * 80)
+            print(f"One-sentence: {parsed_data['one_sentence']}")
+            print(f"Genres: {', '.join(parsed_data['genres'])}")
+            print(f"Tone: {parsed_data['tone']}")
+            print(f"Themes: {', '.join(parsed_data['themes'])}")
+            print(f"Setting: {parsed_data['setting']}")
+            print("=" * 80)
+
     def generate(self, user_prompt: str, story_type: str = "short-story") -> StoryIdea:
         """
         Generate a story idea from a user prompt.
@@ -158,94 +166,24 @@ Return ONLY valid JSON, no other text or markdown formatting."""
         """
         system_prompt = self._build_prompt(user_prompt, story_type)
 
-        last_error = None
-        for attempt in range(self.max_retries):
-            try:
-                if self.verbose:
-                    print("\n" + "=" * 80)
-                    print("SENDING TO AI MODEL:")
-                    print("=" * 80)
-                    print(f"\nSYSTEM PROMPT:\n{system_prompt}\n")
-                    print(f"\nUSER PROMPT:\n{user_prompt}\n")
-                    print("=" * 80)
+        # Parser that converts response text to StoryIdea
+        def parse_to_idea(response_text: str) -> StoryIdea:
+            data = self._parse_response(response_text)
+            return StoryIdea(
+                raw_idea=data["raw_idea"],
+                one_sentence=data["one_sentence"],
+                expanded=data["expanded"],
+                genres=data["genres"],
+                tone=data["tone"],
+                themes=data["themes"],
+                setting=data["setting"],
+            )
 
-                # Call AI
-                response = litellm.completion(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    timeout=self.timeout,
-                    temperature=0.8,  # Creative but not too random
-                    stream=False,  # Explicitly disable streaming
-                )
-
-                # Extract response
-                # Note: litellm has complex return types, we use type: ignore for dynamic attributes
-                if not hasattr(response, "choices") or not response.choices:  # type: ignore[union-attr]
-                    raise IdeaGenerationError("Invalid response format from AI model")
-
-                response_text = response.choices[0].message.content  # type: ignore[union-attr]
-                if not response_text:
-                    raise IdeaGenerationError("Empty response from AI model")
-
-                if self.verbose:
-                    print("\n" + "=" * 80)
-                    print("RECEIVED FROM AI MODEL:")
-                    print("=" * 80)
-                    print(f"\n{response_text}\n")
-                    print("=" * 80)
-
-                # Parse and validate
-                data = self._parse_response(response_text)
-
-                if self.verbose:
-                    print("\n" + "=" * 80)
-                    print("PARSED STORY IDEA:")
-                    print("=" * 80)
-                    print(f"One-sentence: {data['one_sentence']}")
-                    print(f"Genres: {', '.join(data['genres'])}")
-                    print(f"Tone: {data['tone']}")
-                    print(f"Themes: {', '.join(data['themes'])}")
-                    print(f"Setting: {data['setting']}")
-                    print("=" * 80)
-
-                # Create StoryIdea (this validates and normalizes genres/themes)
-                idea = StoryIdea(
-                    raw_idea=data["raw_idea"],
-                    one_sentence=data["one_sentence"],
-                    expanded=data["expanded"],
-                    genres=data["genres"],
-                    tone=data["tone"],
-                    themes=data["themes"],
-                    setting=data["setting"],
-                )
-
-                return idea
-
-            except Exception as e:
-                last_error = e
-
-                # Don't retry on validation errors (bad prompt/model)
-                if isinstance(e, IdeaGenerationError | ValueError):
-                    # Wait briefly before retry
-                    if attempt < self.max_retries - 1:
-                        wait_time = 2**attempt  # Exponential backoff: 1s, 2s, 4s
-                        time.sleep(wait_time)
-                    continue
-
-                # Retry on network/timeout errors
-                if attempt < self.max_retries - 1:
-                    wait_time = 2**attempt
-                    time.sleep(wait_time)
-                    continue
-
-                # Last attempt failed
-                break
-
-        # All retries exhausted
-        raise IdeaGenerationError(
-            f"Failed to generate idea after {self.max_retries} attempts. "
-            f"Last error: {last_error}"
+        # Use base class retry logic
+        return self._generate_with_retry(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            parser=parse_to_idea,
+            temperature=0.8,
+            error_class=IdeaGenerationError,
         )

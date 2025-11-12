@@ -202,9 +202,7 @@ class TestIdeaGenerator:
         generator = IdeaGenerator(model="gpt-4", max_retries=3)
 
         with patch("time.sleep"):
-            with pytest.raises(
-                IdeaGenerationError, match="Failed to generate idea after 3 attempts"
-            ):
+            with pytest.raises(IdeaGenerationError, match="Failed to generate after 3 attempts"):
                 generator.generate("A detective solves crimes")
 
         # Should have tried 3 times

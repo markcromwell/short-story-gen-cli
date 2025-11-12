@@ -3,21 +3,19 @@ Character generation using AI.
 """
 
 import json
-import time
 from typing import Any
 
-import litellm
-
+from storygen.iterative.generators.base import BaseGenerator, GenerationError
 from storygen.iterative.models import Character, StoryIdea
 
 
-class CharacterGenerationError(Exception):
+class CharacterGenerationError(GenerationError):
     """Raised when character generation fails."""
 
     pass
 
 
-class CharacterGenerator:
+class CharacterGenerator(BaseGenerator[list[Character]]):
     """Generates characters using AI with retry logic."""
 
     def __init__(
@@ -32,10 +30,7 @@ class CharacterGenerator:
             timeout: Timeout in seconds for each API call (default: 600 = 10 minutes)
             verbose: Enable verbose logging of prompts and responses (default: False)
         """
-        self.model = model
-        self.max_retries = max_retries
-        self.timeout = timeout
-        self.verbose = verbose
+        super().__init__(model=model, max_retries=max_retries, timeout=timeout, verbose=verbose)
 
     def _get_naming_guidance(self, genres: list[str], tone: str) -> str:
         """
@@ -247,94 +242,48 @@ Generate {min_chars}-{max_chars} characters appropriate for a {story_type}."""
         """
         system_prompt, user_prompt = self._build_prompt(story_idea, story_type)
 
-        last_error = None
-        for attempt in range(self.max_retries):
-            try:
-                if self.verbose:
-                    print("\n" + "=" * 80)
-                    print("SENDING TO AI MODEL:")
-                    print("=" * 80)
-                    print(f"\nSYSTEM PROMPT:\n{system_prompt}\n")
-                    print(f"\nUSER PROMPT:\n{user_prompt}\n")
-                    print("=" * 80)
-
-                # Call AI
-                response = litellm.completion(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    timeout=self.timeout,
-                    temperature=0.8,
-                    stream=False,
+        # Parser that converts response text to list of Characters
+        def parse_to_characters(response_text: str) -> list[Character]:
+            char_dicts = self._parse_response(response_text)
+            characters: list[Character] = []
+            for char_data in char_dicts:
+                char = Character(  # type: ignore
+                    name=char_data["name"],
+                    role=char_data["role"],
+                    bio=char_data["bio"],
+                    goal=char_data["goal"],
+                    flaw=char_data["flaw"],
+                    arc=char_data.get("arc"),  # Optional field
                 )
+                characters.append(char)  # type: ignore
+            return characters
 
-                # Extract response
-                if not hasattr(response, "choices") or not response.choices:  # type: ignore[union-attr]
-                    raise CharacterGenerationError("Invalid response format from AI model")
+        # Use base class retry logic
+        return self._generate_with_retry(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            parser=parse_to_characters,
+            temperature=0.8,
+            error_class=CharacterGenerationError,
+        )
 
-                response_text = response.choices[0].message.content  # type: ignore[union-attr]
-                if not response_text:
-                    raise CharacterGenerationError("Empty response from AI model")
-
-                if self.verbose:
-                    print("\n" + "=" * 80)
-                    print("RECEIVED FROM AI MODEL:")
-                    print("=" * 80)
-                    print(f"\n{response_text}\n")
-                    print("=" * 80)
-
-                # Parse and validate
-                char_dicts = self._parse_response(response_text)
-
-                if self.verbose:
-                    print("\n" + "=" * 80)
-                    print("PARSED CHARACTERS:")
-                    print("=" * 80)
-                    for i, char in enumerate(char_dicts, 1):
+    def _log_parsed(self, parsed_data: Any) -> None:
+        """Override to provide custom logging for character data."""
+        if self.verbose:
+            print("\n" + "=" * 80)
+            print("PARSED CHARACTERS:")
+            print("=" * 80)
+            if isinstance(parsed_data, list):
+                # If it's already Character objects
+                if parsed_data and isinstance(parsed_data[0], Character):
+                    for i, char in enumerate(parsed_data, 1):
+                        print(f"\n{i}. {char.name} ({char.role})")
+                        print(f"   Goal: {char.goal}")
+                        print(f"   Flaw: {char.flaw}")
+                # If it's still dict data (during parsing)
+                elif parsed_data and isinstance(parsed_data[0], dict):
+                    for i, char in enumerate(parsed_data, 1):
                         print(f"\n{i}. {char['name']} ({char['role']})")
                         print(f"   Goal: {char['goal']}")
                         print(f"   Flaw: {char['flaw']}")
-                    print("=" * 80)
-
-                # Create Character objects
-                characters: list[Character] = []
-                for char_data in char_dicts:
-                    char = Character(  # type: ignore
-                        name=char_data["name"],
-                        role=char_data["role"],
-                        bio=char_data["bio"],
-                        goal=char_data["goal"],
-                        flaw=char_data["flaw"],
-                        arc=char_data.get("arc"),  # Optional field
-                    )
-                    characters.append(char)  # type: ignore
-
-                return characters
-
-            except Exception as e:
-                last_error = e
-
-                # Don't retry on validation errors (bad prompt/model)
-                if isinstance(e, CharacterGenerationError | ValueError):
-                    # Wait briefly before retry
-                    if attempt < self.max_retries - 1:
-                        wait_time = 2**attempt  # Exponential backoff
-                        time.sleep(wait_time)
-                    continue
-
-                # Retry on network/timeout errors
-                if attempt < self.max_retries - 1:
-                    wait_time = 2**attempt
-                    time.sleep(wait_time)
-                    continue
-
-                # Last attempt failed
-                break
-
-        # All retries exhausted
-        raise CharacterGenerationError(
-            f"Failed to generate characters after {self.max_retries} attempts. "
-            f"Last error: {last_error}"
-        )
+            print("=" * 80)
