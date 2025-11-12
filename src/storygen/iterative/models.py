@@ -375,6 +375,8 @@ class SceneSequel:
     # Content (generated in prose step)
     content: str = ""  # The actual prose in markdown format
     actual_word_count: int = 0
+    summary: str = ""  # 2-3 sentence summary for continuity
+    key_points: list[str] = field(default_factory=list)  # Critical details for next scenes
 
     # Chapter support (optional)
     chapter: int | None = None

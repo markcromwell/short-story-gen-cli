@@ -607,6 +607,36 @@ class TestSceneSequel:
         assert "She knew the truth" in plain
         assert "investigation began" in plain
 
+    def test_summary_and_key_points(self):
+        """Test summary and key_points fields for continuity tracking."""
+        scene = SceneSequel(
+            id="ss_001",
+            type="scene",
+            source_act="act_1",
+            pov_character="Maya",
+            location="Precinct",
+            goal="Interrogate suspect",
+            conflict="Telepathy causes overload",
+            disaster="Interrogation abandoned",
+            start_hours=0.0,
+            duration_hours=0.5,
+            content="Detective Maya pressed her fingers...",
+            summary="Elara attempts to interrogate a suspect using telepathy but experiences severe sensory overload, forcing her to abandon the interrogation.",
+            key_points=[
+                "Elara's telepathy triggered by suspect's guilt",
+                "Mental overload worse than previous cases",
+                "Marcus Reed witnesses her struggle",
+                "Interrogation incomplete",
+            ],
+        )
+
+        assert (
+            scene.summary
+            == "Elara attempts to interrogate a suspect using telepathy but experiences severe sensory overload, forcing her to abandon the interrogation."
+        )
+        assert len(scene.key_points) == 4
+        assert "Mental overload worse than previous cases" in scene.key_points
+
     def test_json_roundtrip(self):
         """Test SceneSequel survives JSON serialization."""
         original = SceneSequel(
@@ -620,6 +650,8 @@ class TestSceneSequel:
             disaster="Discovers first clue",
             start_hours=14.5,
             duration_hours=1.0,
+            summary="Maya interrogates witness and discovers key clue",
+            key_points=["Witness reveals suspect's location", "Maya's intuition proves correct"],
         )
 
         json_str = json.dumps(original.to_dict())
@@ -633,6 +665,8 @@ class TestSceneSequel:
         assert restored.start_hours == original.start_hours
         assert restored.duration_hours == original.duration_hours
         assert restored.end_hours == original.end_hours
+        assert restored.summary == original.summary
+        assert restored.key_points == original.key_points
         assert restored.time_of_day == original.time_of_day
         assert restored.day_number == original.day_number
 
