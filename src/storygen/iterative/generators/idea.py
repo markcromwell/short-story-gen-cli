@@ -140,15 +140,15 @@ Return ONLY valid JSON, no other text or markdown formatting."""
     def _log_parsed(self, parsed_data: Any) -> None:
         """Override to provide custom logging for idea data."""
         if self.verbose:
-            print("\n" + "=" * 80)
-            print("PARSED STORY IDEA:")
-            print("=" * 80)
-            print(f"One-sentence: {parsed_data['one_sentence']}")
-            print(f"Genres: {', '.join(parsed_data['genres'])}")
-            print(f"Tone: {parsed_data['tone']}")
-            print(f"Themes: {', '.join(parsed_data['themes'])}")
-            print(f"Setting: {parsed_data['setting']}")
-            print("=" * 80)
+            self.logger.debug("=" * 80)
+            self.logger.debug("PARSED STORY IDEA:")
+            self.logger.debug("=" * 80)
+            self.logger.debug(f"One-sentence: {parsed_data['one_sentence']}")
+            self.logger.debug(f"Genres: {', '.join(parsed_data['genres'])}")
+            self.logger.debug(f"Tone: {parsed_data['tone']}")
+            self.logger.debug(f"Themes: {', '.join(parsed_data['themes'])}")
+            self.logger.debug(f"Setting: {parsed_data['setting']}")
+            self.logger.debug("=" * 80)
 
     def generate(self, user_prompt: str, story_type: str = "short-story") -> StoryIdea:
         """

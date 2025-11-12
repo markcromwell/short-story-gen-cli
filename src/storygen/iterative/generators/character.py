@@ -274,20 +274,20 @@ Generate {min_chars}-{max_chars} characters appropriate for a {story_type}."""
     def _log_parsed(self, parsed_data: Any) -> None:
         """Override to provide custom logging for character data."""
         if self.verbose:
-            print("\n" + "=" * 80)
-            print("PARSED CHARACTERS:")
-            print("=" * 80)
+            self.logger.debug("=" * 80)
+            self.logger.debug("PARSED CHARACTERS:")
+            self.logger.debug("=" * 80)
             if isinstance(parsed_data, list):
                 # If it's already Character objects
                 if parsed_data and isinstance(parsed_data[0], Character):
                     for i, char in enumerate(parsed_data, 1):
-                        print(f"\n{i}. {char.name} ({char.role})")
-                        print(f"   Goal: {char.goal}")
-                        print(f"   Flaw: {char.flaw}")
+                        self.logger.debug(f"{i}. {char.name} ({char.role})")
+                        self.logger.debug(f"   Goal: {char.goal}")
+                        self.logger.debug(f"   Flaw: {char.flaw}")
                 # If it's still dict data (during parsing)
                 elif parsed_data and isinstance(parsed_data[0], dict):
                     for i, char in enumerate(parsed_data, 1):
-                        print(f"\n{i}. {char['name']} ({char['role']})")
-                        print(f"   Goal: {char['goal']}")
-                        print(f"   Flaw: {char['flaw']}")
-            print("=" * 80)
+                        self.logger.debug(f"{i}. {char['name']} ({char['role']})")
+                        self.logger.debug(f"   Goal: {char['goal']}")
+                        self.logger.debug(f"   Flaw: {char['flaw']}")
+            self.logger.debug("=" * 80)
