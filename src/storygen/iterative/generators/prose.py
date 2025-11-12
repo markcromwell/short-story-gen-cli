@@ -61,6 +61,7 @@ class ProseGenerator:
         locations: list[Location],
         scene_sequels: list[SceneSequel],
         writing_style: str | None = None,
+        output_path: str | None = None,
     ) -> list[SceneSequel]:
         """
         Generate prose for all scene-sequels in order.
@@ -71,6 +72,7 @@ class ProseGenerator:
             locations: List of all locations
             scene_sequels: List of scene-sequels to generate prose for
             writing_style: Optional writing style (auto-inferred if not provided)
+            output_path: Optional path to save progress incrementally after each scene
 
         Returns:
             Updated list of scene-sequels with content, summary, and key_points filled
@@ -93,6 +95,14 @@ class ProseGenerator:
 
         # Generate prose for each scene-sequel in order
         for i, ss in enumerate(scene_sequels):
+            # Skip if already has content (resume from saved progress)
+            if ss.content and ss.actual_word_count > 0:
+                if self.verbose:
+                    print(f"\n{'='*70}")
+                    print(f"⏭️  [{i+1}/{len(scene_sequels)}] {ss.id} - SKIPPED (already complete)")
+                    print(f"   Words: {ss.actual_word_count}")
+                continue
+
             if self.verbose:
                 print(f"\n{'='*70}")
                 print(f"📄 [{i+1}/{len(scene_sequels)}] {ss.id} - {ss.type.upper()}")
@@ -116,6 +126,12 @@ class ProseGenerator:
                 print(f"   ✅ Generated: {ss.actual_word_count} words")
                 print(f"   📝 Summary: {ss.summary[:80]}...")
                 print(f"   🔑 Key points: {len(ss.key_points)}")
+
+            # Save progress incrementally if output_path provided
+            if output_path:
+                self._save_progress(scene_sequels, output_path)
+                if self.verbose:
+                    print(f"   💾 Progress saved to {output_path}")
 
         if self.verbose:
             print(f"\n{'='*70}")
@@ -594,3 +610,29 @@ Apply these techniques:
             issues.append("Contains markdown headers (should be avoided)")
 
         return issues
+
+    def _save_progress(self, scene_sequels: list[SceneSequel], output_path: str) -> None:
+        """
+        Save current progress to JSON file.
+
+        Args:
+            scene_sequels: List of scene-sequels (some may still be empty)
+            output_path: Path to save JSON file
+        """
+        import json
+        from pathlib import Path
+
+        # Calculate total words generated so far
+        total_words = sum(ss.actual_word_count or 0 for ss in scene_sequels)
+
+        # Save to JSON
+        prose_dict = {
+            "scene_sequels": [ss.to_dict() for ss in scene_sequels],
+            "total_actual_words": total_words,
+        }
+
+        output = Path(output_path)
+        output.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(output, "w", encoding="utf-8") as f:
+            json.dump(prose_dict, f, indent=2, ensure_ascii=False)

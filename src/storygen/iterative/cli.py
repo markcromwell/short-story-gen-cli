@@ -895,13 +895,33 @@ def prose(
         click.echo(f"✅ Loaded {len(locations)} locations", err=True)
 
         click.echo(f"📋 Loading breakdown from {breakdown_file}...", err=True)
-        with open(breakdown_file, encoding="utf-8") as f:
-            breakdown_data = json.load(f)
 
+        # Check if output file already exists (resume capability)
         from storygen.iterative.models import SceneSequel
 
-        scene_sequels = [SceneSequel.from_dict(ss) for ss in breakdown_data["scene_sequels"]]
-        click.echo(f"✅ Loaded {len(scene_sequels)} scene-sequels", err=True)
+        if output and Path(output).exists():
+            click.echo("🔄 Found existing output file, checking for resume...", err=True)
+            with open(output, encoding="utf-8") as f:
+                existing_data = json.load(f)
+            scene_sequels = [SceneSequel.from_dict(ss) for ss in existing_data["scene_sequels"]]
+            completed = sum(1 for ss in scene_sequels if ss.content)
+            if completed > 0:
+                click.echo(
+                    f"✅ Resuming from {completed}/{len(scene_sequels)} completed scenes", err=True
+                )
+            else:
+                # File exists but empty, load from breakdown
+                with open(breakdown_file, encoding="utf-8") as f:
+                    breakdown_data = json.load(f)
+                scene_sequels = [
+                    SceneSequel.from_dict(ss) for ss in breakdown_data["scene_sequels"]
+                ]
+                click.echo(f"✅ Loaded {len(scene_sequels)} scene-sequels", err=True)
+        else:
+            with open(breakdown_file, encoding="utf-8") as f:
+                breakdown_data = json.load(f)
+            scene_sequels = [SceneSequel.from_dict(ss) for ss in breakdown_data["scene_sequels"]]
+            click.echo(f"✅ Loaded {len(scene_sequels)} scene-sequels", err=True)
 
         # Generate prose
         click.echo(f"📝 Generating prose with {model}...", err=True)
@@ -923,6 +943,7 @@ def prose(
             locations=locations,
             scene_sequels=scene_sequels,
             writing_style=writing_style,
+            output_path=output,  # Enable incremental saving
         )
 
         # Calculate total words
