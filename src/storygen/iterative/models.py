@@ -336,35 +336,47 @@ class ActStructure:
 
 @dataclass
 class SceneSequel:
-    """A scene or sequel with goals, conflicts, and outcomes."""
+    """A scene or sequel with goals, conflicts, and outcomes.
+
+    Scene-Sequel structure based on Dwight Swain's method:
+    - Scene: goal/conflict/disaster (REQUIRED for type="scene")
+    - Sequel: reaction/dilemma/decision (OPTIONAL for type="sequel")
+    """
 
     id: str
     type: Literal["scene", "sequel"]
-    act: int
-    pov_character: str
-    location: str
-    goal: str
-    outcome: str
-    conflict: str | None = None
-    disaster: str | None = None
-    reaction: str | None = None
-    dilemma: str | None = None
-    decision: str | None = None
-    prose: str | None = None
+
+    # Context (REQUIRED)
+    source_act: str  # Which outline act this came from
+    pov_character: str  # Whose eyes we see through (REQUIRED)
+    location: str  # Where this takes place (can be new or from location list)
+
+    # Time tracking (REQUIRED)
+    start_hours: float  # Hours since story start (t=0.0)
+    duration_hours: float  # How long this scene-sequel lasts
+    end_hours: float = field(init=False)  # Calculated: start + duration
+    time_of_day: str = field(init=False)  # Calculated: "morning", "night", etc.
+    day_number: int = field(init=False)  # Calculated: which story day
+    timestamp_description: str | None = None  # Optional: "Monday 3:00 AM"
+
+    # Scene elements (REQUIRED if type="scene")
+    goal: str | None = None  # What POV character wants
+    conflict: str | None = None  # Opposition to goal
+    disaster: str | None = None  # How it goes wrong
+
+    # Sequel elements (OPTIONAL if type="sequel")
+    reaction: str | None = None  # Emotional response
+    dilemma: str | None = None  # Weighing options
+    decision: str | None = None  # Choice leading to next scene
 
     # Pacing control
-    pacing: Literal["very_fast", "fast", "medium", "slow", "very_slow"] = "medium"
     target_word_count: int = 600
 
-    # Time tracking
-    start_hours: float = 0.0
-    duration_hours: float = 0.5
-    end_hours: float = field(init=False)
-    time_of_day: str = field(init=False)
-    day_number: int = field(init=False)
-    timestamp_description: str | None = None
+    # Content (generated in prose step)
+    content: str = ""  # The actual prose
+    actual_word_count: int = 0
 
-    # Chapter support
+    # Chapter support (optional)
     chapter: int | None = None
     chapter_title: str | None = None
     chapter_start: bool = False
@@ -406,6 +418,47 @@ class SceneSequel:
     def get_time_summary(self) -> str:
         """Get human-readable time summary."""
         return f"Day {self.day_number}, {self.time_of_day} ({self.start_hours:.1f}h - {self.end_hours:.1f}h)"
+
+    def validate(self) -> list[str]:
+        """Validate scene-sequel structure.
+
+        Returns:
+            List of validation error messages (empty if valid)
+        """
+        issues = []
+
+        # Check required fields
+        if not self.pov_character:
+            issues.append(f"{self.id}: Missing POV character")
+        if not self.location:
+            issues.append(f"{self.id}: Missing location")
+        if not self.source_act:
+            issues.append(f"{self.id}: Missing source_act")
+
+        # Check time values
+        if self.start_hours < 0:
+            issues.append(f"{self.id}: Invalid start_hours ({self.start_hours})")
+        if self.duration_hours <= 0:
+            issues.append(f"{self.id}: Invalid duration_hours ({self.duration_hours})")
+
+        # Check scene-specific requirements
+        if self.type == "scene":
+            if not self.goal:
+                issues.append(f"{self.id}: Scene missing 'goal' (what POV character wants)")
+            if not self.conflict:
+                issues.append(f"{self.id}: Scene missing 'conflict' (opposition to goal)")
+            if not self.disaster:
+                issues.append(f"{self.id}: Scene missing 'disaster' (how goal fails/complicates)")
+
+        # Sequels are more flexible - reaction/dilemma/decision are optional
+        # but at least one should be present
+        if self.type == "sequel":
+            if not any([self.reaction, self.dilemma, self.decision]):
+                issues.append(
+                    f"{self.id}: Sequel should have at least one of: reaction, dilemma, or decision"
+                )
+
+        return issues
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
