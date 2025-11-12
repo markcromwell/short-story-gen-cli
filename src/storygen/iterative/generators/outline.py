@@ -30,6 +30,7 @@ class OutlineGenerator:
         structure_type: str = "three-act",
         max_retries: int = 3,
         timeout: int = 60,
+        verbose: bool = False,
     ):
         """
         Initialize the outline generator.
@@ -40,6 +41,7 @@ class OutlineGenerator:
                 Options: three-act, hero-journey, fichtean
             max_retries: Maximum number of retry attempts (default: 3)
             timeout: Timeout in seconds for AI calls (default: 60)
+            verbose: Enable verbose logging of prompts and responses (default: False)
 
         Raises:
             ValueError: If structure_type is not recognized
@@ -48,6 +50,7 @@ class OutlineGenerator:
         self.structure_type = structure_type
         self.max_retries = max_retries
         self.timeout = timeout
+        self.verbose = verbose
 
         # Validate structure type
         if structure_type not in list_available_structures():
@@ -82,7 +85,7 @@ class OutlineGenerator:
                 f'{prefix}"title": "{act.title}",',
                 f'{prefix}"description": "{act.description}",',
                 f'{prefix}"story_application": "FILL THIS IN - how does this act apply to the specific story?",',
-                f'{prefix}"percentage": {act.percentage}',
+                f'{prefix}"percentage": {act.percentage}' + ("," if act.sub_acts else ""),
             ]
 
             if act.sub_acts:
@@ -103,6 +106,7 @@ class OutlineGenerator:
         template_str += "]"
 
         system_prompt = f"""You are an expert story architect specializing in plot structure.
+You are a strict JSON generator. Do not add explanations, markdown formatting, or any text outside the JSON structure.
 
 You will receive a story outline TEMPLATE with generic descriptions of each act.
 Your task is to fill in the "story_application" field for EACH act, explaining how that act applies to the specific story provided.
@@ -121,10 +125,23 @@ For story_application, write 2-4 sentences explaining:
 - Which locations might be used
 - How this advances the specific plot
 
-Return the COMPLETE template structure as valid JSON, with ONLY the story_application fields filled in.
-Keep all other fields (title, description, percentage, sub_acts structure) exactly as provided.
+CRITICAL JSON FORMAT REQUIREMENTS:
+1. Your response MUST be a valid JSON ARRAY that starts with [ and ends with ]
+2. The array MUST contain ALL acts (typically 3 acts for three-act structure)
+3. Do NOT output separate JSON objects - wrap everything in a single array
+4. Do NOT add any text before [ or after ] - output ONLY the JSON array
+5. Keep all fields (title, description, percentage, sub_acts structure) exactly as provided
+6. ONLY fill in the "story_application" fields
+7. Maintain the exact nested sub_acts structure
 
-CRITICAL: Maintain the exact JSON structure including all nested sub_acts."""
+Example of correct format (all acts in ONE array):
+[
+  {{"title": "Act 1: Setup", "description": "...", "story_application": "YOUR CONTENT HERE", "percentage": 0.25, "sub_acts": [...]}},
+  {{"title": "Act 2: Confrontation", "description": "...", "story_application": "YOUR CONTENT HERE", "percentage": 0.5, "sub_acts": [...]}},
+  {{"title": "Act 3: Resolution", "description": "...", "story_application": "YOUR CONTENT HERE", "percentage": 0.25, "sub_acts": [...]}}
+]
+
+Respond as a strict JSON generator only."""
 
         # Build character context
         char_context = "\nCharacters:\n"
@@ -151,8 +168,14 @@ Themes: {', '.join(story_idea.themes)}
 Outline Template ({self.structure_type}):
 {template_str}
 
-Fill in the "story_application" for EVERY act (including all sub-acts) based on the story above.
-Return the complete structure as valid JSON."""
+INSTRUCTIONS:
+1. Fill in the "story_application" for EVERY act (including all sub-acts) based on the story above
+2. Return the COMPLETE array structure - ALL acts must be in a SINGLE JSON array
+3. Your response MUST begin with [ and end with ]
+4. Do NOT output acts as separate objects
+5. Include ALL acts from the template in your response
+
+Return ONLY the complete JSON array, nothing else."""
 
         return system_prompt, user_prompt
 
@@ -177,34 +200,79 @@ Return the complete structure as valid JSON."""
             if text.startswith("json"):
                 text = text[4:].strip()
 
-        # Try to extract JSON array - look for outermost [ ]
-        # This handles cases where AI adds explanatory text before/after JSON
-        start_idx = text.find("[")
-        if start_idx == -1:
-            raise OutlineGenerationError("No JSON array found in response")
-        
-        # Find matching closing bracket
-        bracket_count = 0
-        end_idx = -1
-        for i in range(start_idx, len(text)):
-            if text[i] == "[":
-                bracket_count += 1
-            elif text[i] == "]":
-                bracket_count -= 1
-                if bracket_count == 0:
-                    end_idx = i + 1
-                    break
-        
-        if end_idx == -1:
-            raise OutlineGenerationError("Malformed JSON array - no closing bracket")
-        
-        json_text = text[start_idx:end_idx]
+        # Try to extract JSON - handle both array format and multiple objects
+        # Look for array first: [ {...}, {...}, {...} ]
+        array_start = text.find("[")
 
-        # Parse JSON
-        try:
-            data = json.loads(json_text)
-        except json.JSONDecodeError as e:
-            raise OutlineGenerationError(f"Invalid JSON response: {e}")
+        if array_start != -1:
+            # Find matching closing bracket for array
+            bracket_count = 0
+            end_idx = -1
+            for i in range(array_start, len(text)):
+                if text[i] == "[":
+                    bracket_count += 1
+                elif text[i] == "]":
+                    bracket_count -= 1
+                    if bracket_count == 0:
+                        end_idx = i + 1
+                        break
+
+            if end_idx != -1:
+                json_text = text[array_start:end_idx]
+                try:
+                    data = json.loads(json_text)
+                    if isinstance(data, list):
+                        # Successfully parsed array format
+                        pass
+                except json.JSONDecodeError:
+                    # Array parsing failed, fall through to object extraction
+                    data = None
+            else:
+                data = None
+        else:
+            data = None
+
+        # If array format failed, try extracting multiple { } objects
+        if data is None:
+            objects = []
+            pos = 0
+            while pos < len(text):
+                # Find next object start
+                obj_start = text.find("{", pos)
+                if obj_start == -1:
+                    break
+
+                # Find matching closing brace
+                brace_count = 0
+                obj_end = -1
+                for i in range(obj_start, len(text)):
+                    if text[i] == "{":
+                        brace_count += 1
+                    elif text[i] == "}":
+                        brace_count -= 1
+                        if brace_count == 0:
+                            obj_end = i + 1
+                            break
+
+                if obj_end == -1:
+                    break
+
+                # Try to parse this object
+                obj_text = text[obj_start:obj_end]
+                try:
+                    obj = json.loads(obj_text)
+                    # Only add if it looks like an act (has 'title' field)
+                    if isinstance(obj, dict) and "title" in obj:
+                        objects.append(obj)
+                except json.JSONDecodeError:
+                    pass
+
+                pos = obj_end
+
+            if objects:
+                data = objects
+            else:
+                raise OutlineGenerationError("No valid JSON array or objects found in response")
 
         # Validate it's a list of acts
         if not isinstance(data, list):
@@ -213,9 +281,12 @@ Return the complete structure as valid JSON."""
         if not data:
             raise OutlineGenerationError("Response must contain at least one act")
 
-        # Convert to Act objects
+        # Convert to Act objects and auto-assign order based on position
         try:
-            acts = [Act.from_dict(act_data) for act_data in data]
+            acts = [
+                Act.from_dict({**act_data, "order": i} if "order" not in act_data else act_data)
+                for i, act_data in enumerate(data)
+            ]
         except (TypeError, ValueError) as e:
             raise OutlineGenerationError(f"Failed to parse acts: {e}")
 
@@ -259,19 +330,69 @@ Return the complete structure as valid JSON."""
         system_prompt, user_prompt = self._build_prompt(story_idea, characters, locations, template)
 
         last_error = None
+        error_feedback = None
+
         for attempt in range(self.max_retries):
             try:
-                # Call AI
-                response = litellm.completion(
-                    model=self.model,
-                    messages=[
+                # Add error feedback to user prompt on retries
+                current_user_prompt = user_prompt
+                if error_feedback:
+                    # Provide specific guidance based on the error
+                    fix_guidance = ""
+                    if (
+                        "25.00% but should be 100%" in error_feedback
+                        or "total" in error_feedback.lower()
+                    ):
+                        fix_guidance = "\nYou only returned ONE act. You MUST return ALL acts in a SINGLE array: [act1, act2, act3]"
+                    elif "No valid JSON array" in error_feedback:
+                        fix_guidance = "\nYour response must be a JSON array starting with [ and ending with ]. Do NOT output separate objects."
+
+                    current_user_prompt = f"""{user_prompt}
+
+⚠️ PREVIOUS ATTEMPT FAILED with error:
+{error_feedback}{fix_guidance}
+
+FIX REQUIRED: Return a SINGLE JSON array containing ALL acts like this:
+[
+  {{"title": "Act 1: Setup", ...}},
+  {{"title": "Act 2: Confrontation", ...}},
+  {{"title": "Act 3: Resolution", ...}}
+]
+
+Return ONLY the corrected JSON array, no explanations."""
+
+                if self.verbose:
+                    print("\n" + "=" * 80)
+                    print("SENDING TO AI MODEL:")
+                    print("=" * 80)
+                    print(f"\nSYSTEM PROMPT:\n{system_prompt}\n")
+                    print(f"\nUSER PROMPT:\n{current_user_prompt}\n")
+                    print("=" * 80)
+
+                # Call AI with JSON mode for supported models
+                # Use lower temperature for more deterministic JSON structure
+                # On retries, use even lower temperature to enforce format
+                temperature = 0.3 if error_feedback else 0.5
+
+                api_kwargs = {
+                    "model": self.model,
+                    "messages": [
                         {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
+                        {"role": "user", "content": current_user_prompt},
                     ],
-                    timeout=self.timeout,
-                    temperature=0.8,
-                    stream=False,
-                )
+                    "timeout": self.timeout,
+                    "temperature": temperature,
+                    "stream": False,
+                }
+
+                # Enable JSON mode for OpenAI models (helps with valid JSON structure)
+                if self.model.startswith("gpt-"):
+                    api_kwargs["response_format"] = {"type": "json_object"}
+
+                if self.verbose and error_feedback:
+                    print(f"   Using temperature={temperature} for retry\n")
+
+                response = litellm.completion(**api_kwargs)
 
                 # Extract response
                 if not hasattr(response, "choices") or not response.choices:  # type: ignore[union-attr]
@@ -281,8 +402,31 @@ Return the complete structure as valid JSON."""
                 if not response_text:
                     raise OutlineGenerationError("Empty response from AI model")
 
+                if self.verbose:
+                    print("\n" + "=" * 80)
+                    print("RECEIVED FROM AI MODEL:")
+                    print("=" * 80)
+                    print(f"\n{response_text}\n")
+                    print("=" * 80)
+
                 # Parse and validate
                 acts = self._parse_response(response_text)
+
+                if self.verbose:
+                    print("\n" + "=" * 80)
+                    print("PARSED OUTLINE STRUCTURE:")
+                    print("=" * 80)
+                    for i, act in enumerate(acts):
+                        print(f"\nTop-level Act {i+1}: {act.title}")
+                        print(f"  Percentage: {act.percentage}")
+                        print(f"  get_total_percentage(): {act.get_total_percentage()}")
+                        if act.sub_acts:
+                            print(f"  Sub-acts ({len(act.sub_acts)}):")
+                            for sub in act.sub_acts:
+                                print(f"    - {sub.title}: {sub.percentage}")
+                    total = sum(act.get_total_percentage() for act in acts)
+                    print(f"\nTotal percentage (sum of get_total_percentage()): {total:.2%}")
+                    print("=" * 80)
 
                 # Create Outline object
                 outline = Outline(structure_type=self.structure_type, acts=acts)
@@ -290,6 +434,8 @@ Return the complete structure as valid JSON."""
                 # Validate the outline structure
                 errors = outline.validate()
                 if errors:
+                    if self.verbose:
+                        print(f"\n❌ VALIDATION ERRORS: {errors}")
                     raise OutlineGenerationError(f"Outline validation failed: {errors}")
 
                 return outline
@@ -297,17 +443,22 @@ Return the complete structure as valid JSON."""
             except Exception as e:
                 last_error = e
 
-                # Don't retry on validation errors (bad prompt/model)
-                if isinstance(e, OutlineGenerationError | ValueError):
-                    # Wait briefly before retry
-                    if attempt < self.max_retries - 1:
-                        wait_time = 2**attempt  # Exponential backoff
-                        time.sleep(wait_time)
-                    continue
+                # Capture error message for feedback to AI on retry
+                if isinstance(e, OutlineGenerationError):
+                    error_feedback = str(e)
+                elif isinstance(e, ValueError):
+                    error_feedback = f"ValueError: {e}"
+                else:
+                    error_feedback = f"Error: {e}"
 
-                # Retry on network/timeout errors
+                if self.verbose:
+                    print(f"\n⚠️  Attempt {attempt + 1} failed: {error_feedback}")
+
+                # Retry on validation errors or network/timeout errors
                 if attempt < self.max_retries - 1:
-                    wait_time = 2**attempt
+                    wait_time = 2**attempt  # Exponential backoff
+                    if self.verbose:
+                        print(f"   Retrying in {wait_time} seconds...\n")
                     time.sleep(wait_time)
                     continue
 

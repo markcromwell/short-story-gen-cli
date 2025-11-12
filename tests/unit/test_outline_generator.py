@@ -166,7 +166,7 @@ class TestOutlineGeneratorResponseParsing:
         """Test parsing invalid JSON."""
         generator = OutlineGenerator()
 
-        with pytest.raises(OutlineGenerationError, match="Invalid JSON"):
+        with pytest.raises(OutlineGenerationError, match="No valid JSON array or objects found"):
             generator._parse_response("{invalid json")
 
     def test_parse_response_missing_story_application(self):
@@ -233,7 +233,7 @@ class TestOutlineGeneratorResponseParsing:
             }
         )
 
-        with pytest.raises(OutlineGenerationError, match="Response must be a JSON array"):
+        with pytest.raises(OutlineGenerationError, match="Failed to parse acts"):
             generator._parse_response(response)
 
 

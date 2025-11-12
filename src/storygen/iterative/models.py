@@ -110,7 +110,7 @@ class Act:
     description: str  # Generic description of what happens in this act (template)
     story_application: str  # How this act applies to the specific story (AI-generated)
     percentage: float  # Percentage of total story length (0.0 to 1.0)
-    order: int  # Position within parent (0-indexed)
+    order: int = 0  # Position within parent (0-indexed, auto-assigned if not provided)
 
     # Recursive structure: either has sub-acts OR scenes, never both
     sub_acts: list["Act"] = field(default_factory=list)  # Non-terminal nodes
@@ -178,9 +178,16 @@ class Act:
         """Deserialize from dictionary."""
         data_copy = data.copy()
 
-        # Recursively deserialize sub_acts
+        # Recursively deserialize sub_acts and auto-assign order if not present
         if data_copy.get("sub_acts"):
-            data_copy["sub_acts"] = [cls.from_dict(act) for act in data_copy["sub_acts"]]
+            data_copy["sub_acts"] = [
+                cls.from_dict({**act, "order": i} if "order" not in act else act)
+                for i, act in enumerate(data_copy["sub_acts"])
+            ]
+
+        # Auto-assign order if not present (will use default 0)
+        if "order" not in data_copy:
+            data_copy["order"] = 0
 
         return cls(**data_copy)
 

@@ -530,7 +530,11 @@ def outline(
 
         # Generate outline
         generator = OutlineGenerator(
-            model=model, structure_type=structure, max_retries=retries, timeout=timeout
+            model=model,
+            structure_type=structure,
+            max_retries=retries,
+            timeout=timeout,
+            verbose=verbose,
         )
         story_outline = generator.generate(story_idea, characters, locations)
 
