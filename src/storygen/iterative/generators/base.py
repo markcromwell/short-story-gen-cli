@@ -146,6 +146,13 @@ class BaseGenerator(ABC, Generic[T]):
         Raises:
             GenerationError: If AI call fails
         """
+        # Debug logging
+        if self.verbose:
+            self.logger.debug(f"System prompt length: {len(system_prompt)} chars")
+            self.logger.debug(f"User prompt length: {len(user_prompt)} chars")
+            self.logger.debug(f"System prompt preview: {system_prompt[:200]}...")
+            self.logger.debug(f"User prompt preview: {user_prompt[:200]}...")
+
         response = litellm.completion(
             model=self.model,
             messages=[
@@ -163,6 +170,8 @@ class BaseGenerator(ABC, Generic[T]):
             raise GenerationError("Invalid response format from AI model")
 
         response_text = response.choices[0].message.content  # type: ignore[union-attr]
+        if self.verbose:
+            self.logger.debug(f"Response text: {response_text[:500] if response_text else 'NONE'}")
         if not response_text:
             raise GenerationError("Empty response from AI model")
 

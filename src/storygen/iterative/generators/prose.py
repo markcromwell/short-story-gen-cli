@@ -83,10 +83,10 @@ class ProseGenerator(BaseGenerator[Any]):  # type: ignore[type-arg]
         if writing_style is None:
             writing_style = self.infer_writing_style(story_idea.tone, story_idea.genres)
             if self.verbose:
-                print(f"📝 Inferred writing style: {writing_style}")
+                print(f"Inferred writing style: {writing_style}")
 
         if self.verbose:
-            print(f"\n🎬 Generating prose for {len(scene_sequels)} scene-sequels...")
+            print(f"\nGenerating prose for {len(scene_sequels)} scene-sequels...")
             print(f"   Model: {self.model}")
             print(f"   Temperature: {self.temperature}")
             print(f"   Context window: {self.context_window} previous scenes")
@@ -122,15 +122,15 @@ class ProseGenerator(BaseGenerator[Any]):  # type: ignore[type-arg]
             )
 
             if self.verbose:
-                print(f"   ✅ Generated: {ss.actual_word_count} words")
-                print(f"   📝 Summary: {ss.summary[:80]}...")
-                print(f"   🔑 Key points: {len(ss.key_points)}")
+                print(f"   Generated: {ss.actual_word_count} words")
+                print(f"   Summary: {ss.summary[:80]}...")
+                print(f"   Key points: {len(ss.key_points)}")
 
             # Save progress incrementally if output_path provided
             if output_path:
                 self._save_progress(scene_sequels, output_path)
                 if self.verbose:
-                    print(f"   💾 Progress saved to {output_path}")
+                    print(f"   Progress saved to {output_path}")
 
         if self.verbose:
             print(f"\n{'='*70}")
@@ -235,10 +235,13 @@ class ProseGenerator(BaseGenerator[Any]):  # type: ignore[type-arg]
 
             return (content, summary, key_points)
 
+        # Build prompts
+        system_prompt, user_prompt = self._build_prompt()
+
         # Use base class retry logic
         content, summary, key_points = self._generate_with_retry(
-            system_prompt="",  # Built in _build_prompt
-            user_prompt="",  # Built in _build_prompt
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
             parser=parse_and_validate,
             temperature=self.temperature,
             error_class=ProseGenerationError,
