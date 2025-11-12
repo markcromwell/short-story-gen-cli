@@ -98,8 +98,177 @@ class Location:
 
 
 @dataclass
+class Act:
+    """
+    Recursive act structure for story outlines.
+
+    Can represent any level of story structure from high-level acts down to
+    individual scenes. Non-terminal acts have sub_acts, terminal acts have scenes.
+    """
+
+    title: str  # e.g., "Act 1: Setup", "Crossing the Threshold", "The Journey Begins"
+    description: str  # Generic description of what happens in this act (template)
+    story_application: str  # How this act applies to the specific story (AI-generated)
+    percentage: float  # Percentage of total story length (0.0 to 1.0)
+    order: int = 0  # Position within parent (0-indexed, auto-assigned if not provided)
+
+    # Recursive structure: either has sub-acts OR scenes, never both
+    sub_acts: list["Act"] = field(default_factory=list)  # Non-terminal nodes
+    scenes: list[str] = field(default_factory=list)  # Terminal: scene/sequel IDs
+
+    def is_terminal(self) -> bool:
+        """Check if this is a leaf act (has scenes, not sub-acts)."""
+        return len(self.sub_acts) == 0
+
+    def get_total_percentage(self) -> float:
+        """Calculate total percentage including all descendants."""
+        if self.is_terminal():
+            return self.percentage
+        return sum(act.get_total_percentage() for act in self.sub_acts)
+
+    def get_depth(self) -> int:
+        """Get the maximum depth of the tree from this node."""
+        if self.is_terminal():
+            return 1
+        return 1 + max((act.get_depth() for act in self.sub_acts), default=0)
+
+    def validate(self) -> list[str]:
+        """
+        Validate act structure and return list of errors.
+
+        Returns:
+            List of error messages (empty if valid)
+        """
+        errors = []
+
+        # Check percentage is valid
+        if not 0.0 <= self.percentage <= 1.0:
+            errors.append(f"Act '{self.title}': percentage {self.percentage} not in range [0, 1]")
+
+        # Check mutually exclusive: can't have both sub_acts and scenes
+        if len(self.sub_acts) > 0 and len(self.scenes) > 0:
+            errors.append(
+                f"Act '{self.title}': cannot have both sub_acts and scenes (must be one or the other)"
+            )
+
+        # If non-terminal, validate sub-acts sum to parent percentage
+        if not self.is_terminal():
+            if len(self.sub_acts) == 0:
+                errors.append(f"Act '{self.title}': non-terminal act must have sub_acts")
+
+            sub_total = sum(act.percentage for act in self.sub_acts)
+            if abs(sub_total - self.percentage) > 0.01:  # Allow small floating point error
+                errors.append(
+                    f"Act '{self.title}': sub-acts total {sub_total:.2%} "
+                    f"but parent is {self.percentage:.2%}"
+                )
+
+            # Recursively validate children
+            for sub_act in self.sub_acts:
+                errors.extend(sub_act.validate())
+
+        return errors
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Act":
+        """Deserialize from dictionary."""
+        data_copy = data.copy()
+
+        # Recursively deserialize sub_acts and auto-assign order if not present
+        if data_copy.get("sub_acts"):
+            data_copy["sub_acts"] = [
+                cls.from_dict({**act, "order": i} if "order" not in act else act)
+                for i, act in enumerate(data_copy["sub_acts"])
+            ]
+
+        # Auto-assign order if not present (will use default 0)
+        if "order" not in data_copy:
+            data_copy["order"] = 0
+
+        return cls(**data_copy)
+
+
+@dataclass
 class Outline:
-    """A 3-act story outline with 7 key plot points."""
+    """
+    Story outline with recursive act structure.
+
+    Supports multiple structure types (three-act, hero's journey, fichtean, custom)
+    with flexible hierarchical organization.
+    """
+
+    structure_type: str  # "three-act", "hero-journey", "fichtean", "custom"
+    acts: list[Act]  # Top-level acts
+
+    def validate(self) -> list[str]:
+        """
+        Validate outline structure.
+
+        Returns:
+            List of error messages (empty if valid)
+        """
+        errors = []
+
+        # Check acts exist
+        if not self.acts:
+            errors.append("Outline must have at least one act")
+            return errors
+
+        # Validate total percentage sums to ~100%
+        total = sum(act.get_total_percentage() for act in self.acts)
+        if abs(total - 1.0) > 0.01:
+            errors.append(f"Acts total {total:.2%} but should be 100%")
+
+        # Validate each act
+        for act in self.acts:
+            errors.extend(act.validate())
+
+        return errors
+
+    def get_all_terminal_acts(self) -> list[Act]:
+        """Get all leaf acts (those that will contain scenes)."""
+        terminals = []
+
+        def collect_terminals(act: Act):
+            if act.is_terminal():
+                terminals.append(act)
+            else:
+                for sub_act in act.sub_acts:
+                    collect_terminals(sub_act)
+
+        for act in self.acts:
+            collect_terminals(act)
+
+        return terminals
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "Outline":
+        """Deserialize from dictionary."""
+        data_copy = data.copy()
+
+        # Deserialize acts
+        if data_copy.get("acts"):
+            data_copy["acts"] = [Act.from_dict(act) for act in data_copy["acts"]]
+
+        return cls(**data_copy)
+
+
+@dataclass
+class OutlineLegacy:
+    """
+    DEPRECATED: Legacy 3-act outline with 7 fixed plot points.
+
+    Use the new recursive Outline/Act structure instead.
+    Kept for backward compatibility with existing code.
+    """
 
     # Act 1: Setup (25%)
     act1_setup: str  # Introduce protagonist, world, and status quo
@@ -119,7 +288,7 @@ class Outline:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Outline":
+    def from_dict(cls, data: dict[str, Any]) -> "OutlineLegacy":
         """Deserialize from dictionary."""
         return cls(**data)
 

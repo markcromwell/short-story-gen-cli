@@ -1,0 +1,116 @@
+{
+  "structure_type": "three-act",
+  "acts": [
+    {
+      "title": "Act 1: Setup",
+      "description": "Introduce the protagonist in their ordinary world. Establish the status quo, their wants/needs, relationships, and the story world. Show what's at stake.",
+      "story_application": "Detective Elara Vance uses her mind-reading ability to solve a routine case at the precinct, hearing suspects' thoughts while feeling burdened by the constant mental noise, establishing her as a legend yet isolated. Her strained relationship with estranged partner Marcus Reed and interactions with a vengeful witness highlight her flaw of trusting others too easily. She wakes in a rain-slicked alley to find her own lifeless body, realizing her power has catastrophically failed and the city's mental landscape has gone silent, shattering her reality.",
+      "percentage": 0.25,
+      "order": 0,
+      "sub_acts": [
+        {
+          "title": "Opening Image",
+          "description": "The protagonist's life before the adventure begins. Shows who they are and what's missing.",
+          "story_application": "Elara solves a petty theft case at the precinct's Echo Chamber, effortlessly hearing the suspect's guilt while overwhelmed by the mental cacophony, establishing her legendary ability and isolation. Her interaction with a skeptical Marcus Reed (who resents her power) reveals her flaw of trusting others implicitly despite the burden.",
+          "percentage": 0.05,
+          "order": 0,
+          "sub_acts": [],
+          "scenes": []
+        },
+        {
+          "title": "Setup & Theme Stated",
+          "description": "Establish the world, supporting characters, and hint at the story's theme or moral question.",
+          "story_application": "Elara's tense dinner with Dr. Aris Thorne (who questions her power's ethics) and a dismissive meeting with Silas Thorne (her neural research backer) establish the world's skepticism. Her casual trust in Silas' reassurances hints at the theme of perception vs. reality, foreshadowing her vulnerability to manipulation.",
+          "percentage": 0.1,
+          "order": 1,
+          "sub_acts": [],
+          "scenes": []
+        },
+        {
+          "title": "Inciting Incident",
+          "description": "The event that disrupts the status quo and sets the story in motion. The protagonist can't ignore this.",
+          "story_application": "Elara awakens in a rain-slicked alley, horrified to find her own body cold and lifeless while her mind-reading power catastrophically fails. The city's mental landscape goes silent, forcing her to confront the existential stakes: prove she's alive or fade from reality entirely.",
+          "percentage": 0.1,
+          "order": 2,
+          "sub_acts": [],
+          "scenes": []
+        }
+      ],
+      "scenes": []
+    },
+    {
+      "title": "Act 2: Confrontation",
+      "description": "The protagonist pursues their goal but faces escalating obstacles. Complications arise and stakes increase. Tests and trials reveal character.",
+      "story_application": "Elara navigates her power's failure while investigating her murder, confronting fragmented memories and unreliable allies. Her trust in others becomes her greatest weakness as she realizes her killer exploited her ability to orchestrate her death, forcing her to question reality itself.",
+      "percentage": 0.5,
+      "order": 1,
+      "sub_acts": [
+        {
+          "title": "Rising Action",
+          "description": "The protagonist commits to their goal and enters a new world/situation. Faces initial obstacles and learns new skills.",
+          "story_application": "Elara retreats to her Silent Apartment to process her murder, discovering her power's absence amplifies her isolation. She visits the Precinct's Echo Chamber to hear residual thoughts of Marcus and the vengeful witness, but her inability to interpret fragmented mental echoes hinders her investigation.",
+          "percentage": 0.2,
+          "order": 0,
+          "sub_acts": [],
+          "scenes": []
+        },
+        {
+          "title": "Midpoint",
+          "description": "A major revelation, victory, or defeat that changes what the protagonist believes or wants. Raises the stakes significantly.",
+          "story_application": "At the Abandoned Lighthouse (her betrayal site), Elara confronts Dr. Aris Thorne, who reveals Silas exploited her mind-reading to set up her murder. This shatters her trust, revealing her killer is Silas—someone she trusted implicitly—and elevates the stakes to existential: she might already be dead.",
+          "percentage": 0.1,
+          "order": 1,
+          "sub_acts": [],
+          "scenes": []
+        },
+        {
+          "title": "Downward Spiral",
+          "description": "Consequences of the midpoint compound. Enemies close in, allies are tested, and the protagonist's flaws cause problems.",
+          "story_application": "Elara's paranoia intensifies at the City's Silent Market where she encounters the shadowy figure who knows her darkest secret. Marcus dismisses her as a hallucination, and Silas manipulates Dr. Aris to feed her false information, exploiting her flaw of trusting others to deepen her isolation and power flicker erratically.",
+          "percentage": 0.15,
+          "order": 2,
+          "sub_acts": [],
+          "scenes": []
+        },
+        {
+          "title": "Crisis",
+          "description": "All seems lost—the darkest moment. The protagonist faces their greatest challenge or failure. Forces a crucial decision.",
+          "story_application": "Silas corners Elara at the Abandoned Lighthouse, revealing he's been manipulating her 'ghost' state all along. She faces the horrifying truth: her mind might be trapped in an illusion, and she's already dead. She must decide whether to trust her fractured perceptions or accept her fading reality.",
+          "percentage": 0.05,
+          "order": 3,
+          "sub_acts": [],
+          "scenes": []
+        }
+      ],
+      "scenes": []
+    },
+    {
+      "title": "Act 3: Resolution",
+      "description": "The final confrontation and its aftermath. The protagonist applies what they've learned. Resolve the main conflict and show the new status quo.",
+      "story_application": "Elara confronts Silas using her understanding of her own fragmented memories, proving she's alive by creating a mental connection Silas couldn't exploit. She exposes his crimes, clears Marcus's name, and rebuilds her relationship with her power on her own terms.",
+      "percentage": 0.25,
+      "order": 2,
+      "sub_acts": [
+        {
+          "title": "Climax",
+          "description": "The final confrontation with the antagonist or challenge. High tension, decisive action, all skills and lessons applied.",
+          "story_application": "In the Abandoned Lighthouse, Elara uses her knowledge of Silas's manipulation tactics to outwit him, demonstrating her power by 'hearing' Silas's hidden guilt through residual mental echoes—proving she's alive and exposing his crimes to Marcus and Dr. Aris.",
+          "percentage": 0.15,
+          "order": 0,
+          "sub_acts": [],
+          "scenes": []
+        },
+        {
+          "title": "Resolution & New World",
+          "description": "The aftermath. Show how the protagonist and world have changed. Tie up loose ends and hint at the future.",
+          "story_application": "Silas is arrested, Marcus clears his name, and Elara rebuilds her trust in her power by controlling it without relying on others' thoughts. The city's mental landscape returns to a quiet hum, symbolizing her new equilibrium: she's no longer a legend defined by her ability, but a detective who owns her truth.",
+          "percentage": 0.1,
+          "order": 1,
+          "sub_acts": [],
+          "scenes": []
+        }
+      ],
+      "scenes": []
+    }
+  ]
+}

@@ -12,7 +12,8 @@ from storygen.iterative.generators.character import CharacterGenerator
 from storygen.iterative.generators.idea import IdeaGenerator
 from storygen.iterative.generators.location import LocationGenerator
 from storygen.iterative.generators.outline import OutlineGenerator
-from storygen.iterative.models import Character, Location, StoryIdea
+from storygen.iterative.models import Act, Character, Location, StoryIdea
+from storygen.iterative.outline_templates import list_available_structures
 
 # Load environment variables (for API keys)
 load_dotenv()
@@ -348,6 +349,60 @@ def locations(
         raise click.Abort()
 
 
+def _print_act_tree(act: Act, indent: int = 0, is_last: bool = True, prefix: str = ""):
+    """
+    Recursively print act tree with indentation.
+
+    Args:
+        act: The act to print
+        indent: Current indentation level
+        is_last: Whether this is the last sibling
+        prefix: Accumulated prefix for tree lines
+    """
+    # Determine tree characters
+    if indent == 0:
+        connector = ""
+        new_prefix = ""
+    else:
+        connector = "└── " if is_last else "├── "
+        new_prefix = prefix + ("    " if is_last else "│   ")
+
+    # Print act title with percentage
+    percentage_str = f"{int(act.percentage * 100)}%"
+    click.echo(f"{prefix}{connector}{act.title} ({percentage_str})")
+
+    # Print description (generic template description)
+    desc_indent = new_prefix if indent > 0 else "    "
+    if act.description:
+        click.echo(f"{desc_indent}📝 Template: {act.description}")
+
+    # Print story_application (AI-generated specific application)
+    if act.story_application:
+        # Wrap long text
+        story_lines = act.story_application.split("\n")
+        for line in story_lines:
+            click.echo(f"{desc_indent}💡 Story: {line}")
+
+    click.echo()  # Blank line after each act
+
+    # Recursively print sub-acts
+    if act.sub_acts:
+        for i, sub_act in enumerate(act.sub_acts):
+            _print_act_tree(sub_act, indent + 1, i == len(act.sub_acts) - 1, new_prefix)
+
+
+def _print_outline_tree(outline):
+    """Print an outline in a tree structure to the console."""
+    click.echo("\n" + "=" * 70)
+    click.echo(f"📝 STORY OUTLINE: {outline.structure_type.upper()}")
+    click.echo("=" * 70 + "\n")
+
+    for i, act in enumerate(outline.acts):
+        _print_act_tree(act, indent=0, is_last=i == len(outline.acts) - 1)
+
+    click.echo("=" * 70 + "\n")
+
+
 @cli.command()
 @click.option(
     "--idea-file",
@@ -366,6 +421,12 @@ def locations(
     "-l",
     required=True,
     help="Path to locations JSON file",
+)
+@click.option(
+    "--structure",
+    "-s",
+    default="three-act",
+    help="Outline structure type: three-act, hero-journey, fichtean (default: three-act)",
 )
 @click.option(
     "--model",
@@ -398,6 +459,7 @@ def outline(
     idea_file: str,
     characters_file: str,
     locations_file: str,
+    structure: str,
     model: str,
     output: str | None,
     retries: int,
@@ -405,23 +467,33 @@ def outline(
     verbose: bool,
 ):
     """
-    Generate a 3-act story outline with 7 key plot points.
+    Generate a story outline with flexible structure types.
 
     Takes a story idea, characters, and locations to create a structured
-    outline with:
-    - Act 1: Setup and Inciting Incident
-    - Act 2: Rising Action, Midpoint, Crisis
-    - Act 3: Climax and Resolution
+    outline. Supports multiple templates:
+    - three-act: Traditional 3-act structure with 7 beats
+    - hero-journey: Hero's Journey with 12 stages
+    - fichtean: Fichtean Curve with 6 crisis-driven beats
 
-    The outline integrates characters and locations into a cohesive narrative arc.
+    The AI fills in story_application for each act based on your specific story.
 
     Examples:
         storygen-iter outline -i idea.json -c chars.json -l locs.json
+        storygen-iter outline -i idea.json -c chars.json -l locs.json --structure hero-journey
         storygen-iter outline -i idea.json -c chars.json -l locs.json --model ollama/qwen3:30b
-        storygen-iter outline -i idea.json -c chars.json -l locs.json -o outline.json
-        storygen-iter outline -i idea.json -c chars.json -l locs.json --timeout 300 -v
+        storygen-iter outline -i idea.json -c chars.json -l locs.json -o outline.json -v
     """
     try:
+        # Validate structure type
+        available = list_available_structures()
+        if structure not in available:
+            click.echo(
+                f"❌ Error: Unknown structure type '{structure}'. "
+                f"Available: {', '.join(available)}",
+                err=True,
+            )
+            raise click.Abort()
+
         # Load story idea
         if verbose:
             click.echo(f"📖 Loading story idea from {idea_file}...", err=True)
@@ -454,14 +526,20 @@ def outline(
 
         if verbose:
             click.echo(f"✅ Loaded {len(locations)} locations", err=True)
-            click.echo(f"📝 Generating 3-act outline with {model}...", err=True)
+            click.echo(f"📝 Generating {structure} outline with {model}...", err=True)
 
         # Generate outline
-        generator = OutlineGenerator(model=model, max_retries=retries, timeout=timeout)
+        generator = OutlineGenerator(
+            model=model,
+            structure_type=structure,
+            max_retries=retries,
+            timeout=timeout,
+            verbose=verbose,
+        )
         story_outline = generator.generate(story_idea, characters, locations)
 
         if verbose:
-            click.echo("✅ Generated outline with 7 plot points!", err=True)
+            click.echo(f"✅ Generated {structure} outline!", err=True)
 
         # Output results
         if output:
@@ -475,35 +553,8 @@ def outline(
 
             click.echo(f"💾 Saved to: {output}")
         else:
-            # Pretty print to console
-            click.echo("\n" + "=" * 70)
-            click.echo("📝 3-ACT STORY OUTLINE")
-            click.echo("=" * 70 + "\n")
-
-            click.echo("ACT 1: SETUP (25%)")
-            click.echo("-" * 70)
-            click.echo(f"Setup: {story_outline.act1_setup}")
-            click.echo()
-            click.echo(f"Inciting Incident: {story_outline.act1_inciting_incident}")
-            click.echo()
-
-            click.echo("ACT 2: CONFRONTATION (50%)")
-            click.echo("-" * 70)
-            click.echo(f"Rising Action: {story_outline.act2_rising_action}")
-            click.echo()
-            click.echo(f"Midpoint: {story_outline.act2_midpoint}")
-            click.echo()
-            click.echo(f"Crisis: {story_outline.act2_crisis}")
-            click.echo()
-
-            click.echo("ACT 3: RESOLUTION (25%)")
-            click.echo("-" * 70)
-            click.echo(f"Climax: {story_outline.act3_climax}")
-            click.echo()
-            click.echo(f"Resolution: {story_outline.act3_resolution}")
-            click.echo()
-
-            click.echo("=" * 70 + "\n")
+            # Pretty print to console with tree structure
+            _print_outline_tree(story_outline)
 
     except FileNotFoundError as e:
         click.echo(f"❌ Error: File not found: {e.filename}", err=True)
