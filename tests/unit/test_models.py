@@ -342,11 +342,14 @@ class TestSceneSequel:
         ss = SceneSequel(
             id="ss_001",
             type="scene",
-            act=1,
+            source_act="act_1",
             pov_character="Maya",
             location="The Precinct",
+            start_hours=0.0,
+            duration_hours=1.0,
             goal="Find the killer",
-            outcome="Discovers first clue",
+            conflict="Evidence is missing",
+            disaster="Discovers first clue",
         )
         assert ss.id == "ss_001"
         assert ss.type == "scene"
@@ -356,11 +359,12 @@ class TestSceneSequel:
         ss = SceneSequel(
             id="ss_001",
             type="scene",
-            act=1,
+            source_act="act_1",
             pov_character="Maya",
             location="The Precinct",
             goal="Find the killer",
-            outcome="Discovers first clue",
+            conflict="Evidence is missing",
+            disaster="Discovers first clue",
             start_hours=0.0,
             duration_hours=0.5,
         )
@@ -375,11 +379,12 @@ class TestSceneSequel:
         ss1 = SceneSequel(
             id="ss_001",
             type="scene",
-            act=1,
+            source_act="act_1",
             pov_character="Maya",
             location="Precinct",
             goal="Test",
-            outcome="Test",
+            conflict="Test conflict",
+            disaster="Test disaster",
             start_hours=2.0,
             duration_hours=0.5,
         )
@@ -389,11 +394,12 @@ class TestSceneSequel:
         ss2 = SceneSequel(
             id="ss_002",
             type="scene",
-            act=1,
+            source_act="act_1",
             pov_character="Maya",
             location="Precinct",
             goal="Test",
-            outcome="Test",
+            conflict="Test conflict",
+            disaster="Test disaster",
             start_hours=7.0,
             duration_hours=0.5,
         )
@@ -403,11 +409,12 @@ class TestSceneSequel:
         ss3 = SceneSequel(
             id="ss_003",
             type="scene",
-            act=1,
+            source_act="act_1",
             pov_character="Maya",
             location="Precinct",
             goal="Test",
-            outcome="Test",
+            conflict="Test conflict",
+            disaster="Test disaster",
             start_hours=13.0,
             duration_hours=0.5,
         )
@@ -417,11 +424,12 @@ class TestSceneSequel:
         ss4 = SceneSequel(
             id="ss_004",
             type="scene",
-            act=1,
+            source_act="act_1",
             pov_character="Maya",
             location="Precinct",
             goal="Test",
-            outcome="Test",
+            conflict="Test conflict",
+            disaster="Test disaster",
             start_hours=18.0,
             duration_hours=0.5,
         )
@@ -433,11 +441,12 @@ class TestSceneSequel:
         ss1 = SceneSequel(
             id="ss_001",
             type="scene",
-            act=1,
+            source_act="act_1",
             pov_character="Maya",
             location="Precinct",
             goal="Test",
-            outcome="Test",
+            conflict="Test conflict",
+            disaster="Test disaster",
             start_hours=12.0,
             duration_hours=0.5,
         )
@@ -447,11 +456,12 @@ class TestSceneSequel:
         ss2 = SceneSequel(
             id="ss_002",
             type="scene",
-            act=1,
+            source_act="act_1",
             pov_character="Maya",
             location="Precinct",
             goal="Test",
-            outcome="Test",
+            conflict="Test conflict",
+            disaster="Test disaster",
             start_hours=26.0,
             duration_hours=0.5,
         )
@@ -461,11 +471,12 @@ class TestSceneSequel:
         ss3 = SceneSequel(
             id="ss_003",
             type="scene",
-            act=1,
+            source_act="act_1",
             pov_character="Maya",
             location="Precinct",
             goal="Test",
-            outcome="Test",
+            conflict="Test conflict",
+            disaster="Test disaster",
             start_hours=50.0,
             duration_hours=0.5,
         )
@@ -476,11 +487,12 @@ class TestSceneSequel:
         ss1 = SceneSequel(
             id="ss_001",
             type="scene",
-            act=1,
+            source_act="act_1",
             pov_character="Maya",
             location="Precinct",
             goal="Test",
-            outcome="Test",
+            conflict="Test conflict",
+            disaster="Test disaster",
             start_hours=0.0,
             duration_hours=0.5,
         )
@@ -488,11 +500,12 @@ class TestSceneSequel:
         ss2 = SceneSequel(
             id="ss_002",
             type="scene",
-            act=1,
+            source_act="act_1",
             pov_character="Maya",
             location="Precinct",
             goal="Test",
-            outcome="Test",
+            conflict="Test conflict",
+            disaster="Test disaster",
             start_hours=1.0,
             duration_hours=0.5,
         )
@@ -505,11 +518,12 @@ class TestSceneSequel:
         ss = SceneSequel(
             id="ss_001",
             type="scene",
-            act=1,
+            source_act="act_1",
             pov_character="Maya",
             location="Precinct",
             goal="Test",
-            outcome="Test",
+            conflict="Test conflict",
+            disaster="Test disaster",
             start_hours=14.5,
             duration_hours=1.0,
         )
@@ -520,58 +534,63 @@ class TestSceneSequel:
         assert "14.5h" in summary
         assert "15.5h" in summary
 
-    def test_chapter_fields(self):
-        """Test chapter-related fields."""
-        ss = SceneSequel(
+    def test_scene_structure(self):
+        """Test scene has required goal/conflict/disaster."""
+        scene = SceneSequel(
             id="ss_001",
             type="scene",
-            act=1,
+            source_act="act_1",
             pov_character="Maya",
             location="Precinct",
-            goal="Test",
-            outcome="Test",
-            chapter=1,
-            chapter_title="The Discovery",
-            chapter_start=True,
+            goal="Find the killer",
+            conflict="Evidence is missing",
+            disaster="Witness is murdered",
+            start_hours=8.0,
+            duration_hours=2.0,
         )
 
-        assert ss.chapter == 1
-        assert ss.chapter_title == "The Discovery"
-        assert ss.chapter_start is True
-        assert ss.chapter_end is False
+        assert scene.goal == "Find the killer"
+        assert scene.conflict == "Evidence is missing"
+        assert scene.disaster == "Witness is murdered"
+        assert scene.reaction is None
+        assert scene.dilemma is None
+        assert scene.decision is None
 
-    def test_pacing_fields(self):
-        """Test pacing-related fields."""
-        ss = SceneSequel(
-            id="ss_001",
-            type="scene",
-            act=1,
+    def test_sequel_structure(self):
+        """Test sequel has reaction/dilemma/decision."""
+        sequel = SceneSequel(
+            id="ss_002",
+            type="sequel",
+            source_act="act_1",
             pov_character="Maya",
-            location="Precinct",
-            goal="Test",
-            outcome="Test",
-            pacing="very_fast",
-            target_word_count=400,
+            location="Maya's Apartment",
+            reaction="Maya feels defeated",
+            dilemma="Give up or push forward?",
+            decision="She decides to dig deeper",
+            start_hours=10.0,
+            duration_hours=0.5,
         )
 
-        assert ss.pacing == "very_fast"
-        assert ss.target_word_count == 400
+        assert sequel.reaction == "Maya feels defeated"
+        assert sequel.dilemma == "Give up or push forward?"
+        assert sequel.decision == "She decides to dig deeper"
+        assert sequel.goal is None
+        assert sequel.conflict is None
+        assert sequel.disaster is None
 
     def test_json_roundtrip(self):
         """Test SceneSequel survives JSON serialization."""
         original = SceneSequel(
             id="ss_001",
             type="scene",
-            act=1,
+            source_act="act_1",
             pov_character="Maya",
             location="The Precinct",
             goal="Find the killer",
-            outcome="Discovers first clue",
             conflict="Witness is uncooperative",
+            disaster="Discovers first clue",
             start_hours=14.5,
             duration_hours=1.0,
-            chapter=1,
-            pacing="fast",
         )
 
         json_str = json.dumps(original.to_dict())
@@ -579,6 +598,9 @@ class TestSceneSequel:
 
         # Compare key fields (calculated fields will be regenerated)
         assert restored.id == original.id
+        assert restored.source_act == original.source_act
+        assert restored.pov_character == original.pov_character
+        assert restored.location == original.location
         assert restored.start_hours == original.start_hours
         assert restored.duration_hours == original.duration_hours
         assert restored.end_hours == original.end_hours
@@ -780,11 +802,12 @@ class TestWorkingDoc:
             SceneSequel(
                 id="ss_001",
                 type="scene",
-                act=1,
+                source_act="act_1",
                 pov_character="Maya",
                 location="Precinct",
                 goal="Find clues",
-                outcome="Discovers evidence",
+                conflict="Evidence is scattered",
+                disaster="Discovers evidence",
                 start_hours=8.0,
                 duration_hours=1.0,
             )

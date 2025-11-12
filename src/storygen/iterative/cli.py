@@ -12,7 +12,7 @@ from storygen.iterative.generators.character import CharacterGenerator
 from storygen.iterative.generators.idea import IdeaGenerator
 from storygen.iterative.generators.location import LocationGenerator
 from storygen.iterative.generators.outline import OutlineGenerator
-from storygen.iterative.models import Act, Character, Location, StoryIdea
+from storygen.iterative.models import Act, Character, Location, Outline, StoryIdea
 from storygen.iterative.outline_templates import list_available_structures
 
 # Load environment variables (for API keys)
@@ -555,6 +555,200 @@ def outline(
         else:
             # Pretty print to console with tree structure
             _print_outline_tree(story_outline)
+
+    except FileNotFoundError as e:
+        click.echo(f"❌ Error: File not found: {e.filename}", err=True)
+        raise click.Abort()
+    except json.JSONDecodeError as e:
+        click.echo(f"❌ Error: Invalid JSON: {e}", err=True)
+        raise click.Abort()
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        if verbose:
+            import traceback
+
+            traceback.print_exc()
+        raise click.Abort()
+
+
+@cli.command()
+@click.option(
+    "-i",
+    "--idea",
+    "idea_file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to story idea JSON file",
+)
+@click.option(
+    "-c",
+    "--characters",
+    "characters_file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to characters JSON file",
+)
+@click.option(
+    "-l",
+    "--locations",
+    "locations_file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to locations JSON file",
+)
+@click.option(
+    "--outline",
+    "outline_file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to outline JSON file",
+)
+@click.option(
+    "--model",
+    default="gpt-4",
+    help='AI model to use (default: gpt-4). Examples: "gpt-4", "ollama/qwen3:30b"',
+)
+@click.option(
+    "--words",
+    "target_words",
+    type=int,
+    default=2000,
+    help="Target word count for the story (default: 2000)",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(),
+    help="Output file path (if not specified, prints to console)",
+)
+@click.option(
+    "--retries",
+    type=int,
+    default=3,
+    help="Maximum retry attempts (default: 3)",
+)
+@click.option(
+    "--timeout",
+    type=int,
+    default=600,
+    help="Timeout in seconds for AI calls (default: 600)",
+)
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Enable verbose output (show prompts and AI responses)",
+)
+def breakdown(
+    idea_file: str,
+    characters_file: str,
+    locations_file: str,
+    outline_file: str,
+    model: str,
+    target_words: int,
+    output: str | None,
+    retries: int,
+    timeout: int,
+    verbose: bool,
+):
+    """Generate scene-sequel breakdown from story outline.
+
+    Expands each leaf-level act in the outline into one or more scene-sequel pairs
+    with proper goal/conflict/disaster structure (for scenes) and optional
+    reaction/dilemma/decision (for sequels).
+
+    Example:
+        python -m storygen.iterative.cli breakdown \\
+            -i idea.json -c characters.json -l locations.json \\
+            --outline outline.json --model ollama/qwen3:30b \\
+            --words 2000 -o breakdown.json -v
+    """
+    try:
+        # Load input files
+        click.echo(f"📖 Loading story idea from {idea_file}...", err=True)
+        with open(idea_file, encoding="utf-8") as f:
+            idea_data = json.load(f)
+        story_idea = StoryIdea.from_dict(idea_data)
+        click.echo(f"✅ Loaded idea: {story_idea.one_sentence[:60]}...", err=True)
+
+        click.echo(f"👥 Loading characters from {characters_file}...", err=True)
+        with open(characters_file, encoding="utf-8") as f:
+            chars_data = json.load(f)
+        # Support both array and object formats
+        if isinstance(chars_data, list):
+            characters = [Character.from_dict(c) for c in chars_data]
+        else:
+            characters = [Character.from_dict(c) for c in chars_data["characters"]]
+        click.echo(f"✅ Loaded {len(characters)} characters", err=True)
+
+        click.echo(f"🗺️  Loading locations from {locations_file}...", err=True)
+        with open(locations_file, encoding="utf-8") as f:
+            locs_data = json.load(f)
+        # Support both array and object formats
+        if isinstance(locs_data, list):
+            locations = [Location.from_dict(loc) for loc in locs_data]
+        else:
+            locations = [Location.from_dict(loc) for loc in locs_data["locations"]]
+        click.echo(f"✅ Loaded {len(locations)} locations", err=True)
+
+        click.echo(f"📋 Loading outline from {outline_file}...", err=True)
+        with open(outline_file, encoding="utf-8") as f:
+            outline_data = json.load(f)
+        outline = Outline.from_dict(outline_data)
+        click.echo(f"✅ Loaded outline with {len(outline.acts)} acts", err=True)
+
+        # Generate breakdown
+        click.echo(f"📝 Generating scene-sequel breakdown with {model}...", err=True)
+
+        from storygen.iterative.generators.breakdown import BreakdownGenerator
+
+        generator = BreakdownGenerator(
+            model=model,
+            max_retries=retries,
+            timeout=timeout,
+            verbose=verbose,
+        )
+
+        scene_sequels = generator.generate(
+            story_idea=story_idea,
+            characters=characters,
+            locations=locations,
+            outline=outline,
+            target_words=target_words,
+        )
+
+        if verbose:
+            click.echo(f"✅ Generated {len(scene_sequels)} scene-sequels!", err=True)
+
+        # Output results
+        if output:
+            # Save to JSON file
+            breakdown_dict = {
+                "scene_sequels": [ss.to_dict() for ss in scene_sequels],
+                "total_target_words": target_words,
+                "story_duration_hours": scene_sequels[-1].end_hours if scene_sequels else 0.0,
+            }
+            output_path = Path(output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(breakdown_dict, f, indent=2, ensure_ascii=False)
+
+            click.echo(f"💾 Saved to: {output}")
+        else:
+            # Pretty print to console
+            click.echo("\n📝 Scene-Sequel Breakdown:\n")
+            for ss in scene_sequels:
+                click.echo(f"{ss.id} ({ss.type}): {ss.pov_character} @ {ss.location}")
+                click.echo(f"  ⏰ {ss.get_time_summary()}")
+                click.echo(f"  🎯 Target words: {ss.target_word_count}")
+                if ss.type == "scene":
+                    click.echo(f"  Goal: {ss.goal}")
+                    click.echo(f"  Disaster: {ss.disaster}")
+                else:
+                    if ss.decision:
+                        click.echo(f"  Decision: {ss.decision}")
+                click.echo()
 
     except FileNotFoundError as e:
         click.echo(f"❌ Error: File not found: {e.filename}", err=True)
