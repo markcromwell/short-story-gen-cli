@@ -344,13 +344,14 @@ class EpubFormatter:
             title = title_override
         else:
             if self.verbose:
-                print("📝 Generating title with AI...")
+                print("📝 Generating title with AI (analyzing complete story)...")
             title = self.title_generator.generate(
                 raw_idea=story_idea.raw_idea,
                 one_sentence=story_idea.one_sentence,
                 genres=story_idea.genres,
                 themes=story_idea.themes,
                 tone=story_idea.tone,
+                scene_sequels=scene_sequels,
             )
             if self.verbose:
                 print(f"✨ Generated title: {title}")

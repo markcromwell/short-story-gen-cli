@@ -46,6 +46,7 @@ class TitleGenerator:
         genres: list[str],
         themes: list[str],
         tone: str,
+        scene_sequels: list | None = None,
     ) -> str:
         """
         Generate a compelling title for the story.
@@ -56,12 +57,15 @@ class TitleGenerator:
             genres: List of genres
             themes: List of themes
             tone: Story tone
+            scene_sequels: Optional list of SceneSequel objects with actual story content
 
         Returns:
             Generated title (2-5 words, punchy and memorable)
         """
         if self.verbose:
             print(f"📖 Generating title with {self.model}...")
+            if scene_sequels:
+                print(f"   Analyzing {len(scene_sequels)} scenes from the complete story...")
 
         for attempt in range(1, self.max_retries + 1):
             try:
@@ -69,7 +73,7 @@ class TitleGenerator:
                     print(f"   Retry {attempt}/{self.max_retries}...")
 
                 title = self._generate_with_retry(
-                    raw_idea, one_sentence, genres, themes, tone, attempt
+                    raw_idea, one_sentence, genres, themes, tone, scene_sequels, attempt
                 )
 
                 if self.verbose:
@@ -96,11 +100,14 @@ class TitleGenerator:
         genres: list[str],
         themes: list[str],
         tone: str,
+        scene_sequels: list | None,
         attempt: int,
     ) -> str:
         """Generate title with AI."""
         system_prompt = self._build_system_prompt()
-        user_prompt = self._build_user_prompt(raw_idea, one_sentence, genres, themes, tone)
+        user_prompt = self._build_user_prompt(
+            raw_idea, one_sentence, genres, themes, tone, scene_sequels
+        )
 
         response = litellm.completion(
             model=self.model,
@@ -141,12 +148,13 @@ Output ONLY the title, nothing else. No quotes, no explanation, no alternate opt
         genres: list[str],
         themes: list[str],
         tone: str,
+        scene_sequels: list | None,
     ) -> str:
         """Build user prompt with story details."""
         genres_str = ", ".join(genres)
         themes_str = ", ".join(themes)
 
-        return f"""Generate a compelling title for this story:
+        prompt = f"""Generate a compelling title for this story:
 
 **Original Concept:** {raw_idea}
 
@@ -157,10 +165,103 @@ Output ONLY the title, nothing else. No quotes, no explanation, no alternate opt
 **Themes:** {themes_str}
 
 **Tone:** {tone}
+"""
 
+        # If we have the actual story content, analyze it
+        if scene_sequels:
+            story_analysis = self._analyze_story_content(scene_sequels)
+            prompt += f"""
+**STORY ANALYSIS (from complete manuscript):**
+
+{story_analysis}
+
+Based on the ACTUAL STORY above (not just the concept), generate a title that reflects what the story truly becomes - its emotional core, character arcs, and ultimate meaning. The title should resonate with readers who finish the story.
+"""
+        else:
+            prompt += """
 Create a title that captures the essence of this story. Consider the genre conventions and thematic elements. The title should be intriguing and make readers want to know more.
+"""
 
-Output only the title, nothing else."""
+        prompt += "\nOutput only the title, nothing else."
+        return prompt
+
+    def _analyze_story_content(self, scene_sequels: list) -> str:
+        """
+        Analyze actual story content to extract key elements for title generation.
+
+        Args:
+            scene_sequels: List of SceneSequel objects with prose content
+
+        Returns:
+            Formatted analysis of story content
+        """
+        if not scene_sequels:
+            return ""
+
+        # Get opening scene
+        opening = scene_sequels[0]
+        opening_summary = opening.summary if hasattr(opening, "summary") and opening.summary else ""
+
+        # Get climax/resolution (last 2-3 scenes)
+        climax_scenes = scene_sequels[-3:] if len(scene_sequels) >= 3 else scene_sequels[-2:]
+        climax_summaries = []
+        for scene in climax_scenes:
+            if hasattr(scene, "summary") and scene.summary:
+                climax_summaries.append(scene.summary)
+
+        # Get key character moments (scenes with decisions or disasters)
+        key_moments = []
+        for scene in scene_sequels:
+            if hasattr(scene, "disaster") and scene.disaster:
+                key_moments.append(f"Disaster: {scene.disaster}")
+            if hasattr(scene, "decision") and scene.decision:
+                key_moments.append(f"Decision: {scene.decision}")
+
+        # Limit key moments to most significant ones
+        key_moments = key_moments[:5]
+
+        # Get total word count and scene count
+        total_words = sum(getattr(scene, "actual_word_count", 0) for scene in scene_sequels)
+
+        # Build analysis
+        analysis = f"**Story Length:** {len(scene_sequels)} scenes, {total_words:,} words\n\n"
+
+        if opening_summary:
+            analysis += f"**Opening:** {opening_summary}\n\n"
+
+        if key_moments:
+            analysis += "**Key Turning Points:**\n"
+            for moment in key_moments:
+                analysis += f"- {moment}\n"
+            analysis += "\n"
+
+        if climax_summaries:
+            analysis += "**Climax/Resolution:**\n"
+            for summary in climax_summaries:
+                analysis += f"- {summary}\n"
+            analysis += "\n"
+
+        # Extract a sample of actual prose from opening and ending
+        opening_prose = ""
+        if hasattr(opening, "content") and opening.content:
+            # Get first paragraph
+            paragraphs = opening.content.split("\n\n")
+            opening_prose = paragraphs[0][:300] if paragraphs else opening.content[:300]
+
+        ending_prose = ""
+        last_scene = scene_sequels[-1]
+        if hasattr(last_scene, "content") and last_scene.content:
+            # Get last paragraph
+            paragraphs = last_scene.content.split("\n\n")
+            ending_prose = paragraphs[-1][:300] if paragraphs else last_scene.content[-300:]
+
+        if opening_prose:
+            analysis += f"**Opening Prose Sample:**\n{opening_prose}...\n\n"
+
+        if ending_prose:
+            analysis += f"**Ending Prose Sample:**\n{ending_prose}...\n\n"
+
+        return analysis
 
     def _parse_response(self, content: str) -> str:
         """Parse title from AI response."""
