@@ -101,6 +101,11 @@ Expanded: {story_idea.expanded}
 Genres: {', '.join(story_idea.genres)}
 Tone: {story_idea.tone}
 Themes: {', '.join(story_idea.themes)}
+Setting: {story_idea.setting}
+
+IMPORTANT: All locations must be consistent with the setting "{story_idea.setting}".
+Consider the time period, technology level, cultural context, and physical geography.
+Ensure location names and descriptions match the setting's era and place.
 
 Generate {min_locs}-{max_locs} key locations that fit this {story_type}'s world and scope."""
 

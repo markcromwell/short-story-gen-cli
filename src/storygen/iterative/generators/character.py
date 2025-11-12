@@ -166,6 +166,10 @@ Full premise:
 Genres: {', '.join(story_idea.genres)}
 Tone: {story_idea.tone}
 Themes: {', '.join(story_idea.themes)}
+Setting: {story_idea.setting}
+
+IMPORTANT: Generate characters with names appropriate to the setting "{story_idea.setting}".
+Consider the time period, culture, and location when choosing names and character details.
 
 Generate {min_chars}-{max_chars} characters appropriate for a {story_type}."""
 

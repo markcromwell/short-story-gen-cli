@@ -333,6 +333,14 @@ OUTPUT: Return the complete formatted response with all three sections."""
 {story_idea.one_sentence}
 Tone: {story_idea.tone}
 Themes: {', '.join(story_idea.themes)}
+Setting: {story_idea.setting}
+
+CRITICAL: Maintain setting consistency throughout the prose.
+The story takes place in "{story_idea.setting}".
+- Use period-appropriate language and references
+- Describe technology, clothing, architecture consistent with the setting
+- Ensure cultural norms and social behaviors match the time/place
+- Avoid anachronisms or out-of-setting details
 
 === POV CHARACTER ===
 {pov_char.name if pov_char else scene_sequel.pov_character}

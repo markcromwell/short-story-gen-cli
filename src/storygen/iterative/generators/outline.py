@@ -158,6 +158,15 @@ Full Description: {story_idea.expanded}
 Genres: {', '.join(story_idea.genres)}
 Tone: {story_idea.tone}
 Themes: {', '.join(story_idea.themes)}
+Setting: {story_idea.setting}
+
+IMPORTANT: Story takes place in "{story_idea.setting}".
+Consider setting constraints when planning plot:
+- Technology level and available tools
+- Cultural norms and social structures
+- Period-appropriate conflicts and solutions
+- Time/place-specific opportunities and limitations
+
 {char_context}
 {loc_context}
 
