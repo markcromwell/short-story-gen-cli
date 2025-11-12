@@ -357,7 +357,7 @@ class EpubFormatter:
         book.add_item(style_item)
 
         # Title page
-        title_page = self._create_title_page(book, title, story_idea)
+        title_page = self._create_title_page(book, title, story_idea, style_item)
         book.add_item(title_page)
 
         # Group scene-sequels by chapter
@@ -368,13 +368,13 @@ class EpubFormatter:
         for chapter_num, chapter_scenes in chapter_groups.items():
             chapter_break = next(b for b in chapter_breaks if b.chapter_number == chapter_num)
             chapter_item = self._create_chapter(
-                book, chapter_num, chapter_break.chapter_title, chapter_scenes
+                book, chapter_num, chapter_break.chapter_title, chapter_scenes, style_item
             )
             book.add_item(chapter_item)
             chapter_items.append(chapter_item)
 
         # Dramatis Personae
-        dramatis_personae = self._create_dramatis_personae(book, characters)
+        dramatis_personae = self._create_dramatis_personae(book, characters, style_item)
         if dramatis_personae:
             book.add_item(dramatis_personae)
 
@@ -446,6 +446,7 @@ class EpubFormatter:
         book: epub.EpubBook,
         title: str,
         story_idea: StoryIdea,
+        style_item: epub.EpubItem,
     ) -> epub.EpubHtml:
         """Create title page."""
         safe_title = html.escape(title)
@@ -465,6 +466,7 @@ class EpubFormatter:
   {f'<div class="summary">{safe_summary}</div>' if safe_summary else ''}
 </div>
 """
+        title_page.add_item(style_item)
         return title_page
 
     def _create_chapter(
@@ -473,6 +475,7 @@ class EpubFormatter:
         chapter_num: int,
         chapter_title: str | None,
         scene_sequels: list[SceneSequel],
+        style_item: epub.EpubItem,
     ) -> epub.EpubHtml:
         """Create chapter HTML."""
         chapter_label = (
@@ -510,6 +513,7 @@ class EpubFormatter:
                 at_chapter_start = False
 
         chapter.content = "\n".join(parts)
+        chapter.add_item(style_item)
         return chapter
 
     def _needs_scene_break(
@@ -554,6 +558,7 @@ class EpubFormatter:
         self,
         book: epub.EpubBook,
         characters: list[Character],
+        style_item: epub.EpubItem,
     ) -> epub.EpubHtml | None:
         """Create dramatis personae page."""
         if not characters:
@@ -582,6 +587,7 @@ class EpubFormatter:
   {"".join(items)}
 </ul>
 """
+        dramatis.add_item(style_item)
         return dramatis
 
     def _get_css(self) -> str:
