@@ -765,5 +765,213 @@ def breakdown(
         raise click.Abort()
 
 
+@cli.command()
+@click.option(
+    "-i",
+    "--idea",
+    "idea_file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to story idea JSON file",
+)
+@click.option(
+    "-c",
+    "--characters",
+    "characters_file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to characters JSON file",
+)
+@click.option(
+    "-l",
+    "--locations",
+    "locations_file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to locations JSON file",
+)
+@click.option(
+    "--breakdown",
+    "breakdown_file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to breakdown JSON file (scene-sequels)",
+)
+@click.option(
+    "--model",
+    default="gpt-4",
+    help='AI model to use (default: gpt-4). Examples: "gpt-4", "ollama/qwen3:30b"',
+)
+@click.option(
+    "--temperature",
+    type=float,
+    default=0.7,
+    help="Sampling temperature for generation (0.0-1.0, default: 0.7)",
+)
+@click.option(
+    "--writing-style",
+    help="Writing style description (auto-inferred from tone/genre if not provided)",
+)
+@click.option(
+    "--context-window",
+    type=int,
+    default=3,
+    help="Number of previous scenes to include in context (default: 3)",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(),
+    help="Output file path (if not specified, prints to console)",
+)
+@click.option(
+    "--retries",
+    type=int,
+    default=3,
+    help="Maximum retry attempts (default: 3)",
+)
+@click.option(
+    "--timeout",
+    type=int,
+    default=120,
+    help="Timeout in seconds per scene-sequel (default: 120)",
+)
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Enable verbose output (show prompts and AI responses)",
+)
+def prose(
+    idea_file: str,
+    characters_file: str,
+    locations_file: str,
+    breakdown_file: str,
+    model: str,
+    temperature: float,
+    writing_style: str | None,
+    context_window: int,
+    output: str | None,
+    retries: int,
+    timeout: int,
+    verbose: bool,
+):
+    """Generate prose for scene-sequels with markdown formatting.
+
+    Takes a breakdown of scene-sequels and generates markdown prose for each one,
+    maintaining continuity through summaries and key points. Automatically infers
+    writing style from the story's tone and genre unless explicitly provided.
+
+    Example:
+        python -m storygen.iterative.cli prose \\
+            -i idea.json -c characters.json -l locations.json \\
+            --breakdown breakdown.json --model ollama/qwen3:30b \\
+            --temperature 0.7 -o prose.json -v
+    """
+    try:
+        # Load input files
+        click.echo(f"📖 Loading story idea from {idea_file}...", err=True)
+        with open(idea_file, encoding="utf-8") as f:
+            idea_data = json.load(f)
+        story_idea = StoryIdea.from_dict(idea_data)
+        click.echo(f"✅ Loaded idea: {story_idea.one_sentence[:60]}...", err=True)
+
+        click.echo(f"👥 Loading characters from {characters_file}...", err=True)
+        with open(characters_file, encoding="utf-8") as f:
+            chars_data = json.load(f)
+        if isinstance(chars_data, list):
+            characters = [Character.from_dict(c) for c in chars_data]
+        else:
+            characters = [Character.from_dict(c) for c in chars_data["characters"]]
+        click.echo(f"✅ Loaded {len(characters)} characters", err=True)
+
+        click.echo(f"🗺️  Loading locations from {locations_file}...", err=True)
+        with open(locations_file, encoding="utf-8") as f:
+            locs_data = json.load(f)
+        if isinstance(locs_data, list):
+            locations = [Location.from_dict(loc) for loc in locs_data]
+        else:
+            locations = [Location.from_dict(loc) for loc in locs_data["locations"]]
+        click.echo(f"✅ Loaded {len(locations)} locations", err=True)
+
+        click.echo(f"📋 Loading breakdown from {breakdown_file}...", err=True)
+        with open(breakdown_file, encoding="utf-8") as f:
+            breakdown_data = json.load(f)
+
+        from storygen.iterative.models import SceneSequel
+
+        scene_sequels = [SceneSequel.from_dict(ss) for ss in breakdown_data["scene_sequels"]]
+        click.echo(f"✅ Loaded {len(scene_sequels)} scene-sequels", err=True)
+
+        # Generate prose
+        click.echo(f"📝 Generating prose with {model}...", err=True)
+
+        from storygen.iterative.generators.prose import ProseGenerator
+
+        generator = ProseGenerator(
+            model=model,
+            max_retries=retries,
+            timeout=timeout,
+            temperature=temperature,
+            context_window=context_window,
+            verbose=verbose,
+        )
+
+        updated_scene_sequels = generator.generate(
+            story_idea=story_idea,
+            characters=characters,
+            locations=locations,
+            scene_sequels=scene_sequels,
+            writing_style=writing_style,
+        )
+
+        # Calculate total words
+        total_words = sum(ss.actual_word_count or 0 for ss in updated_scene_sequels)
+        click.echo(f"✅ Generated {total_words:,} words of prose!", err=True)
+
+        # Output results
+        if output:
+            # Save to JSON file
+            prose_dict = {
+                "scene_sequels": [ss.to_dict() for ss in updated_scene_sequels],
+                "total_actual_words": total_words,
+            }
+            output_path = Path(output)
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+
+            with open(output_path, "w", encoding="utf-8") as f:
+                json.dump(prose_dict, f, indent=2, ensure_ascii=False)
+
+            click.echo(f"💾 Saved to: {output}")
+        else:
+            # Pretty print to console (sample only)
+            click.echo(f"\n📝 Generated Prose ({total_words:,} words):\n")
+            for i, ss in enumerate(updated_scene_sequels[:3], 1):  # Show first 3
+                click.echo(f"--- {ss.id} ({ss.type}) ---")
+                if ss.content:
+                    preview = ss.content[:200] + "..." if len(ss.content) > 200 else ss.content
+                    click.echo(preview)
+                click.echo(f"\nSummary: {ss.summary}")
+                click.echo(f"Key Points: {', '.join(ss.key_points or [])}")
+                click.echo()
+
+            if len(updated_scene_sequels) > 3:
+                click.echo(f"... (and {len(updated_scene_sequels) - 3} more)")
+
+    except FileNotFoundError as e:
+        click.echo(f"❌ Error: File not found: {e.filename}", err=True)
+        raise click.Abort()
+    except json.JSONDecodeError as e:
+        click.echo(f"❌ Error: Invalid JSON: {e}", err=True)
+        raise click.Abort()
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        if verbose:
+            import traceback
+
+            traceback.print_exc()
+        raise click.Abort()
+
+
 if __name__ == "__main__":
     cli()
