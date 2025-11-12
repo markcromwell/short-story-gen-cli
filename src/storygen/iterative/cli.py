@@ -630,8 +630,8 @@ def outline(
 @click.option(
     "--timeout",
     type=int,
-    default=60,
-    help="Timeout in seconds for AI calls (default: 60)",
+    default=600,
+    help="Timeout in seconds for AI calls (default: 600)",
 )
 @click.option(
     "-v",
@@ -674,13 +674,21 @@ def breakdown(
         click.echo(f"👥 Loading characters from {characters_file}...", err=True)
         with open(characters_file, encoding="utf-8") as f:
             chars_data = json.load(f)
-        characters = [Character.from_dict(c) for c in chars_data["characters"]]
+        # Support both array and object formats
+        if isinstance(chars_data, list):
+            characters = [Character.from_dict(c) for c in chars_data]
+        else:
+            characters = [Character.from_dict(c) for c in chars_data["characters"]]
         click.echo(f"✅ Loaded {len(characters)} characters", err=True)
 
         click.echo(f"🗺️  Loading locations from {locations_file}...", err=True)
         with open(locations_file, encoding="utf-8") as f:
             locs_data = json.load(f)
-        locations = [Location.from_dict(loc) for loc in locs_data["locations"]]
+        # Support both array and object formats
+        if isinstance(locs_data, list):
+            locations = [Location.from_dict(loc) for loc in locs_data]
+        else:
+            locations = [Location.from_dict(loc) for loc in locs_data["locations"]]
         click.echo(f"✅ Loaded {len(locations)} locations", err=True)
 
         click.echo(f"📋 Loading outline from {outline_file}...", err=True)
