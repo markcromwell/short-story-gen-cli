@@ -1038,6 +1038,11 @@ def prose(
     help="Comma-separated scene-sequel IDs to force chapter breaks (e.g., ss_005,ss_012)",
 )
 @click.option(
+    "--model",
+    default="gpt-4",
+    help="AI model for title generation (default: gpt-4)",
+)
+@click.option(
     "-v",
     "--verbose",
     is_flag=True,
@@ -1054,6 +1059,7 @@ def epub(
     chapters: str,
     chapter_length: int,
     force_breaks: str | None,
+    model: str,
     verbose: bool,
 ):
     """Generate EPUB from prose with intelligent chapter breaks.
@@ -1122,6 +1128,7 @@ def epub(
             author=author,
             chapter_style=chapters,  # type: ignore
             target_chapter_length=chapter_length,
+            model=model,
             verbose=verbose,
         )
 

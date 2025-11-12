@@ -18,6 +18,7 @@ from typing import Literal
 
 from ebooklib import epub  # type: ignore
 
+from storygen.iterative.generators.title import TitleGenerator
 from storygen.iterative.models import Character, Location, SceneSequel, StoryIdea
 
 
@@ -272,6 +273,7 @@ class EpubFormatter:
         author: str = "AI Generated",
         chapter_style: Literal["numbered", "titled", "sections", "none"] = "numbered",
         target_chapter_length: int = 3000,
+        model: str = "gpt-4",
         verbose: bool = False,
     ):
         """
@@ -281,15 +283,18 @@ class EpubFormatter:
             author: Author name for metadata
             chapter_style: How to format chapters
             target_chapter_length: Target words per chapter
+            model: AI model for title generation
             verbose: Print detailed progress
         """
         self.author = author
         self.chapter_style = chapter_style
         self.target_chapter_length = target_chapter_length
+        self.model = model
         self.verbose = verbose
 
         self.chapter_decider = ChapterDecider(target_chapter_length=target_chapter_length)
         self.markdown_converter = MarkdownConverter()
+        self.title_generator = TitleGenerator(model=model, verbose=verbose)
 
     def format(
         self,
@@ -334,8 +339,22 @@ class EpubFormatter:
         # Create EPUB book
         book = epub.EpubBook()
 
-        # Metadata
-        title = title_override or story_idea.one_sentence[:100]
+        # Metadata - generate title if not provided
+        if title_override:
+            title = title_override
+        else:
+            if self.verbose:
+                print("📝 Generating title with AI...")
+            title = self.title_generator.generate(
+                raw_idea=story_idea.raw_idea,
+                one_sentence=story_idea.one_sentence,
+                genres=story_idea.genres,
+                themes=story_idea.themes,
+                tone=story_idea.tone,
+            )
+            if self.verbose:
+                print(f"✨ Generated title: {title}")
+
         book.set_identifier(f"story_{datetime.now().strftime('%Y%m%d%H%M%S')}")
         book.set_title(title)
         book.set_language("en")
