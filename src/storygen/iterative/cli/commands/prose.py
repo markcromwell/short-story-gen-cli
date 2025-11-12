@@ -9,6 +9,7 @@ from pathlib import Path
 import click
 
 from storygen.iterative.cli.commands.utils import format_word_count
+from storygen.iterative.constants import DEFAULT_MAX_RETRIES, DEFAULT_TIMEOUT_SECONDS
 from storygen.iterative.models import Character, Location, Outline, SceneSequel, StoryIdea
 from storygen.iterative.project import ProjectManager
 
@@ -33,14 +34,14 @@ logger = logging.getLogger(__name__)
 @click.option(
     "--retries",
     type=int,
-    default=3,
-    help="Maximum retry attempts (default: 3)",
+    default=DEFAULT_MAX_RETRIES,
+    help=f"Maximum retry attempts (default: {DEFAULT_MAX_RETRIES})",
 )
 @click.option(
     "--timeout",
     type=int,
-    default=600,
-    help="Timeout in seconds for AI calls (default: 600)",
+    default=DEFAULT_TIMEOUT_SECONDS,
+    help=f"Timeout in seconds for AI calls (default: {DEFAULT_TIMEOUT_SECONDS} = 10 minutes)",
 )
 @click.option(
     "-v",

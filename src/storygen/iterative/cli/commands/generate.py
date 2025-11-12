@@ -8,6 +8,7 @@ from pathlib import Path
 
 import click
 
+from storygen.iterative.constants import DEFAULT_MAX_RETRIES, DEFAULT_TIMEOUT_SECONDS
 from storygen.iterative.generators.character import CharacterGenerator
 from storygen.iterative.generators.idea import IdeaGenerator
 from storygen.iterative.generators.location import LocationGenerator
@@ -191,13 +192,13 @@ def idea(
 )
 @click.option(
     "--retries",
-    default=3,
-    help="Maximum retry attempts on failure (default: 3)",
+    default=DEFAULT_MAX_RETRIES,
+    help=f"Maximum retry attempts on failure (default: {DEFAULT_MAX_RETRIES})",
 )
 @click.option(
     "--timeout",
-    default=60,
-    help="Timeout in seconds for AI generation (default: 60)",
+    default=DEFAULT_TIMEOUT_SECONDS,
+    help=f"Timeout in seconds for AI generation (default: {DEFAULT_TIMEOUT_SECONDS} = 10 minutes)",
 )
 @click.option(
     "--verbose",
@@ -315,13 +316,13 @@ def characters(
 )
 @click.option(
     "--retries",
-    default=3,
-    help="Maximum retry attempts on failure (default: 3)",
+    default=DEFAULT_MAX_RETRIES,
+    help=f"Maximum retry attempts on failure (default: {DEFAULT_MAX_RETRIES})",
 )
 @click.option(
     "--timeout",
-    default=60,
-    help="Timeout in seconds for AI generation (default: 60)",
+    default=DEFAULT_TIMEOUT_SECONDS,
+    help=f"Timeout in seconds for AI generation (default: {DEFAULT_TIMEOUT_SECONDS} = 10 minutes)",
 )
 @click.option(
     "--verbose",
@@ -499,13 +500,13 @@ def _print_outline_tree(outline):
 )
 @click.option(
     "--retries",
-    default=3,
-    help="Maximum retry attempts on failure (default: 3)",
+    default=DEFAULT_MAX_RETRIES,
+    help=f"Maximum retry attempts on failure (default: {DEFAULT_MAX_RETRIES})",
 )
 @click.option(
     "--timeout",
-    default=60,
-    help="Timeout in seconds for AI generation (default: 60)",
+    default=DEFAULT_TIMEOUT_SECONDS,
+    help=f"Timeout in seconds for AI generation (default: {DEFAULT_TIMEOUT_SECONDS} = 10 minutes)",
 )
 @click.option(
     "--verbose",
