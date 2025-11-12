@@ -6,6 +6,8 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Literal
 
+from ..exceptions import ConfigError, ValidationError
+
 
 @dataclass
 class StoryConfig:
@@ -21,10 +23,10 @@ class StoryConfig:
         """Validate story type and target words."""
         valid_types = ["flash-fiction", "short-story", "novelette", "novella", "novel"]
         if self.story_type not in valid_types:
-            raise ValueError(f"story_type must be one of {valid_types}")
+            raise ConfigError(f"story_type must be one of {valid_types}")
 
         if self.target_words <= 0:
-            raise ValueError("target_words must be positive")
+            raise ConfigError("target_words must be positive")
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""
@@ -97,7 +99,7 @@ class StoryIdea:
 
         # Validate at least one genre
         if not self.genres:
-            raise ValueError("StoryIdea must have at least one genre")
+            raise ValidationError("StoryIdea must have at least one genre")
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""

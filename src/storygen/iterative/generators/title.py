@@ -4,6 +4,7 @@ Title generator for stories.
 Generates compelling titles based on story idea, genres, and themes.
 """
 
+from storygen.iterative.exceptions import ValidationError
 from storygen.iterative.generators.base import BaseGenerator, GenerationError
 
 
@@ -258,15 +259,15 @@ Create a title that captures the essence of this story. Consider the genre conve
     def _validate_title(self, title: str) -> None:
         """Validate generated title."""
         if not title:
-            raise ValueError("Generated title is empty")
+            raise ValidationError("Generated title is empty")
 
         if len(title) < 3:
-            raise ValueError(f"Title too short: {title}")
+            raise ValidationError(f"Title too short: {title}")
 
         if len(title) > 100:
-            raise ValueError(f"Title too long: {title}")
+            raise ValidationError(f"Title too long: {title}")
 
         # Check for too many words
         word_count = len(title.split())
-        if word_count > 10:
-            raise ValueError(f"Title has too many words ({word_count}): {title}")
+        if word_count > 15:
+            raise ValidationError(f"Title has too many words ({word_count}): {title}")

@@ -173,8 +173,10 @@ class TestStoryIdea:
         assert len(idea.themes) == 2
 
     def test_empty_genres_raises_error(self):
-        """Test that empty genres list raises ValueError."""
-        with pytest.raises(ValueError, match="must have at least one genre"):
+        """Test that empty genres list raises ValidationError."""
+        from storygen.iterative.exceptions import ValidationError
+
+        with pytest.raises(ValidationError, match="must have at least one genre"):
             StoryIdea(
                 raw_idea="Test",
                 one_sentence="Test story.",

@@ -5,6 +5,7 @@ Each template defines a hierarchical act structure with generic descriptions
 that can be applied to any story. The AI fills in story_application for each act.
 """
 
+from storygen.iterative.exceptions import ConfigError
 from storygen.iterative.models import Act
 
 # =============================================================================
@@ -302,7 +303,7 @@ def get_template(structure_type: str) -> list[Act]:
 
     if structure_type not in STRUCTURE_TEMPLATES:
         valid = ", ".join(STRUCTURE_TEMPLATES.keys())
-        raise ValueError(f"Unknown structure type '{structure_type}'. Valid options: {valid}")
+        raise ConfigError(f"Unknown structure type '{structure_type}'. Valid options: {valid}")
 
     # Deep copy so modifications don't affect the template
     return copy.deepcopy(STRUCTURE_TEMPLATES[structure_type])

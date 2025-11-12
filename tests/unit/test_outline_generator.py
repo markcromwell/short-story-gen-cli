@@ -36,7 +36,9 @@ class TestOutlineGeneratorInitialization:
 
     def test_initialization_invalid_structure(self):
         """Test initialization with invalid structure type."""
-        with pytest.raises(ValueError, match="Unknown structure type"):
+        from storygen.iterative.exceptions import ConfigError
+
+        with pytest.raises(ConfigError, match="Unknown structure type"):
             OutlineGenerator(structure_type="invalid-structure")
 
 

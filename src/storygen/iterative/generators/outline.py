@@ -3,6 +3,7 @@
 import json
 from typing import Any
 
+from storygen.iterative.exceptions import ConfigError
 from storygen.iterative.generators.base import BaseGenerator, GenerationError
 from storygen.iterative.models import Act, Character, Location, Outline, StoryIdea
 from storygen.iterative.outline_templates import get_template, list_available_structures
@@ -51,7 +52,7 @@ class OutlineGenerator(BaseGenerator[Outline]):
         # Validate structure type
         if structure_type not in list_available_structures():
             valid = ", ".join(list_available_structures())
-            raise ValueError(f"Unknown structure type '{structure_type}'. Valid options: {valid}")
+            raise ConfigError(f"Unknown structure type '{structure_type}'. Valid options: {valid}")
 
     def _build_prompt(
         self,
