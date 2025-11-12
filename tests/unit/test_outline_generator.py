@@ -55,6 +55,7 @@ class TestOutlineGeneratorPromptBuilding:
             genres=["mystery", "thriller"],
             tone="dark and suspenseful",
             themes=["justice", "truth"],
+            setting="Test setting",
         )
 
         characters = [
@@ -251,6 +252,7 @@ class TestOutlineGeneratorGeneration:
             genres=["test"],
             tone="test",
             themes=["testing"],
+            setting="Test setting",
         )
 
         characters = [
@@ -331,6 +333,7 @@ class TestOutlineGeneratorGeneration:
             genres=["test"],
             tone="test",
             themes=["test"],
+            setting="Test setting",
         )
         characters: list[Character] = []
         locations: list[Location] = []
@@ -381,6 +384,7 @@ class TestOutlineGeneratorGeneration:
             genres=["test"],
             tone="test",
             themes=["test"],
+            setting="Test setting",
         )
         characters: list[Character] = []
         locations: list[Location] = []
@@ -429,6 +433,7 @@ class TestOutlineGeneratorGeneration:
             genres=["test"],
             tone="test",
             themes=["test"],
+            setting="Test setting",
         )
         characters: list[Character] = []
         locations: list[Location] = []

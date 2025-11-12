@@ -35,6 +35,7 @@ class TestLocationGenerator:
             genres=["sci-fi", "mystery"],
             tone="tense and claustrophobic",
             themes=["isolation", "paranoia"],
+            setting="Test setting",
         )
 
         system_prompt, user_prompt = generator._build_prompt(story_idea, story_type="short-story")
@@ -180,6 +181,7 @@ class TestLocationGenerator:
             genres=["sci-fi"],
             tone="tense",
             themes=["isolation"],
+            setting="Test setting",
         )
 
         locations = generator.generate(story_idea)
@@ -215,6 +217,7 @@ class TestLocationGenerator:
             genres=["sci-fi"],
             tone="tense",
             themes=["isolation"],
+            setting="Test setting",
         )
 
         locations = generator.generate(story_idea)
@@ -247,6 +250,7 @@ class TestLocationGenerator:
             genres=["sci-fi"],
             tone="tense",
             themes=["isolation"],
+            setting="Test setting",
         )
 
         locations = generator.generate(story_idea)
@@ -265,6 +269,7 @@ class TestLocationGenerator:
             genres=["sci-fi"],
             tone="tense",
             themes=["isolation"],
+            setting="Test setting",
         )
 
         with pytest.raises(LocationGenerationError, match="Failed to generate"):
@@ -296,6 +301,7 @@ class TestLocationGenerator:
             genres=["sci-fi"],
             tone="tense",
             themes=["isolation"],
+            setting="Test setting",
         )
 
         generator.generate(story_idea)
@@ -326,6 +332,7 @@ class TestLocationGenerator:
             genres=["sci-fi"],
             tone="tense",
             themes=["isolation"],
+            setting="Test setting",
         )
 
         generator.generate(story_idea)

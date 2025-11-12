@@ -248,13 +248,13 @@ Generate {min_locs}-{max_locs} key locations that fit this {story_type}'s world 
                 # Create Location objects
                 locations: list[Location] = []
                 for loc_data in loc_dicts:
-                    loc = Location(  # type: ignore[assignment]
+                    loc = Location(  # type: ignore
                         name=loc_data["name"],
                         description=loc_data["description"],
                         significance=loc_data["significance"],
                         atmosphere=loc_data["atmosphere"],
                     )
-                    locations.append(loc)
+                    locations.append(loc)  # type: ignore
 
                 return locations
 

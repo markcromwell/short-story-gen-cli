@@ -28,6 +28,7 @@ def valid_ai_response():
         "genres": ["mystery", "supernatural", "thriller"],
         "tone": "Dark, tense, emotional",
         "themes": ["mortality", "trust", "justice", "redemption"],
+        "setting": "Modern-day Seattle",
     }
 
 

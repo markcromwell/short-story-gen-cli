@@ -72,7 +72,8 @@ Return your response as valid JSON with these exact fields:
   "expanded": "2-3 detailed paragraphs expanding the concept, including main conflict and stakes",
   "genres": ["genre1", "genre2"],  // 1-3 specific genres (lowercase)
   "tone": "Descriptive tone/mood of the story",
-  "themes": ["theme1", "theme2", "theme3"]  // 2-4 major themes
+  "themes": ["theme1", "theme2", "theme3"],  // 2-4 major themes
+  "setting": "Where/when the story takes place"  // e.g., "1950s Paris", "Modern NYC", "Hyperborea"
 }}
 
 Requirements:
@@ -80,6 +81,9 @@ Requirements:
 - expanded: Must be 2-3 full paragraphs (150-250 words total) - SCOPE the plot complexity to fit {story_type}
 - genres: Be specific (e.g., ["sci-fi", "horror"] not just ["fiction"])
 - themes: Universal themes that connect to premise (e.g., "mortality", "trust", "identity")
+- setting: Specific time/place context. Scale detail to story length:
+  * Flash/Short: Brief ("modern NYC", "1920s Paris")
+  * Novelette+: More detail ("Hyperborea - ancient sorcerous empire", "Post-apocalyptic Detroit, 2087")
 
 CRITICAL: The expanded premise should match the scope of a {story_type}. Don't suggest epic quests for flash fiction or single moments for novels.
 
@@ -116,7 +120,15 @@ Return ONLY valid JSON, no other text or markdown formatting."""
             raise IdeaGenerationError(f"Failed to parse JSON response: {e}")
 
         # Validate required fields
-        required_fields = ["raw_idea", "one_sentence", "expanded", "genres", "tone", "themes"]
+        required_fields = [
+            "raw_idea",
+            "one_sentence",
+            "expanded",
+            "genres",
+            "tone",
+            "themes",
+            "setting",
+        ]
         missing = [f for f in required_fields if f not in data]
         if missing:
             raise IdeaGenerationError(f"Missing required fields: {missing}")
@@ -192,10 +204,11 @@ Return ONLY valid JSON, no other text or markdown formatting."""
                     print("\n" + "=" * 80)
                     print("PARSED STORY IDEA:")
                     print("=" * 80)
-                    print(f"\nOne-sentence: {data['one_sentence']}")
+                    print(f"One-sentence: {data['one_sentence']}")
                     print(f"Genres: {', '.join(data['genres'])}")
                     print(f"Tone: {data['tone']}")
                     print(f"Themes: {', '.join(data['themes'])}")
+                    print(f"Setting: {data['setting']}")
                     print("=" * 80)
 
                 # Create StoryIdea (this validates and normalizes genres/themes)
@@ -206,6 +219,7 @@ Return ONLY valid JSON, no other text or markdown formatting."""
                     genres=data["genres"],
                     tone=data["tone"],
                     themes=data["themes"],
+                    setting=data["setting"],
                 )
 
                 return idea

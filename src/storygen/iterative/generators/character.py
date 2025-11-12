@@ -301,7 +301,7 @@ Generate {min_chars}-{max_chars} characters appropriate for a {story_type}."""
                 # Create Character objects
                 characters: list[Character] = []
                 for char_data in char_dicts:
-                    char = Character(  # type: ignore[assignment]
+                    char = Character(  # type: ignore
                         name=char_data["name"],
                         role=char_data["role"],
                         bio=char_data["bio"],
@@ -309,7 +309,7 @@ Generate {min_chars}-{max_chars} characters appropriate for a {story_type}."""
                         flaw=char_data["flaw"],
                         arc=char_data.get("arc"),  # Optional field
                     )
-                    characters.append(char)
+                    characters.append(char)  # type: ignore
 
                 return characters
 

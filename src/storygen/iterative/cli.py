@@ -125,14 +125,17 @@ def new(name: str, pitch: str | None, story_type: str | None, words: int | None,
 
         # Get target words if not provided - use defaults based on type
         if not words:
-            defaults = {
+            defaults: dict[str, int] = {
                 "flash-fiction": 1000,
                 "short-story": 5000,
                 "novelette": 12000,
                 "novella": 30000,
                 "novel": 80000,
             }
-            words = defaults[story_type]
+            if story_type and story_type in defaults:
+                words = defaults[story_type]
+            else:
+                words = 5000
             click.echo(f"📊 Using default target: {words:,} words for {story_type}")
 
         # Type checking - at this point all should be set
@@ -275,6 +278,9 @@ def status(name: str, projects_dir: str):
         status_dict = manager.get_project_status(name)
 
         # Load story config if it exists
+        pitch: str | None
+        story_type: str
+        target_words: int
         try:
             config = StoryConfig.load(paths.root)
             pitch = config.pitch
@@ -283,8 +289,8 @@ def status(name: str, projects_dir: str):
         except FileNotFoundError:
             # Fallback to old metadata for backwards compatibility
             pitch = manager.load_pitch(name)
-            story_type = None  # type: ignore
-            target_words = None  # type: ignore
+            story_type = "short-story"  # Default fallback
+            target_words = 5000  # Default fallback
 
         click.echo(f"📖 Project: {name}")
         click.echo(f"📁 Location: {paths.root}")
@@ -297,6 +303,16 @@ def status(name: str, projects_dir: str):
 
         if pitch:
             click.echo(f"💡 Pitch: {pitch}\n")
+
+        # Show setting if idea exists
+        if status_dict["idea"]:
+            try:
+                with open(paths.idea, encoding="utf-8") as f:
+                    idea_data = json.load(f)
+                    if "setting" in idea_data:
+                        click.echo(f"🌍 Setting: {idea_data['setting']}\n")
+            except (FileNotFoundError, json.JSONDecodeError, KeyError):
+                pass
 
         click.echo("📋 Pipeline Status:")
         stages = [

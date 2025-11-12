@@ -392,6 +392,7 @@ class TestBreakdownGeneratorBuildPrompt:
             genres=["mystery"],
             tone="test",
             themes=["justice"],
+            setting="Test setting",
         )
 
         characters = [
@@ -457,6 +458,7 @@ class TestBreakdownGeneratorBuildPrompt:
             genres=["test"],
             tone="test",
             themes=["test"],
+            setting="Test setting",
         )
 
         characters = [
@@ -518,6 +520,7 @@ class TestBreakdownGeneratorBuildPrompt:
             genres=["test"],
             tone="test",
             themes=["test"],
+            setting="Test setting",
         )
 
         characters = [
@@ -601,6 +604,7 @@ class TestBreakdownGeneratorGenerate:
             genres=["test"],
             tone="test",
             themes=["test"],
+            setting="Test setting",
         )
 
         characters = [
@@ -679,6 +683,7 @@ class TestBreakdownGeneratorGenerate:
             genres=["test"],
             tone="test",
             themes=["test"],
+            setting="Test setting",
         )
 
         characters = [
@@ -759,6 +764,7 @@ class TestBreakdownGeneratorGenerate:
             genres=["test"],
             tone="test",
             themes=["test"],
+            setting="Test setting",
         )
 
         characters = [
@@ -840,6 +846,7 @@ class TestBreakdownGeneratorGenerate:
             genres=["test"],
             tone="test",
             themes=["test"],
+            setting="Test setting",
         )
 
         characters = [
@@ -898,6 +905,7 @@ class TestBreakdownGeneratorGenerate:
             genres=["test"],
             tone="test",
             themes=["test"],
+            setting="Test setting",
         )
 
         characters = [

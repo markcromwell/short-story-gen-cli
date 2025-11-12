@@ -26,6 +26,7 @@ class TestCharacterGenerator:
             genres=["mystery", "supernatural"],
             tone="Dark, tense",
             themes=["mortality", "justice"],
+            setting="Modern-day Seattle",
         )
 
     @pytest.fixture
@@ -148,30 +149,17 @@ class TestCharacterGenerator:
             generator._parse_response(response_text)
 
     def test_parse_response_too_few_characters(self):
-        """Test fewer than 3 characters raises error."""
+        """Test fewer than 1 character raises error."""
         generator = CharacterGenerator()
         response_text = json.dumps(
             {
-                "characters": [
-                    {
-                        "name": "Maya",
-                        "role": "protagonist",
-                        "bio": "Detective",
-                        "goal": "Solve case",
-                        "flaw": "Trust issues",
-                    },
-                    {
-                        "name": "Victor",
-                        "role": "antagonist",
-                        "bio": "Villain",
-                        "goal": "Cover up",
-                        "flaw": "Arrogance",
-                    },
-                ]
+                "characters": []  # Empty list - should fail validation
             }
         )
 
-        with pytest.raises(CharacterGenerationError, match="Must generate 1-8 core characters, got 0"):
+        with pytest.raises(
+            CharacterGenerationError, match="Must generate 1-8 core characters, got 0"
+        ):
             generator._parse_response(response_text)
 
     def test_parse_response_too_many_characters(self):
@@ -189,7 +177,9 @@ class TestCharacterGenerator:
         ]
         response_text = json.dumps({"characters": characters_list})
 
-        with pytest.raises(CharacterGenerationError, match="Must generate 1-8 core characters, got"):
+        with pytest.raises(
+            CharacterGenerationError, match="Must generate 1-8 core characters, got"
+        ):
             generator._parse_response(response_text)
 
     def test_parse_response_missing_required_field(self):

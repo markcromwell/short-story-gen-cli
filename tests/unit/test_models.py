@@ -42,6 +42,7 @@ class TestStoryIdea:
             genres=["mystery", "supernatural"],
             tone="Dark, tense",
             themes=["mortality", "trust", "identity"],
+            setting="Modern-day Portland",
         )
         assert idea.one_sentence == "A telepath detective must solve her own murder."
         assert len(idea.themes) == 3
@@ -57,6 +58,7 @@ class TestStoryIdea:
             genres=["mystery"],
             tone="Dark",
             themes=["mortality"],
+            setting="Modern-day Portland",
         )
         data = idea.to_dict()
 
@@ -74,6 +76,7 @@ class TestStoryIdea:
             "genres": ["mystery"],
             "tone": "Dark",
             "themes": ["mortality"],
+            "setting": "Modern-day Portland",
         }
         idea = StoryIdea.from_dict(data)
 
@@ -91,6 +94,7 @@ class TestStoryIdea:
             genres=["mystery", "supernatural"],
             tone="Dark",
             themes=["mortality", "trust"],
+            setting="Modern-day Portland",
         )
 
         json_str = json.dumps(original.to_dict())
@@ -109,6 +113,7 @@ class TestStoryIdea:
             genres=["sci-fi", "horror"],
             tone="Terrifying",
             themes=["isolation"],
+            setting="Remote space station",
         )
         assert idea1.genres == ["sci-fi", "horror"]
 
@@ -120,6 +125,7 @@ class TestStoryIdea:
             genres=["romantic", "comedy"],
             tone="Light, funny",
             themes=["love"],
+            setting="Modern NYC",
         )
         assert idea2.genres == ["romantic", "comedy"]
 
@@ -131,6 +137,7 @@ class TestStoryIdea:
             genres=["post-apocalyptic", "fantasy"],
             tone="Grim",
             themes=["survival", "hope"],
+            setting="Post-apocalyptic wasteland",
         )
         assert idea3.genres == ["post-apocalyptic", "fantasy"]
         assert len(idea3.genres) == 2
@@ -144,6 +151,7 @@ class TestStoryIdea:
             genres=["sci-fi", "Sci-Fi", "horror", "HORROR"],  # Duplicates with different cases
             tone="Dark",
             themes=["test"],
+            setting="Test setting",
         )
         # Should normalize to lowercase and remove duplicates
         assert idea.genres == ["sci-fi", "horror"]
@@ -158,6 +166,7 @@ class TestStoryIdea:
             genres=["mystery"],
             tone="Dark",
             themes=["love", "Love", "LOVE", "betrayal", "betrayal"],  # Duplicates
+            setting="Test setting",
         )
         # Should normalize and remove duplicates
         assert idea.themes == ["love", "betrayal"]
@@ -173,6 +182,7 @@ class TestStoryIdea:
                 genres=[],  # Empty!
                 tone="Dark",
                 themes=["test"],
+                setting="Test setting",
             )
 
     def test_whitespace_trimmed(self):
@@ -184,6 +194,7 @@ class TestStoryIdea:
             genres=["  sci-fi  ", "horror   "],
             tone="Dark",
             themes=["  love  ", "   betrayal"],
+            setting="Test setting",
         )
         assert idea.genres == ["sci-fi", "horror"]
         assert idea.themes == ["love", "betrayal"]
@@ -783,6 +794,7 @@ class TestWorkingDoc:
             genres=["mystery"],
             tone="Dark",
             themes=["justice"],
+            setting="Test setting",
         )
 
         doc.characters = [
@@ -838,6 +850,7 @@ class TestWorkingDoc:
             genres=["mystery"],
             tone="Dark",
             themes=["justice"],
+            setting="Test setting",
         )
 
         original.characters = [

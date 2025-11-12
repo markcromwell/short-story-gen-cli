@@ -74,6 +74,7 @@ class StoryIdea:
     genres: list[str]  # e.g., ["sci-fi", "horror"] or ["romantic", "comedy"]
     tone: str
     themes: list[str]
+    setting: str  # e.g., "1950s Paris", "Modern NYC", "Hyperborea - ancient sorcerous empire"
 
     def __post_init__(self):
         """Validate and clean up genres and themes."""
