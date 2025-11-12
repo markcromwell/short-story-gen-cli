@@ -51,7 +51,7 @@ Issues = "https://github.com/markcromwell/short-story-gen-cli/issues"
 
 [project.scripts]
 storygen = "storygen.cli:main"
-storygen-iter = "storygen.iterative.cli:cli"
+storygen-iter = "storygen.iterative.cli.main:cli"
 
 [tool.setuptools]
 package-dir = {"" = "src"}

@@ -223,6 +223,7 @@ class TestCharacterGeneratorOllama:
                 "justice vs revenge",
                 "mortality and legacy",
             ],
+            setting="Modern noir cityscape",
         )
 
     def test_generate_characters_ollama(self, ollama_model, check_ollama, story_idea):
@@ -288,6 +289,7 @@ class TestCharacterGeneratorOllama:
             genres=["sci-fi"],
             tone="adventurous",
             themes=["exploration"],
+            setting="Distant galaxy, far future",
         )
 
         idea2 = StoryIdea(
@@ -297,6 +299,7 @@ class TestCharacterGeneratorOllama:
             genres=["fantasy"],
             tone="epic",
             themes=["honor"],
+            setting="Medieval Europe, 12th century",
         )
 
         chars1 = generator.generate(idea1)
@@ -352,6 +355,7 @@ class TestLocationGeneratorOllama:
                 "justice vs revenge",
                 "mortality and legacy",
             ],
+            setting="Modern noir cityscape",
         )
 
     def test_generate_locations_ollama(self, ollama_model, check_ollama, story_idea):
@@ -407,6 +411,7 @@ class TestLocationGeneratorOllama:
             genres=["sci-fi", "mystery"],
             tone="tense",
             themes=["isolation"],
+            setting="Remote orbital space station",
         )
 
         idea2 = StoryIdea(
@@ -416,6 +421,7 @@ class TestLocationGeneratorOllama:
             genres=["fantasy"],
             tone="epic",
             themes=["honor"],
+            setting="Medieval fantasy realm",
         )
 
         locs1 = generator.generate(idea1)
@@ -471,6 +477,7 @@ class TestOutlineGeneratorOllama:
                 "justice vs revenge",
                 "mortality and legacy",
             ],
+            setting="Modern noir cityscape",
         )
 
     @pytest.fixture
@@ -617,6 +624,7 @@ class TestOutlineGeneratorOllama:
             genres=["sci-fi", "mystery"],
             tone="tense",
             themes=["isolation"],
+            setting="Remote orbital space station",
         )
         chars1 = [
             Character(
@@ -644,6 +652,7 @@ class TestOutlineGeneratorOllama:
             genres=["fantasy"],
             tone="epic",
             themes=["honor"],
+            setting="Medieval fantasy realm",
         )
         chars2 = [
             Character(
