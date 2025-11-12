@@ -373,7 +373,7 @@ class SceneSequel:
     target_word_count: int = 600
 
     # Content (generated in prose step)
-    content: str = ""  # The actual prose
+    content: str = ""  # The actual prose in markdown format
     actual_word_count: int = 0
 
     # Chapter support (optional)
@@ -459,6 +459,30 @@ class SceneSequel:
                 )
 
         return issues
+
+    def get_plain_text(self) -> str:
+        """Convert markdown content to plain text.
+
+        Returns:
+            Plain text version of content (strips markdown formatting)
+        """
+        import re
+
+        if not self.content:
+            return ""
+
+        text = self.content
+        # Remove bold/italic
+        text = re.sub(r"\*\*\*(.+?)\*\*\*", r"\1", text)  # bold+italic
+        text = re.sub(r"\*\*(.+?)\*\*", r"\1", text)  # bold
+        text = re.sub(r"\*(.+?)\*", r"\1", text)  # italic
+        text = re.sub(r"_(.+?)_", r"\1", text)  # italic underscore
+        # Remove horizontal rules
+        text = re.sub(r"^---+\s*$", "", text, flags=re.MULTILINE)
+        # Remove headers (keep text)
+        text = re.sub(r"^#+\s+", "", text, flags=re.MULTILINE)
+
+        return text.strip()
 
     def to_dict(self) -> dict[str, Any]:
         """Serialize to dictionary."""

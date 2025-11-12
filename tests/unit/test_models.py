@@ -578,6 +578,35 @@ class TestSceneSequel:
         assert sequel.conflict is None
         assert sequel.disaster is None
 
+    def test_markdown_to_plain_text(self):
+        """Test conversion of markdown content to plain text."""
+        scene = SceneSequel(
+            id="ss_001",
+            type="scene",
+            source_act="act_1",
+            pov_character="Maya",
+            location="Precinct",
+            goal="Test",
+            conflict="Test",
+            disaster="Test",
+            start_hours=8.0,
+            duration_hours=1.0,
+            content="Detective Maya **strode** into the room. *She knew the truth.*\n\n---\n\n## Chapter 1\n\nThe investigation began.",
+        )
+
+        plain = scene.get_plain_text()
+
+        # Check markdown formatting is removed
+        assert "**" not in plain
+        assert "*" not in plain
+        assert "---" not in plain
+        assert "##" not in plain
+        # Check content is preserved
+        assert "Detective Maya" in plain
+        assert "strode" in plain
+        assert "She knew the truth" in plain
+        assert "investigation began" in plain
+
     def test_json_roundtrip(self):
         """Test SceneSequel survives JSON serialization."""
         original = SceneSequel(
