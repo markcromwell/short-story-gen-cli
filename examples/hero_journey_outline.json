@@ -1,0 +1,143 @@
+{
+  "structure_type": "hero-journey",
+  "acts": [
+    {
+      "title": "Act 1: Departure",
+      "description": "The hero is called from their ordinary world into adventure, initially refuses, but is encouraged by a mentor to cross the threshold.",
+      "story_application": "Elara wakes in her Silent Apartment to find her body at the Rain-Slicked Alley, realizing her mind-reading ability has failed catastrophically. She initially refuses to accept she's dead, clinging to memories of her ordinary life solving cases through her power, but the absence of city thoughts forces her to confront her reality. Marcus Reed's fragmented memory at the Precinct's Echo Chamber briefly acts as a mentor figure, urging her to investigate her own murder despite her disbelief.",
+      "percentage": 0.25,
+      "order": 0,
+      "sub_acts": [
+        {
+          "title": "Ordinary World",
+          "description": "Show the hero in their normal life before the adventure. Establish what they'll leave behind.",
+          "story_application": "Elara navigates her Silent Apartment, hearing the city's mental landscape as a comforting routine, but her overreliance on others' thoughts masks her isolation. She reflects on her estranged relationship with Marcus Reed and her guilt over trusting Silas Thorne with her research, establishing her flaw of misplaced trust.",
+          "percentage": 0.08,
+          "order": 0,
+          "sub_acts": [],
+          "scenes": []
+        },
+        {
+          "title": "Call to Adventure",
+          "description": "The hero learns of a challenge, problem, or adventure they must undertake.",
+          "story_application": "Elara wakes at the Rain-Slicked Alley, touching her cold, lifeless body while her mind remains trapped, realizing her ability has vanished. She hears no thoughts from the city, only silence, and understands her murder is the immediate threat to her existence.",
+          "percentage": 0.05,
+          "order": 1,
+          "sub_acts": [],
+          "scenes": []
+        },
+        {
+          "title": "Refusal of the Call",
+          "description": "The hero hesitates or refuses due to fear, duty, or obligation. Shows what's at stake.",
+          "story_application": "She refuses to believe she's dead, questioning if she's trapped in an illusion, and fears her inability to hear thoughts will doom her. Her refusal centers on the existential stakes: if she can't prove she's alive, she'll fade from reality entirely.",
+          "percentage": 0.04,
+          "order": 2,
+          "sub_acts": [],
+          "scenes": []
+        },
+        {
+          "title": "Meeting the Mentor",
+          "description": "An experienced helper provides training, equipment, advice, or confidence to begin the journey.",
+          "story_application": "Marcus Reed's residual memory at the Precinct's Echo Chamber, where she once interrogated him, offers fragmented advice about Silas's suspicious behavior, though he's initially skeptical of her 'ghost' state. This memory serves as her first guide, urging her to seek evidence despite her fractured perception.",
+          "percentage": 0.04,
+          "order": 3,
+          "sub_acts": [],
+          "scenes": []
+        },
+        {
+          "title": "Crossing the Threshold",
+          "description": "The hero commits to the adventure and enters the special world. There's no turning back.",
+          "story_application": "Elara accepts her reality as a ghost and enters the City's Silent Market, where the absence of thought amplifies her paranoia. She confronts the shadowy figure who knows her darkest secret, realizing her killer exploited her power to orchestrate her death.",
+          "percentage": 0.04,
+          "order": 4,
+          "sub_acts": [],
+          "scenes": []
+        }
+      ],
+      "scenes": []
+    },
+    {
+      "title": "Act 2: Initiation",
+      "description": "The hero faces tests, gains allies and enemies, approaches a dangerous place, and endures a major ordeal that leads to transformation.",
+      "story_application": "Elara navigates locations where her power's failure creates psychological traps, testing her trust in others. She uncovers Silas's manipulation through Dr. Aris Thorne's unwitting help, leading to a confrontation at the Abandoned Lighthouse where she realizes her killer used her ability against her.",
+      "percentage": 0.5,
+      "order": 1,
+      "sub_acts": [
+        {
+          "title": "Tests, Allies, and Enemies",
+          "description": "The hero learns the rules of the special world, makes friends and enemies, and is tested.",
+          "story_application": "At the City's Silent Market, she encounters Silas's agents who exploit her vulnerability, while Dr. Aris Thorne feeds her misinformation to manipulate her. She tests her limited perception by revisiting the Precinct's Echo Chamber, where fragmented thoughts reveal Marcus's guilt over her disappearance.",
+          "percentage": 0.15,
+          "order": 0,
+          "sub_acts": [],
+          "scenes": []
+        },
+        {
+          "title": "Approach to the Inmost Cave",
+          "description": "The hero approaches the place of greatest danger. Preparations are made for the major challenge.",
+          "story_application": "Elara prepares to confront Silas at the Abandoned Lighthouse, her darkest secret location, using memories of her betrayal there. She pieces together evidence from Marcus's memory and Dr. Aris's manipulated data, realizing Silas orchestrated her murder to cover his neural research crimes.",
+          "percentage": 0.1,
+          "order": 1,
+          "sub_acts": [],
+          "scenes": []
+        },
+        {
+          "title": "The Ordeal",
+          "description": "The hero faces their greatest fear or most difficult challenge. Often appears to fail or die.",
+          "story_application": "At the Abandoned Lighthouse, Silas reveals he used her neural research to create a feedback loop that killed her, exploiting her trust. She nearly fades as her mind fractures, believing she's already dead, but resists by recalling her goal to prove her existence.",
+          "percentage": 0.1,
+          "order": 2,
+          "sub_acts": [],
+          "scenes": []
+        },
+        {
+          "title": "Reward (Seizing the Sword)",
+          "description": "After surviving the ordeal, the hero gains a reward: knowledge, treasure, reconciliation, or power.",
+          "story_application": "She gains the knowledge that Silas manipulated her ability to orchestrate her death, and discovers Marcus was framed for her disappearance. This reward fuels her resolve to expose Silas, using his own research against him.",
+          "percentage": 0.1,
+          "order": 3,
+          "sub_acts": [],
+          "scenes": []
+        },
+        {
+          "title": "The Road Back",
+          "description": "The hero must return to the ordinary world. Often pursued by consequences of the ordeal.",
+          "story_application": "Elara returns to the Precinct's Echo Chamber to confront Silas with evidence, but Silas's agents pursue her through the city. She uses her fragmented memories to navigate the mental landscape, now understanding the rules of her ghostly state to outmaneuver him.",
+          "percentage": 0.05,
+          "order": 4,
+          "sub_acts": [],
+          "scenes": []
+        }
+      ],
+      "scenes": []
+    },
+    {
+      "title": "Act 3: Return",
+      "description": "The hero returns transformed, faces a final test, and brings the benefit of their journey back to the ordinary world.",
+      "story_application": "Elara confronts Silas at the Precinct, using her understanding of his manipulation to prove she's alive and expose his crimes. She resolves her identity fragmentation by accepting her power's cost, transforming her ability from a burden into a tool for justice.",
+      "percentage": 0.25,
+      "order": 2,
+      "sub_acts": [
+        {
+          "title": "Resurrection",
+          "description": "A final test where the hero must use everything they've learned. A final moment of death and rebirth.",
+          "story_application": "At the Precinct, Silas attempts to erase her existence by overloading her mind, but Elara uses her knowledge of his neural research to reverse the feedback loop. She 'dies' mentally but rebirths as a fully present detective, proving her reality to Marcus and the city.",
+          "percentage": 0.15,
+          "order": 0,
+          "sub_acts": [],
+          "scenes": []
+        },
+        {
+          "title": "Return with the Elixir",
+          "description": "The hero returns home transformed, bringing something that will help the ordinary world.",
+          "story_application": "She returns to the Silent Apartment, now hearing the city's thoughts faintly but deliberately, using her ability to solve cases without relying on others' minds. She exposes Silas's crimes to the precinct, restoring her legacy as a detective who protects truth, not just perceives it.",
+          "percentage": 0.1,
+          "order": 1,
+          "sub_acts": [],
+          "scenes": []
+        }
+      ],
+      "scenes": []
+    }
+  ]
+}

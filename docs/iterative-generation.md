@@ -2779,61 +2779,316 @@ Scene ss_025 (600 words):
 - **word_count_percentage** - Percentage of total story (e.g., 0.25 = 25%)
 - **target_word_count** - Calculated from percentage × total_target_words
 
-#### Supported Outline Methods:
+#### Recursive Outline Structure (NEW)
 
-Each method includes **word count percentages** to maintain proper pacing and prevent rushed endings.
+**Major Update:** Outlines now support **recursive nested sub-acts** for more detailed story planning. Each act can contain sub-acts, and those sub-acts can contain their own sub-acts, creating a tree structure.
+
+**Why Recursive?**
+- Different outline methods need different levels of detail
+- Three-Act might have 3-5 top-level acts with 2-4 sub-acts each
+- Hero's Journey has detailed stages that naturally nest
+- Allows flexibility: simple outlines for short stories, detailed for novels
+
+**Recursive Act Model:**
+
+```python
+@dataclass
+class Act:
+    title: str                    # "Act 1: Setup" or "Inciting Incident"
+    description: str              # Generic template description
+    story_application: str        # How THIS act applies to YOUR story
+    percentage: float             # 0.25 = 25% of story
+    order: int = 0               # Position in sequence (auto-assigned)
+    sub_acts: list['Act'] = []   # Nested sub-acts (recursive!)
+
+    def get_total_percentage(self) -> float:
+        """Recursively sum this act's percentage"""
+        if self.sub_acts:
+            return sum(sub.get_total_percentage() for sub in self.sub_acts)
+        return self.percentage
+```
+
+**Example Three-Act Outline with Sub-acts:**
+
+```json
+[
+  {
+    "title": "Act 1: Setup",
+    "description": "Establish world, characters, and normal life before inciting incident",
+    "story_application": "Maya's telepathic detective work is shown as routine until she discovers her own dead body",
+    "percentage": 0.25,
+    "order": 0,
+    "sub_acts": [
+      {
+        "title": "Opening Hook",
+        "description": "Grab reader's attention immediately",
+        "story_application": "Maya wakes at crime scene, sees her body, realizes her power is gone",
+        "percentage": 0.08,
+        "order": 0
+      },
+      {
+        "title": "Establish Normal World",
+        "description": "Show protagonist's ordinary life before change",
+        "story_application": "Flashback to Maya's last case, showing her power and detective skills",
+        "percentage": 0.10,
+        "order": 1
+      },
+      {
+        "title": "Inciting Incident",
+        "description": "Event that disrupts status quo and launches story",
+        "story_application": "Maya realizes she has 24 hours before resurrection window closes",
+        "percentage": 0.07,
+        "order": 2
+      }
+    ]
+  },
+  {
+    "title": "Act 2: Confrontation",
+    "description": "Rising tension, obstacles, complications",
+    "story_application": "Maya investigates her murder while her power flickers, suspects include her partner and a vengeful witness",
+    "percentage": 0.50,
+    "order": 1,
+    "sub_acts": [
+      {
+        "title": "First Obstacle",
+        "description": "Initial attempt to solve problem fails",
+        "story_application": "Maya tries to contact her partner but can't be heard or seen",
+        "percentage": 0.12,
+        "order": 0
+      },
+      {
+        "title": "Midpoint Twist",
+        "description": "Major revelation changes protagonist's understanding",
+        "story_application": "Maya discovers the killer manipulated her telepathy to orchestrate her death",
+        "percentage": 0.15,
+        "order": 1
+      },
+      {
+        "title": "Rising Stakes",
+        "description": "Complications multiply, situation worsens",
+        "story_application": "Her partner is framed for her murder, resurrection window is closing",
+        "percentage": 0.13,
+        "order": 2
+      },
+      {
+        "title": "All Is Lost",
+        "description": "Darkest moment, appears impossible to succeed",
+        "story_application": "With 1 hour left, Maya believes she's already dead and this is her mind's illusion",
+        "percentage": 0.10,
+        "order": 3
+      }
+    ]
+  },
+  {
+    "title": "Act 3: Resolution",
+    "description": "Climax and resolution",
+    "story_application": "Maya confronts the killer, proves she's alive, exposes the conspiracy",
+    "percentage": 0.25,
+    "order": 2,
+    "sub_acts": [
+      {
+        "title": "Climax",
+        "description": "Final confrontation where protagonist faces greatest challenge",
+        "story_application": "Showdown with killer using her restored telepathy as weapon",
+        "percentage": 0.15,
+        "order": 0
+      },
+      {
+        "title": "Resolution",
+        "description": "Wrap up story threads and show new status quo",
+        "story_application": "Maya's body is revived, killer arrested, she reconciles with partner",
+        "percentage": 0.10,
+        "order": 1
+      }
+    ]
+  }
+]
+```
+
+**Percentage Validation:**
+- Top-level acts must sum to 100% (0.25 + 0.50 + 0.25 = 1.0)
+- Sub-acts within an act should also sum correctly
+- System automatically validates percentages and warns if inconsistent
+
+#### Supported Outline Structures:
+
+Each structure is implemented as a **template** with recursive sub-acts.
 
 ##### 1. Three-Act Structure (Syd Field)
-- **Act 1 - Setup** (25%) - Hook, inciting incident, establish world/characters
-- **Act 2 - Confrontation** (50%) - Rising action, complications, midpoint twist
-- **Act 3 - Resolution** (25%) - Climax, falling action, resolution
+- **Act 1: Setup** (25%)
+  - Opening Hook (8%)
+  - Establish Normal World (10%)
+  - Inciting Incident (7%)
+- **Act 2: Confrontation** (50%)
+  - First Obstacle (12%)
+  - Midpoint Twist (15%)
+  - Rising Stakes (13%)
+  - All Is Lost (10%)
+- **Act 3: Resolution** (25%)
+  - Climax (15%)
+  - Resolution (10%)
 
-##### 2. Hero's Journey (Campbell/Vogler) - 12 stages
-- **Ordinary World** (5%)
-- **Call to Adventure** (5%)
-- **Refusal of the Call** (5%)
-- **Meeting the Mentor** (5%)
-- **Crossing the Threshold** (10%)
-- **Tests, Allies, Enemies** (15%)
-- **Approach to the Inmost Cave** (10%)
-- **Ordeal** (15%)
-- **Reward** (10%)
-- **The Road Back** (10%)
-- **Resurrection** (5%)
-- **Return with the Elixir** (5%)
+##### 2. Hero's Journey (Campbell/Vogler)
+- **Act 1: Departure** (25%)
+  - Ordinary World (8%)
+  - Call to Adventure (5%)
+  - Refusal of the Call (4%)
+  - Meeting the Mentor (4%)
+  - Crossing the Threshold (4%)
+- **Act 2: Initiation** (50%)
+  - Tests, Allies, and Enemies (15%)
+  - Approach to the Inmost Cave (10%)
+  - The Ordeal (10%)
+  - Reward (Seizing the Sword) (10%)
+  - The Road Back (5%)
+- **Act 3: Return** (25%)
+  - Resurrection (15%)
+  - Return with the Elixir (10%)
 
-##### 3. Save the Cat (Blake Snyder) - 15 beats
-- **Opening Image** (2%)
-- **Theme Stated** (3%)
-- **Setup** (10%)
-- **Catalyst** (5%)
-- **Debate** (5%)
-- **Break into Two** (5%)
-- **B Story** (5%)
-- **Fun and Games** (15%)
-- **Midpoint** (10%)
-- **Bad Guys Close In** (10%)
-- **All Is Lost** (5%)
-- **Dark Night of the Soul** (5%)
-- **Break into Three** (5%)
-- **Finale** (10%)
-- **Final Image** (5%)
-
-##### 4. Fichtean Curve (Jack Bickham)
-- **Crisis 1** (15%)
-- **Crisis 2** (20%)
-- **Crisis 3** (25%)
+##### 3. Fichtean Curve (Jack Bickham)
+- **Rising Action: Crisis 1** (15%) - No sub-acts (flat structure)
+- **Rising Action: Crisis 2** (15%)
+- **Rising Action: Crisis 3** (15%)
 - **Climax** (30%)
+- **Falling Action** (15%)
 - **Resolution** (10%)
 
-##### 5. Seven-Point Structure (Dan Wells)
-- **Hook** (10%)
-- **Plot Turn 1** (15%)
-- **Pinch 1** (10%)
-- **Midpoint** (20%)
-- **Pinch 2** (10%)
-- **Plot Turn 2** (15%)
-- **Resolution** (20%)
+**Note:** Not all structures need sub-acts. Fichtean Curve works well with a flat structure.
+
+##### CLI Usage:
+
+```bash
+# Generate outline with specific structure
+python -m storygen.iterative.cli outline \
+  -i idea.json \
+  -c characters.json \
+  -l locations.json \
+  --model ollama/qwen3:30b \
+  --structure three-act \
+  -o outline.json
+
+# Available structures:
+# - three-act (default)
+# - hero-journey
+# - fichtean
+
+# Use verbose mode to see AI prompts and responses
+python -m storygen.iterative.cli outline \
+  -i idea.json \
+  -c characters.json \
+  -l locations.json \
+  --model ollama/qwen3:30b \
+  --structure hero-journey \
+  -o outline.json \
+  -v  # Verbose mode
+```
+
+##### Verbose Mode Features:
+
+When `--verbose` flag is enabled, the CLI shows:
+
+1. **System Prompt Sent to AI:**
+   - Full instructions about JSON format
+   - Template structure being used
+   - Critical requirements (array format, percentage validation, etc.)
+
+2. **User Prompt with Story Context:**
+   - Story idea, characters, locations
+   - Outline template with generic descriptions
+   - Instructions for filling in story_application fields
+
+3. **Raw AI Response:**
+   - Complete JSON returned by AI
+   - Helps debug format issues
+
+4. **Parsed Outline Structure:**
+   - Tree visualization of acts and sub-acts
+   - Percentage calculations showing how they sum to 100%
+   - Validation results
+
+5. **Validation Errors (if any):**
+   - Specific issues found (missing fields, incorrect percentages)
+   - Feedback sent to AI on retry
+
+**Example Verbose Output:**
+
+```
+================================================================================
+SENDING TO AI MODEL:
+================================================================================
+
+SYSTEM PROMPT:
+You are an expert story architect specializing in plot structure.
+You are a strict JSON generator. Do not add explanations, markdown formatting,
+or any text outside the JSON structure.
+
+CRITICAL JSON FORMAT REQUIREMENTS:
+1. Your response MUST be a valid JSON ARRAY that starts with [ and ends with ]
+2. The array MUST contain ALL acts (typically 3 acts for three-act structure)
+3. Do NOT output separate JSON objects - wrap everything in a single array
+...
+
+USER PROMPT:
+Story to outline:
+
+Title/Concept: A detective whose mind-reading ability made her a legend...
+...
+
+================================================================================
+RECEIVED FROM AI MODEL:
+================================================================================
+
+[
+  {
+    "title": "Act 1: Setup",
+    "description": "...",
+    "story_application": "Maya discovers her own body...",
+    ...
+  },
+  ...
+]
+
+================================================================================
+PARSED OUTLINE STRUCTURE:
+================================================================================
+
+Top-level Act 1: Act 1: Setup
+  Percentage: 0.25
+  get_total_percentage(): 0.25
+  Sub-acts (3):
+    - Opening Hook: 0.08
+    - Establish Normal World: 0.10
+    - Inciting Incident: 0.07
+
+Top-level Act 2: Act 2: Confrontation
+  Percentage: 0.50
+  get_total_percentage(): 0.50
+  Sub-acts (4):
+    - First Obstacle: 0.12
+    - Midpoint Twist: 0.15
+    - Rising Stakes: 0.13
+    - All Is Lost: 0.10
+
+Top-level Act 3: Act 3: Resolution
+  Percentage: 0.25
+  get_total_percentage(): 0.25
+  Sub-acts (2):
+    - Climax: 0.15
+    - Resolution: 0.10
+
+Total percentage (sum of get_total_percentage()): 100.00%
+================================================================================
+
+✅ Generated three-act outline!
+💾 Saved to: outline.json
+```
+
+**Why Verbose Mode?**
+- Debug AI output issues (especially with local models like Ollama)
+- Understand what instructions AI is receiving
+- See how percentages are calculated and validated
+- Troubleshoot when generation fails
+- Learn how prompt engineering works
 
 **Word Count Distribution:**
 - User specifies target word count (e.g., 2000 words)

@@ -1,0 +1,59 @@
+{
+  "structure_type": "fichtean",
+  "acts": [
+    {
+      "title": "Rising Action: Crisis 1",
+      "description": "The story opens with an immediate crisis. No extended setup—throw the protagonist into action and reveal character through conflict.",
+      "story_application": "Elara Vance wakes to find her own body in the Rain-Slicked Alley, her mind-reading ability failing catastrophically as she realizes her body is cold and lifeless. She navigates the alley's silent chaos, confronting her power's collapse while her mind struggles to process the murder. This moment establishes her existential crisis and the core conflict of her fragmented reality.",
+      "percentage": 0.15,
+      "order": 0,
+      "sub_acts": [],
+      "scenes": []
+    },
+    {
+      "title": "Rising Action: Crisis 2",
+      "description": "A second crisis escalates the stakes. The protagonist's situation worsens. Reveal more about relationships and backstory through the conflict.",
+      "story_application": "Elara retreats to her Silent Apartment, desperately trying to contact Marcus Reed but failing as her ability vanishes entirely. She confronts her isolation and Silas Thorne's hidden role in her research, realizing her trust in others made her vulnerable. This deepens her internal conflict and reveals Silas's manipulation of her power.",
+      "percentage": 0.15,
+      "order": 1,
+      "sub_acts": [],
+      "scenes": []
+    },
+    {
+      "title": "Rising Action: Crisis 3",
+      "description": "A third crisis further complicates matters. The protagonist's flaws contribute to the problem. Allies may be lost or betrayed.",
+      "story_application": "At the City's Silent Market, Elara encounters Silas's shadowy figure who exploits her darkest secret about her betrayal at the Abandoned Lighthouse. Dr. Aris Thorne feeds Silas false information about Elara's 'ghost' state, deepening her paranoia. This crisis exposes her flaw of trusting others and escalates the threat to her existence.",
+      "percentage": 0.15,
+      "order": 2,
+      "sub_acts": [],
+      "scenes": []
+    },
+    {
+      "title": "Climax",
+      "description": "All crises converge into one major confrontation. The protagonist must face their fears and flaws directly. Maximum tension and uncertainty.",
+      "story_application": "Elara confronts Silas at the Abandoned Lighthouse, realizing he orchestrated her murder by exploiting her ability to manipulate others. She faces her flaw of over-trusting by resisting his control and using her fractured memories to expose his crimes. This confrontation forces her to choose between her old perception and new self-awareness.",
+      "percentage": 0.3,
+      "order": 3,
+      "sub_acts": [],
+      "scenes": []
+    },
+    {
+      "title": "Falling Action",
+      "description": "The aftermath of the climax. Deal with consequences, reveal final surprises, and show how the protagonist has changed.",
+      "story_application": "Elara proves her aliveness to Marcus Reed at the Precinct's Echo Chamber, showing him evidence of Silas's manipulation. Marcus accepts her ability as a tool, not a liability, and helps clear her name. This resolves her isolation and validates her growth in trusting her own judgment.",
+      "percentage": 0.15,
+      "order": 4,
+      "sub_acts": [],
+      "scenes": []
+    },
+    {
+      "title": "Resolution",
+      "description": "Brief denouement showing the new normal. Tie up remaining threads and provide closure.",
+      "story_application": "Elara returns to the precinct, using her mind-reading selectively to aid investigations while respecting others' privacy. She reconciles with Marcus, now viewing her ability as a shared burden rather than a gift. The story closes with her embracing her fragmented identity as a strength, not a flaw.",
+      "percentage": 0.1,
+      "order": 5,
+      "sub_acts": [],
+      "scenes": []
+    }
+  ]
+}
