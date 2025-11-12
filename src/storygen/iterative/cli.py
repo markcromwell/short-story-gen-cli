@@ -973,5 +973,185 @@ def prose(
         raise click.Abort()
 
 
+@cli.command()
+@click.option(
+    "-i",
+    "--idea",
+    "idea_file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to story idea JSON file",
+)
+@click.option(
+    "-c",
+    "--characters",
+    "characters_file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to characters JSON file",
+)
+@click.option(
+    "-l",
+    "--locations",
+    "locations_file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to locations JSON file",
+)
+@click.option(
+    "--prose",
+    "prose_file",
+    required=True,
+    type=click.Path(exists=True),
+    help="Path to prose JSON file (scene-sequels with content)",
+)
+@click.option(
+    "-o",
+    "--output",
+    type=click.Path(),
+    required=True,
+    help="Output EPUB file path",
+)
+@click.option(
+    "--author",
+    default="AI Generated",
+    help="Author name for EPUB metadata (default: AI Generated)",
+)
+@click.option(
+    "--title",
+    help="Override story title (uses one-sentence from idea if not provided)",
+)
+@click.option(
+    "--chapters",
+    type=click.Choice(["numbered", "titled", "sections", "none"]),
+    default="numbered",
+    help="Chapter style: numbered (Chapter 1), titled (Chapter 1: Title), sections (no chapters), none (single chapter)",
+)
+@click.option(
+    "--chapter-length",
+    type=int,
+    default=3000,
+    help="Target words per chapter for auto-break logic (default: 3000)",
+)
+@click.option(
+    "--force-breaks",
+    help="Comma-separated scene-sequel IDs to force chapter breaks (e.g., ss_005,ss_012)",
+)
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Enable verbose output (show chapter decisions)",
+)
+def epub(
+    idea_file: str,
+    characters_file: str,
+    locations_file: str,
+    prose_file: str,
+    output: str,
+    author: str,
+    title: str | None,
+    chapters: str,
+    chapter_length: int,
+    force_breaks: str | None,
+    verbose: bool,
+):
+    """Generate EPUB from prose with intelligent chapter breaks.
+
+    Takes completed prose and formats it into a polished EPUB file with:
+    - Intelligent chapter break placement (act boundaries, time gaps, POV changes)
+    - Scene break formatting (major/minor based on context)
+    - Markdown to HTML conversion
+    - Table of contents
+    - Dramatis personae
+
+    Example:
+        python -m storygen.iterative.cli epub \\
+            -i idea.json -c characters.json -l locations.json \\
+            --prose prose.json -o story.epub \\
+            --author "Jane Doe" --chapters numbered \\
+            --chapter-length 2500 -v
+    """
+    try:
+        # Load input files
+        click.echo(f"📖 Loading story idea from {idea_file}...", err=True)
+        with open(idea_file, encoding="utf-8") as f:
+            idea_data = json.load(f)
+        story_idea = StoryIdea.from_dict(idea_data)
+
+        click.echo(f"👥 Loading characters from {characters_file}...", err=True)
+        with open(characters_file, encoding="utf-8") as f:
+            chars_data = json.load(f)
+        if isinstance(chars_data, list):
+            characters = [Character.from_dict(c) for c in chars_data]
+        else:
+            characters = [Character.from_dict(c) for c in chars_data["characters"]]
+
+        click.echo(f"🗺️  Loading locations from {locations_file}...", err=True)
+        with open(locations_file, encoding="utf-8") as f:
+            locs_data = json.load(f)
+        if isinstance(locs_data, list):
+            locations = [Location.from_dict(loc) for loc in locs_data]
+        else:
+            locations = [Location.from_dict(loc) for loc in locs_data["locations"]]
+
+        click.echo(f"📝 Loading prose from {prose_file}...", err=True)
+        with open(prose_file, encoding="utf-8") as f:
+            prose_data = json.load(f)
+
+        from storygen.iterative.models import SceneSequel
+
+        scene_sequels = [SceneSequel.from_dict(ss) for ss in prose_data["scene_sequels"]]
+        total_words = sum(ss.actual_word_count or 0 for ss in scene_sequels)
+        click.echo(
+            f"✅ Loaded {len(scene_sequels)} scene-sequels ({total_words:,} words)", err=True
+        )
+
+        # Parse force breaks
+        force_break_list = None
+        if force_breaks:
+            force_break_list = [s.strip() for s in force_breaks.split(",")]
+            click.echo(f"🔖 Forcing chapter breaks at: {', '.join(force_break_list)}", err=True)
+
+        # Format EPUB
+        click.echo(f"📚 Formatting EPUB with {chapters} chapters...", err=True)
+
+        from storygen.iterative.formatters.epub import EpubFormatter
+
+        formatter = EpubFormatter(
+            author=author,
+            chapter_style=chapters,  # type: ignore
+            target_chapter_length=chapter_length,
+            verbose=verbose,
+        )
+
+        output_path = formatter.format(
+            story_idea=story_idea,
+            characters=characters,
+            locations=locations,
+            scene_sequels=scene_sequels,
+            output_path=output,
+            title_override=title,
+            force_chapter_breaks=force_break_list,
+        )
+
+        click.echo(f"✅ EPUB generated: {output_path}", err=True)
+        click.echo(f"📊 {len(scene_sequels)} scenes, {total_words:,} words", err=True)
+
+    except FileNotFoundError as e:
+        click.echo(f"❌ Error: File not found: {e.filename}", err=True)
+        raise click.Abort()
+    except json.JSONDecodeError as e:
+        click.echo(f"❌ Error: Invalid JSON: {e}", err=True)
+        raise click.Abort()
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        if verbose:
+            import traceback
+
+            traceback.print_exc()
+        raise click.Abort()
+
+
 if __name__ == "__main__":
     cli()
