@@ -1,10 +1,9 @@
 """Scene-sequel breakdown generator - expands outline acts into scene-sequel pairs."""
 
 import json
-import time
+from typing import Any
 
-import litellm
-
+from storygen.iterative.generators.base import BaseGenerator, GenerationError
 from storygen.iterative.models import (
     Act,
     Character,
@@ -15,13 +14,13 @@ from storygen.iterative.models import (
 )
 
 
-class BreakdownGenerationError(Exception):
+class BreakdownGenerationError(GenerationError):
     """Raised when scene-sequel breakdown generation fails."""
 
     pass
 
 
-class BreakdownGenerator:
+class BreakdownGenerator(BaseGenerator[list[SceneSequel]]):
     """
     Generate scene-sequel breakdown from story outline.
 
@@ -45,10 +44,7 @@ class BreakdownGenerator:
             timeout: Timeout in seconds for AI calls (default: 600 = 10 minutes)
             verbose: Enable verbose logging of prompts and responses (default: False)
         """
-        self.model = model
-        self.max_retries = max_retries
-        self.timeout = timeout
-        self.verbose = verbose
+        super().__init__(model=model, max_retries=max_retries, timeout=timeout, verbose=verbose)
 
     def generate(
         self,
@@ -186,65 +182,34 @@ class BreakdownGenerator:
             starting_id=starting_id,
         )
 
-        for attempt in range(self.max_retries):
-            try:
-                if self.verbose:
-                    print(f"\n{'=' * 80}")
-                    print("SENDING TO AI MODEL:")
-                    print(f"{'=' * 80}\n")
-                    print(f"SYSTEM PROMPT:\n{system_prompt}\n")
-                    print(f"USER PROMPT:\n{user_prompt}\n")
-                    print(f"{'=' * 80}\n")
+        # Parser that converts response text to list of SceneSequels
+        def parse_to_scene_sequels(response_text: str) -> list[SceneSequel]:
+            return self._parse_breakdown_response(response_text, act.title)
 
-                response = litellm.completion(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    timeout=self.timeout,
-                    temperature=0.7,
-                )
+        # Use base class retry logic
+        return self._generate_with_retry(
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            parser=parse_to_scene_sequels,
+            temperature=0.7,
+            error_class=BreakdownGenerationError,
+        )
 
-                content = response.choices[0].message.content
-
-                if self.verbose:
-                    print(f"{'=' * 80}")
-                    print("RECEIVED FROM AI MODEL:")
-                    print(f"{'=' * 80}\n")
-                    print(content)
-                    print(f"\n{'=' * 80}\n")
-
-                # Parse response
-                scene_sequels = self._parse_response(content, act.title)
-
-                if self.verbose:
-                    print(f"{'=' * 80}")
-                    print("PARSED SCENE-SEQUELS:")
-                    print(f"{'=' * 80}\n")
-                    for ss in scene_sequels:
-                        print(f"{ss.id} ({ss.type}): {ss.pov_character} @ {ss.location}")
-                        print(
-                            f"  Time: {ss.start_hours:.1f}h - {ss.end_hours:.1f}h ({ss.time_of_day})"
-                        )
-                        if ss.type == "scene":
-                            print(f"  Goal: {ss.goal}")
-                            print(f"  Disaster: {ss.disaster}")
-                        print()
-                    print(f"{'=' * 80}\n")
-
-                return scene_sequels
-
-            except Exception as e:
-                if attempt < self.max_retries - 1:
-                    if self.verbose:
-                        print(f"⚠️  Attempt {attempt + 1} failed: {e}")
-                        print(f"🔄 Retrying ({attempt + 2}/{self.max_retries})...\n")
-                    time.sleep(2**attempt)  # Exponential backoff
-                else:
-                    raise BreakdownGenerationError(f"Failed after {self.max_retries} attempts: {e}")
-
-        raise BreakdownGenerationError("Unexpected: loop exited without return or raise")
+    def _log_parsed(self, parsed_data: Any) -> None:
+        """Override to provide custom logging for breakdown data."""
+        if self.verbose and isinstance(parsed_data, list):
+            print(f"{'=' * 80}")
+            print("PARSED SCENE-SEQUELS:")
+            print(f"{'=' * 80}\n")
+            for ss in parsed_data:
+                if isinstance(ss, SceneSequel):
+                    print(f"{ss.id} ({ss.type}): {ss.pov_character} @ {ss.location}")
+                    print(f"  Time: {ss.start_hours:.1f}h - {ss.end_hours:.1f}h ({ss.time_of_day})")
+                    if ss.type == "scene":
+                        print(f"  Goal: {ss.goal}")
+                        print(f"  Disaster: {ss.disaster}")
+                    print()
+            print(f"{'=' * 80}\n")
 
     def _build_prompt(
         self,
@@ -378,7 +343,15 @@ Return ONLY the valid JSON array, nothing else."""
 
         return system_prompt, user_prompt
 
-    def _parse_response(self, response: str, act_title: str) -> list[SceneSequel]:
+    def _parse_response(self, response_text: str, act_title: str = "") -> Any:  # type: ignore[override]
+        """
+        Parse breakdown response - delegates to _parse_breakdown_response.
+
+        Note: Overrides base signature to add act_title parameter.
+        """
+        return self._parse_breakdown_response(response_text, act_title)
+
+    def _parse_breakdown_response(self, response: str, act_title: str) -> list[SceneSequel]:
         """
         Parse AI response into SceneSequel objects.
 

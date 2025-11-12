@@ -1,9 +1,7 @@
 """Outline generator for story creation with flexible structure templates."""
 
 import json
-import time
-
-import litellm
+from typing import Any
 
 from storygen.iterative.generators.base import BaseGenerator, GenerationError
 from storygen.iterative.models import Act, Character, Location, Outline, StoryIdea
@@ -49,8 +47,6 @@ class OutlineGenerator(BaseGenerator[Outline]):
         """
         super().__init__(model=model, max_retries=max_retries, timeout=timeout, verbose=verbose)
         self.structure_type = structure_type
-        self.timeout = timeout
-        self.verbose = verbose
 
         # Validate structure type
         if structure_type not in list_available_structures():
@@ -361,56 +357,34 @@ FIX REQUIRED: Return a SINGLE JSON array containing ALL acts like this:
 
 Return ONLY the corrected JSON array, no explanations."""
 
-                if self.verbose:
-                    print("\n" + "=" * 80)
-                    print("SENDING TO AI MODEL:")
-                    print("=" * 80)
-                    print(f"\nSYSTEM PROMPT:\n{system_prompt}\n")
-                    print(f"\nUSER PROMPT:\n{current_user_prompt}\n")
-                    print("=" * 80)
-
-                # Call AI with JSON mode for supported models
-                # Use lower temperature for more deterministic JSON structure
-                # On retries, use even lower temperature to enforce format
+                # Use lower temperature on retries for more deterministic JSON structure
                 temperature = 0.3 if error_feedback else 0.5
-
-                api_kwargs = {
-                    "model": self.model,
-                    "messages": [
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": current_user_prompt},
-                    ],
-                    "timeout": self.timeout,
-                    "temperature": temperature,
-                    "stream": False,
-                }
-
-                # Enable JSON mode for OpenAI models (helps with valid JSON structure)
-                if self.model.startswith("gpt-"):
-                    api_kwargs["response_format"] = {"type": "json_object"}
 
                 if self.verbose and error_feedback:
                     print(f"   Using temperature={temperature} for retry\n")
 
-                response = litellm.completion(**api_kwargs)
+                # Log request using base class
+                self._log_request(system_prompt, current_user_prompt)
 
-                # Extract response
-                if not hasattr(response, "choices") or not response.choices:  # type: ignore[union-attr]
-                    raise OutlineGenerationError("Invalid response format from AI model")
+                # Build additional API kwargs with JSON mode for OpenAI models
+                extra_kwargs: dict[str, Any] = {}
+                if self.model.startswith("gpt-"):
+                    extra_kwargs["response_format"] = {"type": "json_object"}
 
-                response_text = response.choices[0].message.content  # type: ignore[union-attr]
-                if not response_text:
-                    raise OutlineGenerationError("Empty response from AI model")
+                # Call AI using base class helper
+                response = self._call_ai(
+                    system_prompt,
+                    current_user_prompt,
+                    temperature=temperature,
+                    stream=False,
+                    **extra_kwargs,
+                )
 
-                if self.verbose:
-                    print("\n" + "=" * 80)
-                    print("RECEIVED FROM AI MODEL:")
-                    print("=" * 80)
-                    print(f"\n{response_text}\n")
-                    print("=" * 80)
+                # Log response using base class
+                self._log_response(response)
 
                 # Parse and validate
-                acts = self._parse_response(response_text)
+                acts = self._parse_response(response)
 
                 if self.verbose:
                     print("\n" + "=" * 80)
@@ -459,6 +433,9 @@ Return ONLY the corrected JSON array, no explanations."""
                     wait_time = 2**attempt  # Exponential backoff
                     if self.verbose:
                         print(f"   Retrying in {wait_time} seconds...\n")
+                    # Use exponential backoff (base class has time imported)
+                    import time
+
                     time.sleep(wait_time)
                     continue
 

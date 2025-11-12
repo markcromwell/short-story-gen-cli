@@ -572,7 +572,7 @@ class TestBreakdownGeneratorBuildPrompt:
 class TestBreakdownGeneratorGenerate:
     """Tests for generate method."""
 
-    @patch("storygen.iterative.generators.breakdown.litellm")
+    @patch("storygen.iterative.generators.base.litellm")
     def test_generate_success(self, mock_litellm):
         """Test successful generation of scene-sequels."""
         # Mock AI response
@@ -651,7 +651,7 @@ class TestBreakdownGeneratorGenerate:
         assert scene_sequels[0].pov_character == "Maya"
         assert scene_sequels[0].location == "Station"
 
-    @patch("storygen.iterative.generators.breakdown.litellm")
+    @patch("storygen.iterative.generators.base.litellm")
     def test_generate_multiple_acts(self, mock_litellm):
         """Test generation with multiple acts."""
         # Mock AI response
@@ -741,7 +741,7 @@ class TestBreakdownGeneratorGenerate:
         assert len(scene_sequels) == 3
         assert mock_litellm.completion.call_count == 3
 
-    @patch("storygen.iterative.generators.breakdown.litellm")
+    @patch("storygen.iterative.generators.base.litellm")
     def test_generate_tracks_time_progression(self, mock_litellm):
         """Test that generation tracks time progression across acts."""
         # Mock AI response with different start times
@@ -826,7 +826,7 @@ class TestBreakdownGeneratorGenerate:
         mock_response.choices[0].message.content = content
         return mock_response
 
-    @patch("storygen.iterative.generators.breakdown.litellm")
+    @patch("storygen.iterative.generators.base.litellm")
     def test_generate_retry_on_failure(self, mock_litellm):
         """Test that generation retries on failure."""
         # First call fails, second succeeds
@@ -891,7 +891,7 @@ class TestBreakdownGeneratorGenerate:
         assert len(scene_sequels) == 1
         assert mock_litellm.completion.call_count == 2
 
-    @patch("storygen.iterative.generators.breakdown.litellm")
+    @patch("storygen.iterative.generators.base.litellm")
     def test_generate_fails_after_max_retries(self, mock_litellm):
         """Test that generation fails after max retries."""
         mock_litellm.completion.side_effect = Exception("API Error")
@@ -948,5 +948,5 @@ class TestBreakdownGeneratorGenerate:
                 target_words=1000,
             )
 
-        assert "Failed after 2 attempts" in str(exc_info.value)
+        assert "Failed to generate after 2 attempts" in str(exc_info.value)
         assert mock_litellm.completion.call_count == 2

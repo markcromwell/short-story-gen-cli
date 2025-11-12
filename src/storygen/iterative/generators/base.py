@@ -128,6 +128,7 @@ class BaseGenerator(ABC, Generic[T]):
         user_prompt: str,
         temperature: float = 0.8,
         stream: bool = False,
+        **kwargs: Any,
     ) -> str:
         """
         Call the AI model with retry logic.
@@ -137,6 +138,7 @@ class BaseGenerator(ABC, Generic[T]):
             user_prompt: User's specific request
             temperature: Sampling temperature (0.0-1.0)
             stream: Whether to use streaming
+            **kwargs: Additional arguments to pass to litellm.completion
 
         Returns:
             Response text from AI
@@ -153,6 +155,7 @@ class BaseGenerator(ABC, Generic[T]):
             timeout=self.timeout,
             temperature=temperature,
             stream=stream,
+            **kwargs,
         )
 
         # Extract response text

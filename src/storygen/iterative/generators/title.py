@@ -4,18 +4,16 @@ Title generator for stories.
 Generates compelling titles based on story idea, genres, and themes.
 """
 
-import time
-
-import litellm
+from storygen.iterative.generators.base import BaseGenerator, GenerationError
 
 
-class TitleGenerationError(Exception):
+class TitleGenerationError(GenerationError):
     """Raised when title generation fails."""
 
     pass
 
 
-class TitleGenerator:
+class TitleGenerator(BaseGenerator[str]):
     """Generates story titles using AI."""
 
     def __init__(
@@ -34,10 +32,7 @@ class TitleGenerator:
             timeout: Timeout in seconds for AI calls (default: 600 = 10 minutes)
             verbose: Print detailed progress
         """
-        self.model = model
-        self.max_retries = max_retries
-        self.timeout = timeout
-        self.verbose = verbose
+        super().__init__(model=model, max_retries=max_retries, timeout=timeout, verbose=verbose)
 
     def generate(
         self,
@@ -67,67 +62,46 @@ class TitleGenerator:
             if scene_sequels:
                 print(f"   Analyzing {len(scene_sequels)} scenes from the complete story...")
 
-        for attempt in range(1, self.max_retries + 1):
-            try:
-                if self.verbose and attempt > 1:
-                    print(f"   Retry {attempt}/{self.max_retries}...")
+        # Store parameters for use in _build_prompt
+        self._raw_idea = raw_idea
+        self._one_sentence = one_sentence
+        self._genres = genres
+        self._themes = themes
+        self._tone = tone
+        self._scene_sequels = scene_sequels
 
-                title = self._generate_with_retry(
-                    raw_idea, one_sentence, genres, themes, tone, scene_sequels, attempt
-                )
+        # Parser that validates the title
+        def parse_and_validate(response_text: str) -> str:
+            title = self._parse_response(response_text)
+            self._validate_title(title)
+            return title
 
-                if self.verbose:
-                    print(f"✅ Generated title: {title}")
-
-                return title
-
-            except Exception as e:
-                if attempt == self.max_retries:
-                    raise TitleGenerationError(
-                        f"Failed to generate title after {self.max_retries} attempts: {e}"
-                    )
-                if self.verbose:
-                    print(f"⚠️  Attempt {attempt} failed: {e}")
-                time.sleep(2**attempt)  # Exponential backoff
-
-        # Fallback if all retries fail
-        raise TitleGenerationError("Failed to generate title")
-
-    def _generate_with_retry(
-        self,
-        raw_idea: str,
-        one_sentence: str,
-        genres: list[str],
-        themes: list[str],
-        tone: str,
-        scene_sequels: list | None,
-        attempt: int,
-    ) -> str:
-        """Generate title with AI."""
-        system_prompt = self._build_system_prompt()
-        user_prompt = self._build_user_prompt(
-            raw_idea, one_sentence, genres, themes, tone, scene_sequels
-        )
-
-        response = litellm.completion(
-            model=self.model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            timeout=self.timeout,
+        # Use base class retry logic
+        title = self._generate_with_retry(
+            system_prompt="",  # Built in _build_prompt
+            user_prompt="",  # Built in _build_prompt
+            parser=parse_and_validate,
             temperature=0.8,  # Higher temperature for creative titles
+            error_class=TitleGenerationError,
         )
 
-        content = str(response.choices[0].message.content or "")  # type: ignore
-
-        # Parse response
-        title = self._parse_response(content)
-
-        # Validate
-        self._validate_title(title)
+        if self.verbose:
+            print(f"✅ Generated title: {title}")
 
         return title
+
+    def _build_prompt(self) -> tuple[str, str]:
+        """Build prompts for title generation."""
+        system_prompt = self._build_system_prompt()
+        user_prompt = self._build_user_prompt(
+            self._raw_idea,
+            self._one_sentence,
+            self._genres,
+            self._themes,
+            self._tone,
+            self._scene_sequels,
+        )
+        return (system_prompt, user_prompt)
 
     def _build_system_prompt(self) -> str:
         """Build system prompt for title generation."""

@@ -6,25 +6,27 @@ the Scene-Sequel structure, story context, and writing style.
 """
 
 import re
-import time
+from typing import Any
 
-import litellm
+from storygen.iterative.generators.base import BaseGenerator, GenerationError
+from storygen.iterative.models import Character, Location, SceneSequel, StoryIdea
 
-from ..models import Character, Location, SceneSequel, StoryIdea
 
-
-class ProseGenerationError(Exception):
+class ProseGenerationError(GenerationError):
     """Raised when prose generation fails."""
 
     pass
 
 
-class ProseGenerator:
+class ProseGenerator(BaseGenerator[Any]):  # type: ignore[type-arg]
     """
     Generates prose for scene-sequels using AI.
 
     Takes a breakdown (list of scene-sequels) and generates markdown-formatted
     prose for each one, maintaining continuity through summaries and key points.
+
+    Note: Uses BaseGenerator for _generate_with_retry but has custom generate()
+    that returns list[SceneSequel] instead of the generic type.
     """
 
     def __init__(
@@ -47,12 +49,9 @@ class ProseGenerator:
             context_window: Number of previous scene-sequels to include for continuity
             verbose: Whether to print detailed progress
         """
-        self.model = model
-        self.max_retries = max_retries
-        self.timeout = timeout
+        super().__init__(model=model, max_retries=max_retries, timeout=timeout, verbose=verbose)
         self.temperature = temperature
         self.context_window = context_window
-        self.verbose = verbose
 
     def generate(
         self,
@@ -204,72 +203,66 @@ class ProseGenerator:
             locations: All locations
             writing_style: Writing style to use
         """
-        for attempt in range(self.max_retries):
-            try:
-                # Build prompt
-                system_prompt, user_prompt = self._build_prompt(
-                    scene_sequel=scene_sequel,
-                    current_index=current_index,
-                    all_scene_sequels=all_scene_sequels,
-                    story_idea=story_idea,
-                    characters=characters,
-                    locations=locations,
-                    writing_style=writing_style,
+        # Store scene-specific parameters for _build_prompt
+        self._scene_sequel = scene_sequel
+        self._current_index = current_index
+        self._all_scene_sequels = all_scene_sequels
+        self._story_idea = story_idea
+        self._characters = characters
+        self._locations = locations
+        self._writing_style = writing_style
+
+        if self.verbose:
+            print("\n   🤖 Calling AI...")
+
+        # Parser that validates word count and updates scene-sequel
+        def parse_and_validate(response_text: str) -> tuple[str, str, list[str]]:
+            content, summary, key_points = self._parse_response(response_text)
+
+            # Validate
+            word_count = len(content.split())
+            issues = self._validate_prose(scene_sequel, content, word_count)
+
+            if issues and self.verbose:
+                print(f"   ⚠️  Validation issues: {', '.join(issues)}")
+
+            # Check if word count is acceptable (±20%)
+            target = scene_sequel.target_word_count
+            if word_count < target * 0.8 or word_count > target * 1.2:
+                raise ProseGenerationError(
+                    f"Word count {word_count} too far from target {target} (±20%)"
                 )
 
-                if self.verbose and attempt == 0:
-                    print(f"\n   🤖 Calling AI... (attempt {attempt + 1}/{self.max_retries})")
+            return (content, summary, key_points)
 
-                # Call AI
-                response = litellm.completion(
-                    model=self.model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt},
-                    ],
-                    temperature=self.temperature,
-                    timeout=self.timeout,
-                )
+        # Use base class retry logic
+        content, summary, key_points = self._generate_with_retry(
+            system_prompt="",  # Built in _build_prompt
+            user_prompt="",  # Built in _build_prompt
+            parser=parse_and_validate,
+            temperature=self.temperature,
+            error_class=ProseGenerationError,
+        )
 
-                # Parse response
-                response_text = str(response.choices[0].message.content or "")  # type: ignore
-                content, summary, key_points = self._parse_response(response_text)
+        # Update scene-sequel
+        scene_sequel.content = content
+        scene_sequel.summary = summary
+        scene_sequel.key_points = key_points
+        scene_sequel.actual_word_count = len(content.split())
 
-                # Validate
-                word_count = len(content.split())
-                issues = self._validate_prose(scene_sequel, content, word_count)
+    def _build_prompt(self) -> tuple[str, str]:
+        """Build prompts for prose generation using stored parameters."""
+        return self._build_prompt_impl(
+            scene_sequel=self._scene_sequel,
+            current_index=self._current_index,
+            all_scene_sequels=self._all_scene_sequels,
+            story_idea=self._story_idea,
+            characters=self._characters,
+            locations=self._locations,
+            writing_style=self._writing_style,
+        )
 
-                if issues and self.verbose:
-                    print(f"   ⚠️  Validation issues: {', '.join(issues)}")
-
-                # Check if word count is acceptable (±20%)
-                target = scene_sequel.target_word_count
-                if word_count < target * 0.8 or word_count > target * 1.2:
-                    if attempt < self.max_retries - 1:
-                        if self.verbose:
-                            print(f"   ⚠️  Word count off ({word_count}/{target}), retrying...")
-                        time.sleep(2**attempt)  # Exponential backoff
-                        continue
-
-                # Update scene-sequel
-                scene_sequel.content = content
-                scene_sequel.summary = summary
-                scene_sequel.key_points = key_points
-                scene_sequel.actual_word_count = word_count
-
-                return
-
-            except Exception as e:
-                if attempt < self.max_retries - 1:
-                    if self.verbose:
-                        print(f"   ❌ Error: {e}, retrying...")
-                    time.sleep(2**attempt)
-                else:
-                    raise ProseGenerationError(
-                        f"Failed to generate prose for {scene_sequel.id} after {self.max_retries} attempts: {e}"
-                    )
-
-    def _build_prompt(
+    def _build_prompt_impl(
         self,
         scene_sequel: SceneSequel,
         current_index: int,
