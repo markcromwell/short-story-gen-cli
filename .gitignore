@@ -185,6 +185,13 @@ cython_debug/
 *.epub
 output/
 
+# Story generation output (test/example files)
+examples/*.json
+examples/*.epub
+
+# Project directories
+projects/
+
 # Debug scripts (temporary development tools)
 debug_scripts/
 

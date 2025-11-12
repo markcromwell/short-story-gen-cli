@@ -16,7 +16,7 @@ class TestLocationGenerator:
         generator = LocationGenerator()
         assert generator.model == "gpt-4"
         assert generator.max_retries == 3
-        assert generator.timeout == 60
+        assert generator.timeout == 600  # Updated to 10 minutes for slower models
 
     def test_initialization_custom(self):
         """Test LocationGenerator with custom parameters."""
@@ -37,10 +37,10 @@ class TestLocationGenerator:
             themes=["isolation", "paranoia"],
         )
 
-        system_prompt, user_prompt = generator._build_prompt(story_idea)
+        system_prompt, user_prompt = generator._build_prompt(story_idea, story_type="short-story")
 
         # System prompt should have instructions
-        assert "3-7" in system_prompt
+        assert "2-4" in system_prompt  # short-story range
         assert "locations" in system_prompt.lower()
         assert "JSON" in system_prompt
 
@@ -115,19 +115,16 @@ class TestLocationGenerator:
             generator._parse_response('{"locations": "not a list"}')
 
     def test_parse_response_too_few_locations(self):
-        """Test error when less than 3 locations generated."""
+        """Test error when zero locations generated."""
         generator = LocationGenerator()
         response = """{
-  "locations": [
-    {"name": "Lab", "description": "Scientific lab.", "significance": "Crime scene.", "atmosphere": "Eerie."},
-    {"name": "Hallway", "description": "Long corridor.", "significance": "Connect areas.", "atmosphere": "Echoing."}
-  ]
+  "locations": []
 }"""
-        with pytest.raises(LocationGenerationError, match="at least 3 locations"):
+        with pytest.raises(LocationGenerationError, match="Must generate at least 1 location, got"):
             generator._parse_response(response)
 
     def test_parse_response_too_many_locations(self):
-        """Test error when more than 7 locations generated."""
+        """Test error when more than 12 locations generated."""
         generator = LocationGenerator()
         locations_list = [
             {
@@ -136,10 +133,10 @@ class TestLocationGenerator:
                 "significance": f"Significance {i}",
                 "atmosphere": f"Atmosphere {i}",
             }
-            for i in range(8)
+            for i in range(13)
         ]
         response = json_dumps({"locations": locations_list})
-        with pytest.raises(LocationGenerationError, match="at most 7 locations"):
+        with pytest.raises(LocationGenerationError, match="Must generate at most 12 locations"):
             generator._parse_response(response)
 
     def test_parse_response_missing_required_field(self):

@@ -22,7 +22,7 @@ class TitleGenerator:
         self,
         model: str = "gpt-4",
         max_retries: int = 3,
-        timeout: int = 30,
+        timeout: int = 600,
         verbose: bool = False,
     ):
         """
@@ -31,7 +31,7 @@ class TitleGenerator:
         Args:
             model: LiteLLM model identifier
             max_retries: Maximum retry attempts on failure
-            timeout: Timeout in seconds for AI calls
+            timeout: Timeout in seconds for AI calls (default: 600 = 10 minutes)
             verbose: Print detailed progress
         """
         self.model = model

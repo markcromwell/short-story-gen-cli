@@ -11,6 +11,60 @@ from typing import Any, Literal
 
 
 @dataclass
+class StoryConfig:
+    """Base configuration for a story project."""
+
+    story_type: Literal["flash-fiction", "short-story", "novelette", "novella", "novel"]
+    target_words: int
+    pitch: str
+    created_at: str
+    updated_at: str
+
+    def __post_init__(self):
+        """Validate story type and target words."""
+        valid_types = ["flash-fiction", "short-story", "novelette", "novella", "novel"]
+        if self.story_type not in valid_types:
+            raise ValueError(f"story_type must be one of {valid_types}")
+
+        if self.target_words <= 0:
+            raise ValueError("target_words must be positive")
+
+    def to_dict(self) -> dict[str, Any]:
+        """Serialize to dictionary."""
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, data: dict[str, Any]) -> "StoryConfig":
+        """Deserialize from dictionary."""
+        return cls(**data)
+
+    @classmethod
+    def load(cls, project_path: Path) -> "StoryConfig":
+        """Load config from project directory."""
+        import json
+
+        config_path = project_path / "story_config.json"
+        if not config_path.exists():
+            raise FileNotFoundError(f"Config not found: {config_path}")
+
+        with open(config_path, encoding="utf-8") as f:
+            data = json.load(f)
+
+        return cls.from_dict(data)
+
+    def get_length_category(self) -> str:
+        """Get human-readable length category."""
+        categories = {
+            "flash-fiction": "Flash Fiction (<1,500 words)",
+            "short-story": "Short Story (1,500-7,500 words)",
+            "novelette": "Novelette (7,500-17,500 words)",
+            "novella": "Novella (17,500-40,000 words)",
+            "novel": "Novel (40,000+ words)",
+        }
+        return categories.get(self.story_type, self.story_type)
+
+
+@dataclass
 class StoryIdea:
     """A story idea with genre, themes, and expanded description."""
 

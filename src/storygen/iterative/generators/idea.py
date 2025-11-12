@@ -20,48 +20,68 @@ class IdeaGenerationError(Exception):
 class IdeaGenerator:
     """Generates story ideas using AI with retry logic."""
 
-    def __init__(self, model: str = "gpt-4", max_retries: int = 3, timeout: int = 60):
+    def __init__(
+        self, model: str = "gpt-4", max_retries: int = 3, timeout: int = 600, verbose: bool = False
+    ):
         """
         Initialize the idea generator.
 
         Args:
             model: LiteLLM model string (e.g., "gpt-4", "ollama/qwen3:30b")
             max_retries: Maximum number of retry attempts on failure
-            timeout: Timeout in seconds for each API call
+            timeout: Timeout in seconds for each API call (default: 600 = 10 minutes)
+            verbose: Enable verbose logging of prompts and responses (default: False)
         """
         self.model = model
         self.max_retries = max_retries
         self.timeout = timeout
+        self.verbose = verbose
 
-    def _build_prompt(self, user_prompt: str) -> str:
+    def _build_prompt(self, user_prompt: str, story_type: str) -> str:
         """
         Build the system and user prompt for idea generation.
 
         Args:
             user_prompt: The user's story idea prompt
+            story_type: Type of story (flash-fiction, short-story, novelette, novella, novel)
 
         Returns:
             Formatted prompt string
         """
-        system_prompt = """You are a creative writing assistant helping to develop story ideas.
+        # Scope guidance based on story type
+        scope_guidance = {
+            "flash-fiction": "This is FLASH FICTION (<1,500 words): Focus on a SINGLE moment or revelation. One scene, minimal characters, immediate impact.",
+            "short-story": "This is a SHORT STORY (1,500-7,500 words): Focus on a single plot thread with clear beginning/middle/end. Limited characters (2-3 main), tight timeframe.",
+            "novelette": "This is a NOVELETTE (7,500-17,500 words): Can include a subplot and more character development. Still focused, but room for complexity.",
+            "novella": "This is a NOVELLA (17,500-40,000 words): Full story arc with subplots allowed. Multiple character arcs, deeper world-building.",
+            "novel": "This is a NOVEL (40,000+ words): Expansive story with multiple plot threads, extensive world-building, complex character development.",
+        }
 
-Your task is to take a brief story concept and expand it into a detailed story idea.
+        scope = scope_guidance.get(story_type, scope_guidance["short-story"])
+
+        system_prompt = f"""You are a creative writing assistant helping to develop story ideas.
+
+{scope}
+
+Your task is to take a brief story concept and expand it into a detailed story idea APPROPRIATE FOR THIS LENGTH.
 
 Return your response as valid JSON with these exact fields:
-{
+{{
   "raw_idea": "The original user prompt",
   "one_sentence": "A single compelling sentence that captures the core premise with a hook",
   "expanded": "2-3 detailed paragraphs expanding the concept, including main conflict and stakes",
   "genres": ["genre1", "genre2"],  // 1-3 specific genres (lowercase)
   "tone": "Descriptive tone/mood of the story",
   "themes": ["theme1", "theme2", "theme3"]  // 2-4 major themes
-}
+}}
 
 Requirements:
 - one_sentence: Must be exactly ONE sentence with subject, conflict, and stakes
-- expanded: Must be 2-3 full paragraphs (150-250 words total)
+- expanded: Must be 2-3 full paragraphs (150-250 words total) - SCOPE the plot complexity to fit {story_type}
 - genres: Be specific (e.g., ["sci-fi", "horror"] not just ["fiction"])
 - themes: Universal themes that connect to premise (e.g., "mortality", "trust", "identity")
+
+CRITICAL: The expanded premise should match the scope of a {story_type}. Don't suggest epic quests for flash fiction or single moments for novels.
 
 Return ONLY valid JSON, no other text or markdown formatting."""
 
@@ -110,12 +130,13 @@ Return ONLY valid JSON, no other text or markdown formatting."""
 
         return data  # type: ignore[no-any-return]
 
-    def generate(self, user_prompt: str) -> StoryIdea:
+    def generate(self, user_prompt: str, story_type: str = "short-story") -> StoryIdea:
         """
         Generate a story idea from a user prompt.
 
         Args:
             user_prompt: The user's story concept
+            story_type: Type of story (flash-fiction, short-story, novelette, novella, novel)
 
         Returns:
             StoryIdea object
@@ -123,11 +144,19 @@ Return ONLY valid JSON, no other text or markdown formatting."""
         Raises:
             IdeaGenerationError: If generation fails after all retries
         """
-        system_prompt = self._build_prompt(user_prompt)
+        system_prompt = self._build_prompt(user_prompt, story_type)
 
         last_error = None
         for attempt in range(self.max_retries):
             try:
+                if self.verbose:
+                    print("\n" + "=" * 80)
+                    print("SENDING TO AI MODEL:")
+                    print("=" * 80)
+                    print(f"\nSYSTEM PROMPT:\n{system_prompt}\n")
+                    print(f"\nUSER PROMPT:\n{user_prompt}\n")
+                    print("=" * 80)
+
                 # Call AI
                 response = litellm.completion(
                     model=self.model,
@@ -149,8 +178,25 @@ Return ONLY valid JSON, no other text or markdown formatting."""
                 if not response_text:
                     raise IdeaGenerationError("Empty response from AI model")
 
+                if self.verbose:
+                    print("\n" + "=" * 80)
+                    print("RECEIVED FROM AI MODEL:")
+                    print("=" * 80)
+                    print(f"\n{response_text}\n")
+                    print("=" * 80)
+
                 # Parse and validate
                 data = self._parse_response(response_text)
+
+                if self.verbose:
+                    print("\n" + "=" * 80)
+                    print("PARSED STORY IDEA:")
+                    print("=" * 80)
+                    print(f"\nOne-sentence: {data['one_sentence']}")
+                    print(f"Genres: {', '.join(data['genres'])}")
+                    print(f"Tone: {data['tone']}")
+                    print(f"Themes: {', '.join(data['themes'])}")
+                    print("=" * 80)
 
                 # Create StoryIdea (this validates and normalizes genres/themes)
                 idea = StoryIdea(

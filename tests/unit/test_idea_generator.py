@@ -50,7 +50,7 @@ class TestIdeaGenerator:
 
         assert generator.model == "gpt-4"
         assert generator.max_retries == 3
-        assert generator.timeout == 60
+        assert generator.timeout == 600  # Updated to 10 minutes for slower models
 
     def test_initialization_custom(self):
         """Test IdeaGenerator with custom parameters."""
@@ -63,7 +63,7 @@ class TestIdeaGenerator:
     def test_build_prompt(self):
         """Test prompt building includes required instructions."""
         generator = IdeaGenerator()
-        prompt = generator._build_prompt("A detective solves crimes")
+        prompt = generator._build_prompt("A detective solves crimes", "short-story")
 
         # Check for key requirements
         assert "JSON" in prompt
@@ -72,6 +72,7 @@ class TestIdeaGenerator:
         assert "genres" in prompt
         assert "themes" in prompt
         assert "2-3" in prompt  # Paragraph requirement
+        assert "short-story" in prompt.lower()  # Story type mentioned
 
     def test_parse_response_valid(self, valid_ai_response):
         """Test parsing a valid JSON response."""

@@ -75,7 +75,7 @@ class TestCharacterGenerator:
 
         assert generator.model == "gpt-4"
         assert generator.max_retries == 3
-        assert generator.timeout == 60
+        assert generator.timeout == 600  # Updated to 10 minutes for slower models
 
     def test_initialization_custom(self):
         """Test CharacterGenerator with custom parameters."""
@@ -89,13 +89,12 @@ class TestCharacterGenerator:
         """Test prompt building includes story context."""
         generator = CharacterGenerator()
 
-        system_prompt, user_prompt = generator._build_prompt(story_idea)
+        system_prompt, user_prompt = generator._build_prompt(story_idea, story_type="short-story")
 
         # System prompt should request JSON and specify character requirements
         assert "JSON" in system_prompt
         assert "protagonist" in system_prompt
-        assert "antagonist" in system_prompt
-        assert "3-5" in system_prompt
+        assert "1-3" in system_prompt  # short-story range
 
         # User prompt should include story details
         assert story_idea.one_sentence in user_prompt
@@ -172,25 +171,25 @@ class TestCharacterGenerator:
             }
         )
 
-        with pytest.raises(CharacterGenerationError, match="Must generate 3-5 characters"):
+        with pytest.raises(CharacterGenerationError, match="Must generate 1-8 core characters, got 0"):
             generator._parse_response(response_text)
 
     def test_parse_response_too_many_characters(self):
-        """Test more than 5 characters raises error."""
+        """Test more than 8 characters raises error."""
         generator = CharacterGenerator()
         characters_list = [
             {
                 "name": f"Character {i}",
-                "role": "ally",
+                "role": "protagonist" if i == 0 else "ally",
                 "bio": "Bio",
                 "goal": "Goal",
                 "flaw": "Flaw",
             }
-            for i in range(6)
+            for i in range(9)
         ]
         response_text = json.dumps({"characters": characters_list})
 
-        with pytest.raises(CharacterGenerationError, match="Must generate 3-5 characters"):
+        with pytest.raises(CharacterGenerationError, match="Must generate 1-8 core characters, got"):
             generator._parse_response(response_text)
 
     def test_parse_response_missing_required_field(self):
@@ -262,7 +261,7 @@ class TestCharacterGenerator:
             generator._parse_response(response_text)
 
     def test_parse_response_missing_antagonist(self):
-        """Test response without antagonist raises error."""
+        """Test response without antagonist succeeds (antagonist optional now)."""
         generator = CharacterGenerator()
         response_text = json.dumps(
             {
@@ -292,8 +291,10 @@ class TestCharacterGenerator:
             }
         )
 
-        with pytest.raises(CharacterGenerationError, match="Must have.*antagonist"):
-            generator._parse_response(response_text)
+        # Should succeed - antagonist is optional with new story type system
+        char_dicts = generator._parse_response(response_text)
+        assert len(char_dicts) == 3
+        assert char_dicts[0]["role"] == "protagonist"
 
     @patch("litellm.completion")
     def test_generate_success(self, mock_completion, story_idea, mock_litellm_response):

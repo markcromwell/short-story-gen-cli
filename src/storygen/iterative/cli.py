@@ -14,9 +14,44 @@ from storygen.iterative.generators.location import LocationGenerator
 from storygen.iterative.generators.outline import OutlineGenerator
 from storygen.iterative.models import Act, Character, Location, Outline, StoryIdea
 from storygen.iterative.outline_templates import list_available_structures
+from storygen.iterative.project import ProjectManager
 
 # Load environment variables (for API keys)
 load_dotenv()
+
+
+def resolve_project_or_path(
+    name_or_path: str, file_type: str, projects_dir: str = "projects"
+) -> tuple[Path | None, bool]:
+    """Resolve a project name or file path.
+
+    Args:
+        name_or_path: Either a project name or a file path
+        file_type: Type of file (idea, characters, locations, etc.)
+        projects_dir: Root directory for projects
+
+    Returns:
+        Tuple of (resolved_path, is_project_mode)
+        If project doesn't exist, returns (None, False) for direct path mode
+    """
+    manager = ProjectManager(Path(projects_dir))
+
+    # Check if it's a project name
+    if manager.project_exists(name_or_path):
+        paths = manager.get_project(name_or_path)
+        file_map = {
+            "idea": paths.idea,
+            "characters": paths.characters,
+            "locations": paths.locations,
+            "outline": paths.outline,
+            "breakdown": paths.breakdown,
+            "prose": paths.prose,
+            "epub": paths.epub,
+        }
+        return file_map.get(file_type, Path(name_or_path)), True
+
+    # Otherwise treat as direct path
+    return Path(name_or_path), False
 
 
 @click.group()
@@ -26,7 +61,539 @@ def cli():
 
 
 @cli.command()
-@click.argument("prompt")
+@click.argument("name")
+@click.option(
+    "--pitch",
+    "-p",
+    help="Story pitch/premise (if not provided, will prompt interactively)",
+)
+@click.option(
+    "--type",
+    "-t",
+    "story_type",
+    type=click.Choice(["flash-fiction", "short-story", "novelette", "novella", "novel"]),
+    help="Story length type (if not provided, will prompt interactively)",
+)
+@click.option(
+    "--words",
+    "-w",
+    type=int,
+    help="Target word count (if not provided, will use default for story type)",
+)
+@click.option(
+    "--projects-dir",
+    type=click.Path(),
+    default="projects",
+    help="Root directory for projects (default: projects)",
+)
+def new(name: str, pitch: str | None, story_type: str | None, words: int | None, projects_dir: str):
+    """
+    Create a new story project directory.
+
+    Creates a project folder with standardized structure for organizing
+    all story generation files (idea, characters, locations, outline, etc.).
+
+    Examples:
+        storygen-iter new necromancer-duel --pitch "Two necromancers duel" --type short-story
+        storygen-iter new detective-mystery  # Will prompt for all options
+        storygen-iter new fantasy-epic --type novel --words 80000
+    """
+    try:
+        from datetime import datetime
+
+        from storygen.iterative.models import StoryConfig
+
+        manager = ProjectManager(Path(projects_dir))
+
+        # Get pitch if not provided
+        if not pitch:
+            click.echo("📝 Enter your story pitch/premise:")
+            pitch = click.prompt("  ", type=str)
+
+        # Get story type if not provided
+        if not story_type:
+            click.echo("\n📏 Select story type:")
+            click.echo("  1. Flash Fiction (<1,500 words)")
+            click.echo("  2. Short Story (1,500-7,500 words)")
+            click.echo("  3. Novelette (7,500-17,500 words)")
+            click.echo("  4. Novella (17,500-40,000 words)")
+            click.echo("  5. Novel (40,000+ words)")
+            choice = click.prompt("  Choice", type=click.IntRange(1, 5))
+            story_type = ["flash-fiction", "short-story", "novelette", "novella", "novel"][
+                choice - 1
+            ]
+
+        # Get target words if not provided - use defaults based on type
+        if not words:
+            defaults = {
+                "flash-fiction": 1000,
+                "short-story": 5000,
+                "novelette": 12000,
+                "novella": 30000,
+                "novel": 80000,
+            }
+            words = defaults[story_type]
+            click.echo(f"📊 Using default target: {words:,} words for {story_type}")
+
+        # Type checking - at this point all should be set
+        assert pitch is not None, "Pitch should be set by now"
+        assert story_type is not None, "Story type should be set by now"
+        assert words is not None and isinstance(words, int), "Target words should be set by now"
+
+        # Create project
+        paths = manager.create_project(name)
+
+        # Save pitch to old metadata for backwards compatibility
+        manager.save_pitch(name, pitch)
+
+        # Create story config
+        now = datetime.now().isoformat()
+        config = StoryConfig(
+            story_type=story_type,  # type: ignore[arg-type]
+            target_words=words,
+            pitch=pitch,
+            created_at=now,
+            updated_at=now,
+        )
+
+        with open(paths.config, "w", encoding="utf-8") as f:
+            json.dump(config.to_dict(), f, indent=2, ensure_ascii=False)
+
+        click.echo(f"\n✅ Created project: {paths.name}", err=True)
+        click.echo(f"📁 Location: {paths.root}", err=True)
+        click.echo(f"📏 Type: {config.get_length_category()}", err=True)
+        click.echo(f"📊 Target: {words:,} words", err=True)
+        click.echo(f"💡 Pitch: {pitch}", err=True)
+        click.echo("\n🚀 Next steps:", err=True)
+        click.echo(f"  storygen-iter idea {name}", err=True)
+        click.echo(f"  storygen-iter characters {name}", err=True)
+        click.echo(f"  storygen-iter locations {name}", err=True)
+
+    except FileExistsError as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        raise click.Abort()
+    except Exception as e:
+        click.echo(f"❌ Error creating project: {e}", err=True)
+        raise
+
+
+@cli.command(name="projects")
+@click.option(
+    "--projects-dir",
+    type=click.Path(),
+    default="projects",
+    help="Root directory for projects (default: projects)",
+)
+def list_projects_cmd(projects_dir: str):
+    """
+    List all story projects.
+
+    Shows all projects in the projects directory with their current status.
+
+    Examples:
+        storygen-iter projects
+        storygen-iter projects --projects-dir ~/my-stories
+    """
+    try:
+        manager = ProjectManager(Path(projects_dir))
+        projects = manager.list_projects()
+
+        if not projects:
+            click.echo(f"📁 No projects found in {projects_dir}", err=True)
+            click.echo("\n💡 Create a new project with: storygen-iter new <name>", err=True)
+            return
+
+        click.echo(f"📚 Projects in {projects_dir}:\n")
+
+        for project_name in sorted(projects):
+            try:
+                status = manager.get_project_status(project_name)
+                pitch = manager.load_pitch(project_name)
+
+                # Count completed stages
+                completed = sum(1 for v in status.values() if v)
+                total = len(status)
+
+                click.echo(f"  📖 {project_name}")
+                if pitch:
+                    click.echo(f"     💡 {pitch}")
+                click.echo(f"     ✅ {completed}/{total} stages complete")
+
+                # Show which stages are done
+                stages = []
+                if status["idea"]:
+                    stages.append("idea")
+                if status["characters"]:
+                    stages.append("characters")
+                if status["locations"]:
+                    stages.append("locations")
+                if status["outline"]:
+                    stages.append("outline")
+                if status["breakdown"]:
+                    stages.append("breakdown")
+                if status["prose"]:
+                    stages.append("prose")
+                if status["epub"]:
+                    stages.append("epub")
+
+                if stages:
+                    click.echo(f"     📋 Completed: {', '.join(stages)}")
+                click.echo()
+
+            except Exception as e:
+                click.echo(f"  ⚠️  {project_name}: Error reading status - {e}")
+                click.echo()
+
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        raise
+
+
+@cli.command()
+@click.argument("name")
+@click.option(
+    "--projects-dir",
+    type=click.Path(),
+    default="projects",
+    help="Root directory for projects (default: projects)",
+)
+def status(name: str, projects_dir: str):
+    """
+    Show detailed status of a story project.
+
+    Displays which files exist and next steps for the project.
+
+    Examples:
+        storygen-iter status necromancer-duel
+        storygen-iter status fantasy-epic --projects-dir ~/my-stories
+    """
+    try:
+        from storygen.iterative.models import StoryConfig
+
+        manager = ProjectManager(Path(projects_dir))
+        paths = manager.get_project(name)
+        status_dict = manager.get_project_status(name)
+
+        # Load story config if it exists
+        try:
+            config = StoryConfig.load(paths.root)
+            pitch = config.pitch
+            story_type = config.story_type
+            target_words = config.target_words
+        except FileNotFoundError:
+            # Fallback to old metadata for backwards compatibility
+            pitch = manager.load_pitch(name)
+            story_type = None  # type: ignore
+            target_words = None  # type: ignore
+
+        click.echo(f"📖 Project: {name}")
+        click.echo(f"📁 Location: {paths.root}")
+
+        if story_type:
+            click.echo(f"📏 Type: {config.get_length_category()}")
+            click.echo(f"📊 Target: {target_words:,} words")
+
+        click.echo()
+
+        if pitch:
+            click.echo(f"💡 Pitch: {pitch}\n")
+
+        click.echo("📋 Pipeline Status:")
+        stages = [
+            ("idea", "Story Idea", paths.idea),
+            ("characters", "Characters", paths.characters),
+            ("locations", "Locations", paths.locations),
+            ("outline", "Outline", paths.outline),
+            ("breakdown", "Breakdown", paths.breakdown),
+            ("prose", "Prose", paths.prose),
+            ("epub", "EPUB", paths.epub),
+        ]
+
+        for key, label, path in stages:
+            exists = status_dict[key]
+            icon = "✅" if exists else "⬜"
+            click.echo(f"  {icon} {label:<15} {path.name}")
+
+        # Suggest next step
+        click.echo("\n🚀 Next step:")
+        if not status_dict["idea"]:
+            click.echo(f"  storygen-iter idea {name}")
+        elif not status_dict["characters"]:
+            click.echo(f"  storygen-iter characters {name}")
+        elif not status_dict["locations"]:
+            click.echo(f"  storygen-iter locations {name}")
+        elif not status_dict["outline"]:
+            click.echo(f"  storygen-iter outline {name}")
+        elif not status_dict["breakdown"]:
+            click.echo(f"  storygen-iter breakdown {name} --words 4000")
+        elif not status_dict["prose"]:
+            click.echo(f"  storygen-iter prose {name}")
+        elif not status_dict["epub"]:
+            click.echo(f"  storygen-iter epub {name}")
+        else:
+            click.echo(f"  🎉 Project complete! EPUB at: {paths.epub}")
+
+    except FileNotFoundError as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        click.echo(f"\n💡 Create the project with: storygen-iter new {name}", err=True)
+        raise click.Abort()
+    except Exception as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        raise
+
+
+@cli.command()
+@click.argument("project")
+@click.option(
+    "--model",
+    default="gpt-4",
+    help="AI model to use for all stages (default: gpt-4)",
+)
+@click.option(
+    "--words",
+    type=int,
+    default=4000,
+    help="Target word count for the story (default: 4000)",
+)
+@click.option(
+    "--structure",
+    default="three-act",
+    help="Outline structure: three-act, hero-journey, fichtean (default: three-act)",
+)
+@click.option(
+    "--writing-style",
+    help="Writing style description (auto-inferred if not provided)",
+)
+@click.option(
+    "--author",
+    default="AI Generated",
+    help="Author name for EPUB (default: AI Generated)",
+)
+@click.option(
+    "--from-stage",
+    type=click.Choice(["idea", "characters", "locations", "outline", "breakdown", "prose", "epub"]),
+    help="Resume from specific stage (skips earlier stages)",
+)
+@click.option(
+    "--check-deps",
+    is_flag=True,
+    help="Check for file changes and regenerate dependencies",
+)
+@click.option(
+    "--backup",
+    is_flag=True,
+    default=True,
+    help="Create backups before overwriting files (default: True)",
+)
+@click.option(
+    "-v",
+    "--verbose",
+    is_flag=True,
+    help="Show detailed progress",
+)
+@click.option(
+    "--projects-dir",
+    type=click.Path(),
+    default="projects",
+    help="Root directory for projects (default: projects)",
+)
+def generate(
+    project: str,
+    model: str,
+    words: int,
+    structure: str,
+    writing_style: str | None,
+    author: str,
+    from_stage: str | None,
+    check_deps: bool,
+    backup: bool,
+    verbose: bool,
+    projects_dir: str,
+):
+    """
+    Generate complete story from idea to EPUB.
+
+    Runs the full pipeline or resumes from a specific stage. Can detect
+    file changes and regenerate dependencies automatically.
+
+    Examples:
+        # Full pipeline from pitch
+        storygen-iter generate necromancer-duel --model ollama/qwen3:30b --words 4000
+
+        # Resume from outline stage
+        storygen-iter generate necromancer-duel --from-stage outline
+
+        # Check dependencies and regenerate what's needed
+        storygen-iter generate necromancer-duel --check-deps -v
+    """
+    try:
+        manager = ProjectManager(Path(projects_dir))
+        paths = manager.get_project(project)
+
+        # Check dependencies if requested
+        if check_deps:
+            needs_regen = manager.check_dependencies(project)
+            if needs_regen:
+                click.echo("⚠️  Dependency check found changes:\n", err=True)
+                for file_type, reasons in needs_regen.items():
+                    click.echo(f"  📄 {file_type}:", err=True)
+                    for reason in reasons:
+                        click.echo(f"     - {reason}", err=True)
+                click.echo("\n🔄 Will regenerate affected files with backups\n", err=True)
+
+        # Define pipeline stages
+        stages = ["idea", "characters", "locations", "outline", "breakdown", "prose", "epub"]
+
+        # Determine starting stage
+        start_idx = 0
+        if from_stage:
+            start_idx = stages.index(from_stage)
+            click.echo(f"▶️  Starting from stage: {from_stage}\n", err=True)
+
+        status_dict = manager.get_project_status(project)
+        ctx = click.get_current_context()
+
+        # Run pipeline
+        for stage in stages[start_idx:]:
+            # Skip if exists and not in needs_regen (unless from_stage specified)
+            if status_dict.get(stage) and not check_deps:
+                if from_stage is None:
+                    click.echo(f"⏭️  Skipping {stage} (already exists)", err=True)
+                    continue
+
+            # Check if in needs_regen
+            skip_stage = False
+            if check_deps and stage not in needs_regen and status_dict.get(stage):
+                click.echo(f"⏭️  Skipping {stage} (up to date)", err=True)
+                skip_stage = True
+
+            if skip_stage:
+                continue
+
+            # Backup if overwriting
+            if backup and status_dict.get(stage):
+                file_map = {
+                    "idea": paths.idea,
+                    "characters": paths.characters,
+                    "locations": paths.locations,
+                    "outline": paths.outline,
+                    "breakdown": paths.breakdown,
+                    "prose": paths.prose,
+                    "epub": paths.epub,
+                }
+                backup_path = manager.backup_file(file_map[stage])
+                if backup_path:
+                    click.echo(f"💾 Backed up {stage} to: {backup_path.name}", err=True)
+
+            # Run stage
+            click.echo(f"\n{'='*60}", err=True)
+            click.echo(f"▶️  Stage: {stage.upper()}", err=True)
+            click.echo(f"{'='*60}\n", err=True)
+
+            if stage == "idea":
+                ctx.invoke(
+                    idea,
+                    prompt_or_project=project,
+                    model=model,
+                    output=None,
+                    retries=3,
+                    verbose=verbose,
+                    projects_dir=projects_dir,
+                )
+            elif stage == "characters":
+                ctx.invoke(
+                    characters,
+                    project=project,
+                    model=model,
+                    retries=3,
+                    timeout=300,
+                    verbose=verbose,
+                    projects_dir=projects_dir,
+                )
+            elif stage == "locations":
+                ctx.invoke(
+                    locations,
+                    project=project,
+                    model=model,
+                    retries=3,
+                    timeout=300,
+                    verbose=verbose,
+                    projects_dir=projects_dir,
+                )
+            elif stage == "outline":
+                ctx.invoke(
+                    outline,
+                    project=project,
+                    structure=structure,
+                    model=model,
+                    retries=3,
+                    timeout=300,
+                    verbose=verbose,
+                    projects_dir=projects_dir,
+                )
+            elif stage == "breakdown":
+                ctx.invoke(
+                    breakdown,
+                    project=project,
+                    model=model,
+                    target_words=words,
+                    retries=3,
+                    timeout=600,
+                    verbose=verbose,
+                    projects_dir=projects_dir,
+                )
+            elif stage == "prose":
+                ctx.invoke(
+                    prose,
+                    project=project,
+                    model=model,
+                    temperature=0.7,
+                    writing_style=writing_style,
+                    context_window=3,
+                    retries=3,
+                    timeout=300,
+                    verbose=verbose,
+                    projects_dir=projects_dir,
+                )
+            elif stage == "epub":
+                ctx.invoke(
+                    epub,
+                    project=project,
+                    author=author,
+                    title=None,
+                    chapters="numbered",
+                    chapter_length=3000,
+                    force_breaks=None,
+                    model=model,
+                    verbose=verbose,
+                    projects_dir=projects_dir,
+                )
+
+            # Update status
+            status_dict = manager.get_project_status(project)
+
+        # Final summary
+        click.echo(f"\n{'='*60}", err=True)
+        click.echo("✨ GENERATION COMPLETE!", err=True)
+        click.echo(f"{'='*60}\n", err=True)
+        click.echo(f"📖 Project: {project}", err=True)
+        click.echo(f"📁 Location: {paths.root}", err=True)
+        click.echo(f"📚 EPUB: {paths.epub}", err=True)
+
+    except FileNotFoundError as e:
+        click.echo(f"❌ Error: {e}", err=True)
+        raise click.Abort()
+    except Exception as e:
+        click.echo(f"❌ Error during generation: {e}", err=True)
+        if verbose:
+            import traceback
+
+            traceback.print_exc()
+        raise click.Abort()
+
+
+@cli.command()
+@click.argument("prompt_or_project")
 @click.option(
     "--model",
     default="gpt-4",
@@ -36,7 +603,7 @@ def cli():
     "--output",
     "-o",
     type=click.Path(),
-    help="Save idea to JSON file (default: print to stdout)",
+    help="Save idea to JSON file (default: uses project path or stdout)",
 )
 @click.option(
     "--retries",
@@ -49,9 +616,22 @@ def cli():
     is_flag=True,
     help="Show detailed generation process",
 )
-def idea(prompt: str, model: str, output: str | None, retries: int, verbose: bool):
+@click.option(
+    "--projects-dir",
+    type=click.Path(),
+    default="projects",
+    help="Root directory for projects (default: projects)",
+)
+def idea(
+    prompt_or_project: str,
+    model: str,
+    output: str | None,
+    retries: int,
+    verbose: bool,
+    projects_dir: str,
+):
     """
-    Generate a story idea from a PROMPT.
+    Generate a story idea from a PROMPT or for a PROJECT.
 
     The AI will expand your prompt into a complete story idea with:
     - One-sentence hook
@@ -61,19 +641,63 @@ def idea(prompt: str, model: str, output: str | None, retries: int, verbose: boo
     - Major themes
 
     Examples:
+        # Project mode (uses saved pitch)
+        storygen-iter idea necromancer-duel
+
+        # Direct prompt mode
         storygen-iter idea "A detective solves her own murder"
         storygen-iter idea "A robot learns to love" --model ollama/qwen3:30b
         storygen-iter idea "A wizard after the apocalypse" -o my_idea.json
         storygen-iter idea "Space station horror" --verbose
     """
     try:
+        # Check if prompt_or_project is a project name
+        manager = ProjectManager(Path(projects_dir))
+        is_project = manager.project_exists(prompt_or_project)
+
+        story_type = "short-story"  # Default for direct prompt mode
+
+        if is_project:
+            # Project mode - load config and pitch
+            from storygen.iterative.models import StoryConfig
+
+            paths = manager.get_project(prompt_or_project)
+
+            # Load story config
+            try:
+                config = StoryConfig.load(paths.root)
+                story_type = config.story_type
+                prompt = config.pitch
+            except FileNotFoundError:
+                # Fallback to old metadata.json for backwards compatibility
+                loaded_prompt = manager.load_pitch(prompt_or_project)
+                if not loaded_prompt:
+                    click.echo(f"❌ No pitch found for project '{prompt_or_project}'", err=True)
+                    click.echo(
+                        "💡 Add a pitch to metadata.json or use direct prompt mode", err=True
+                    )
+                    raise click.Abort()
+                prompt = loaded_prompt
+
+            # Use project idea path if no output specified
+            if not output:
+                output = str(paths.idea)
+
+            if verbose:
+                click.echo(f"📖 Project: {prompt_or_project}", err=True)
+                click.echo(f"📏 Story type: {story_type}", err=True)
+                click.echo(f"💡 Pitch: {prompt}", err=True)
+        else:
+            # Direct prompt mode
+            prompt = prompt_or_project
+
         if verbose:
             click.echo(f"🎨 Generating story idea with {model}...", err=True)
             click.echo(f"📝 Prompt: {prompt}", err=True)
 
         # Generate idea
-        generator = IdeaGenerator(model=model, max_retries=retries)
-        story_idea = generator.generate(prompt)
+        generator = IdeaGenerator(model=model, max_retries=retries, verbose=verbose)
+        story_idea = generator.generate(prompt, story_type=story_type)
 
         if verbose:
             click.echo("✅ Story idea generated successfully!", err=True)
@@ -119,23 +743,11 @@ def idea(prompt: str, model: str, output: str | None, retries: int, verbose: boo
 
 
 @cli.command()
-@click.option(
-    "--idea-file",
-    "-i",
-    type=click.Path(exists=True),
-    required=True,
-    help="JSON file with story idea (from 'idea' command)",
-)
+@click.argument("project")
 @click.option(
     "--model",
     default="gpt-4",
     help="AI model to use (e.g., gpt-4, claude-3-sonnet, ollama/qwen3:30b)",
-)
-@click.option(
-    "--output",
-    "-o",
-    type=click.Path(),
-    help="Save characters to JSON file (default: print to stdout)",
 )
 @click.option(
     "--retries",
@@ -153,31 +765,59 @@ def idea(prompt: str, model: str, output: str | None, retries: int, verbose: boo
     is_flag=True,
     help="Show detailed generation process",
 )
+@click.option(
+    "--projects-dir",
+    type=click.Path(),
+    default="projects",
+    help="Root directory for projects (default: projects)",
+)
 def characters(
-    idea_file: str, model: str, output: str | None, retries: int, timeout: int, verbose: bool
+    project: str, model: str, retries: int, timeout: int, verbose: bool, projects_dir: str
 ):
     """
-    Generate characters based on a story idea.
+    Generate characters for a project.
 
-    Takes a story idea JSON file and generates 3-5 characters including:
-    - 1 protagonist
-    - 1 antagonist
-    - Supporting characters (mentor, ally, foil, etc.)
+    Generates 1-3 core characters with genre-appropriate names:
+    - 1 protagonist (required)
+    - Optional antagonist (if central to story)
+    - Supporting characters as needed
 
     Each character has: name, role, bio, goal, flaw, and optional arc.
 
     Examples:
-        storygen-iter characters --idea-file my_idea.json
-        storygen-iter characters -i idea.json --model ollama/qwen3:30b
-        storygen-iter characters -i idea.json -o characters.json
-        storygen-iter characters -i idea.json --verbose
+        storygen-iter characters necromancer-duel
+        storygen-iter characters my-story --model ollama/qwen3:30b
+        storygen-iter characters fantasy-epic --verbose
     """
     try:
+        # Get project paths
+        from storygen.iterative.models import StoryConfig
+
+        manager = ProjectManager(Path(projects_dir))
+        paths = manager.get_project(project)
+
+        # Load story config
+        try:
+            config = StoryConfig.load(paths.root)
+            story_type = config.story_type
+        except FileNotFoundError:
+            story_type = "short-story"  # Fallback for old projects
+            if verbose:
+                click.echo("⚠️  No story_config.json found, using default: short-story", err=True)
+
+        # Check if idea exists
+        if not paths.idea.exists():
+            click.echo(f"❌ No idea file found for project '{project}'", err=True)
+            click.echo(f"💡 Run: storygen-iter idea {project}", err=True)
+            raise click.Abort()
+
         # Load story idea
         if verbose:
-            click.echo(f"📖 Loading story idea from {idea_file}...", err=True)
+            click.echo(f"📖 Project: {project}", err=True)
+            click.echo(f"� Story type: {story_type}", err=True)
+            click.echo(f"�📄 Loading story idea from {paths.idea}...", err=True)
 
-        with open(idea_file, encoding="utf-8") as f:
+        with open(paths.idea, encoding="utf-8") as f:
             idea_data = json.load(f)
         story_idea = StoryIdea.from_dict(idea_data)
 
@@ -186,44 +826,26 @@ def characters(
             click.echo(f"🎨 Generating characters with {model}...", err=True)
 
         # Generate characters
-        generator = CharacterGenerator(model=model, max_retries=retries, timeout=timeout)
-        characters_list = generator.generate(story_idea)
+        generator = CharacterGenerator(
+            model=model, max_retries=retries, timeout=timeout, verbose=verbose
+        )
+        characters_list = generator.generate(story_idea, story_type=story_type)
 
         if verbose:
             click.echo(f"✅ Generated {len(characters_list)} characters!", err=True)
 
-        # Output
-        if output:
-            output_path = Path(output)
-            output_path.parent.mkdir(parents=True, exist_ok=True)
+        # Save to project
+        characters_data = [char.to_dict() for char in characters_list]
+        with open(paths.characters, "w", encoding="utf-8") as f:
+            json.dump(characters_data, f, indent=2, ensure_ascii=False)
 
-            characters_data = [char.to_dict() for char in characters_list]
-            with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(characters_data, f, indent=2, ensure_ascii=False)
+        click.echo(f"💾 Saved {len(characters_list)} characters to: {paths.characters}", err=True)
 
-            click.echo(f"💾 Saved {len(characters_list)} characters to: {output_path}", err=True)
-        else:
-            # Pretty print to stdout
-            click.echo("\n" + "=" * 70)
-            click.echo(f"👥 CHARACTERS ({len(characters_list)} generated)")
-            click.echo("=" * 70)
-
-            for i, char in enumerate(characters_list, 1):
-                click.echo(f"\n{i}. {char.name} ({char.role.upper()})")
-                click.echo("-" * 70)
-                click.echo(f"Bio: {char.bio}")
-                click.echo(f"Goal: {char.goal}")
-                click.echo(f"Flaw: {char.flaw}")
-                if char.arc:
-                    click.echo(f"Arc: {char.arc}")
-
-            click.echo("\n" + "=" * 70 + "\n")
-
-    except FileNotFoundError:
-        click.echo(f"❌ Error: File not found: {idea_file}", err=True)
+    except FileNotFoundError as e:
+        click.echo(f"❌ Error: {e}", err=True)
         raise click.Abort()
     except json.JSONDecodeError as e:
-        click.echo(f"❌ Error: Invalid JSON in {idea_file}: {e}", err=True)
+        click.echo(f"❌ Error: Invalid JSON: {e}", err=True)
         raise click.Abort()
     except Exception as e:
         click.echo(f"❌ Error: {e}", err=True)
@@ -235,22 +857,11 @@ def characters(
 
 
 @cli.command()
-@click.option(
-    "--idea-file",
-    "-i",
-    required=True,
-    help="Path to story idea JSON file",
-)
+@click.argument("project")
 @click.option(
     "--model",
     default="gpt-4",
     help="AI model to use (default: gpt-4)",
-)
-@click.option(
-    "--output",
-    "-o",
-    default=None,
-    help="Output JSON file path (default: print to console)",
 )
 @click.option(
     "--retries",
@@ -268,13 +879,19 @@ def characters(
     is_flag=True,
     help="Show detailed generation process",
 )
+@click.option(
+    "--projects-dir",
+    type=click.Path(),
+    default="projects",
+    help="Root directory for projects (default: projects)",
+)
 def locations(
-    idea_file: str, model: str, output: str | None, retries: int, timeout: int, verbose: bool
+    project: str, model: str, retries: int, timeout: int, verbose: bool, projects_dir: str
 ):
     """
-    Generate locations based on a story idea.
+    Generate locations for a project.
 
-    Takes a story idea JSON file and generates 3-7 key locations including:
+    Generates 3-7 key locations including:
     - Name and physical description
     - Significance to the story
     - Atmosphere and mood
@@ -282,17 +899,39 @@ def locations(
     Each location is vivid, atmospheric, and serves narrative needs.
 
     Examples:
-        storygen-iter locations --idea-file my_idea.json
-        storygen-iter locations -i idea.json --model ollama/qwen3:30b
-        storygen-iter locations -i idea.json -o locations.json
-        storygen-iter locations -i idea.json --timeout 300 --verbose
+        storygen-iter locations necromancer-duel
+        storygen-iter locations my-story --model ollama/qwen3:30b
+        storygen-iter locations fantasy-epic --timeout 300 --verbose
     """
     try:
+        # Get project paths
+        from storygen.iterative.models import StoryConfig
+
+        manager = ProjectManager(Path(projects_dir))
+        paths = manager.get_project(project)
+
+        # Load story config
+        try:
+            config = StoryConfig.load(paths.root)
+            story_type = config.story_type
+        except FileNotFoundError:
+            story_type = "short-story"  # Fallback for old projects
+            if verbose:
+                click.echo("⚠️  No story_config.json found, using default: short-story", err=True)
+
+        # Check if idea exists
+        if not paths.idea.exists():
+            click.echo(f"❌ No idea file found for project '{project}'", err=True)
+            click.echo(f"💡 Run: storygen-iter idea {project}", err=True)
+            raise click.Abort()
+
         # Load story idea
         if verbose:
-            click.echo(f"📖 Loading story idea from {idea_file}...", err=True)
+            click.echo(f"📖 Project: {project}", err=True)
+            click.echo(f"� Story type: {story_type}", err=True)
+            click.echo(f"�📄 Loading story idea from {paths.idea}...", err=True)
 
-        with open(idea_file, encoding="utf-8") as f:
+        with open(paths.idea, encoding="utf-8") as f:
             idea_data = json.load(f)
         story_idea = StoryIdea.from_dict(idea_data)
 
@@ -301,44 +940,26 @@ def locations(
             click.echo(f"🗺️  Generating locations with {model}...", err=True)
 
         # Generate locations
-        generator = LocationGenerator(model=model, max_retries=retries, timeout=timeout)
-        locations_list = generator.generate(story_idea)
+        generator = LocationGenerator(
+            model=model, max_retries=retries, timeout=timeout, verbose=verbose
+        )
+        locations_list = generator.generate(story_idea, story_type=story_type)
 
         if verbose:
             click.echo(f"✅ Generated {len(locations_list)} locations!", err=True)
 
-        # Output results
-        if output:
-            # Save to JSON file
-            locations_dicts = [loc.to_dict() for loc in locations_list]
-            output_path = Path(output)
-            output_path.parent.mkdir(parents=True, exist_ok=True)
+        # Save to project
+        locations_dicts = [loc.to_dict() for loc in locations_list]
+        with open(paths.locations, "w", encoding="utf-8") as f:
+            json.dump(locations_dicts, f, indent=2, ensure_ascii=False)
 
-            with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(locations_dicts, f, indent=2, ensure_ascii=False)
+        click.echo(f"💾 Saved {len(locations_list)} locations to: {paths.locations}", err=True)
 
-            click.echo(f"💾 Saved to: {output}")
-        else:
-            # Pretty print to console
-            click.echo("\n" + "=" * 70)
-            click.echo(f"🗺️  LOCATIONS ({len(locations_list)} generated)")
-            click.echo("=" * 70 + "\n")
-
-            for i, loc in enumerate(locations_list, 1):
-                click.echo(f"{i}. {loc.name}")
-                click.echo("-" * 70)
-                click.echo(f"Description: {loc.description}")
-                click.echo(f"Significance: {loc.significance}")
-                click.echo(f"Atmosphere: {loc.atmosphere}")
-                click.echo()
-
-            click.echo("=" * 70 + "\n")
-
-    except FileNotFoundError:
-        click.echo(f"❌ Error: File not found: {idea_file}", err=True)
+    except FileNotFoundError as e:
+        click.echo(f"❌ Error: {e}", err=True)
         raise click.Abort()
     except json.JSONDecodeError as e:
-        click.echo(f"❌ Error: Invalid JSON in {idea_file}: {e}", err=True)
+        click.echo(f"❌ Error: Invalid JSON: {e}", err=True)
         raise click.Abort()
     except Exception as e:
         click.echo(f"❌ Error: {e}", err=True)
@@ -404,24 +1025,7 @@ def _print_outline_tree(outline):
 
 
 @cli.command()
-@click.option(
-    "--idea-file",
-    "-i",
-    required=True,
-    help="Path to story idea JSON file",
-)
-@click.option(
-    "--characters-file",
-    "-c",
-    required=True,
-    help="Path to characters JSON file",
-)
-@click.option(
-    "--locations-file",
-    "-l",
-    required=True,
-    help="Path to locations JSON file",
-)
+@click.argument("project")
 @click.option(
     "--structure",
     "-s",
@@ -432,12 +1036,6 @@ def _print_outline_tree(outline):
     "--model",
     default="gpt-4",
     help="AI model to use (default: gpt-4)",
-)
-@click.option(
-    "--output",
-    "-o",
-    default=None,
-    help="Output JSON file path (default: print to console)",
 )
 @click.option(
     "--retries",
@@ -455,22 +1053,26 @@ def _print_outline_tree(outline):
     is_flag=True,
     help="Show detailed generation process",
 )
+@click.option(
+    "--projects-dir",
+    type=click.Path(),
+    default="projects",
+    help="Root directory for projects (default: projects)",
+)
 def outline(
-    idea_file: str,
-    characters_file: str,
-    locations_file: str,
+    project: str,
     structure: str,
     model: str,
-    output: str | None,
     retries: int,
     timeout: int,
     verbose: bool,
+    projects_dir: str,
 ):
     """
-    Generate a story outline with flexible structure types.
+    Generate a story outline for a project.
 
-    Takes a story idea, characters, and locations to create a structured
-    outline. Supports multiple templates:
+    Creates a structured outline from idea, characters, and locations.
+    Supports multiple templates:
     - three-act: Traditional 3-act structure with 7 beats
     - hero-journey: Hero's Journey with 12 stages
     - fichtean: Fichtean Curve with 6 crisis-driven beats
@@ -478,12 +1080,29 @@ def outline(
     The AI fills in story_application for each act based on your specific story.
 
     Examples:
-        storygen-iter outline -i idea.json -c chars.json -l locs.json
-        storygen-iter outline -i idea.json -c chars.json -l locs.json --structure hero-journey
-        storygen-iter outline -i idea.json -c chars.json -l locs.json --model ollama/qwen3:30b
-        storygen-iter outline -i idea.json -c chars.json -l locs.json -o outline.json -v
+        storygen-iter outline necromancer-duel
+        storygen-iter outline my-story --structure hero-journey
+        storygen-iter outline fantasy-epic --model ollama/qwen3:30b -v
     """
     try:
+        # Get project paths
+        manager = ProjectManager(Path(projects_dir))
+        paths = manager.get_project(project)
+
+        # Check required files exist
+        if not paths.idea.exists():
+            click.echo("❌ No idea file found", err=True)
+            click.echo(f"💡 Run: storygen-iter idea {project}", err=True)
+            raise click.Abort()
+        if not paths.characters.exists():
+            click.echo("❌ No characters file found", err=True)
+            click.echo(f"💡 Run: storygen-iter characters {project}", err=True)
+            raise click.Abort()
+        if not paths.locations.exists():
+            click.echo("❌ No locations file found", err=True)
+            click.echo(f"💡 Run: storygen-iter locations {project}", err=True)
+            raise click.Abort()
+
         # Validate structure type
         available = list_available_structures()
         if structure not in available:
@@ -494,11 +1113,11 @@ def outline(
             )
             raise click.Abort()
 
-        # Load story idea
         if verbose:
-            click.echo(f"📖 Loading story idea from {idea_file}...", err=True)
+            click.echo(f"📖 Project: {project}", err=True)
 
-        with open(idea_file, encoding="utf-8") as f:
+        # Load story idea
+        with open(paths.idea, encoding="utf-8") as f:
             idea_data = json.load(f)
         story_idea = StoryIdea.from_dict(idea_data)
 
@@ -506,10 +1125,7 @@ def outline(
             click.echo(f"✅ Loaded idea: {story_idea.one_sentence[:60]}...", err=True)
 
         # Load characters
-        if verbose:
-            click.echo(f"👥 Loading characters from {characters_file}...", err=True)
-
-        with open(characters_file, encoding="utf-8") as f:
+        with open(paths.characters, encoding="utf-8") as f:
             characters_data = json.load(f)
         characters = [Character.from_dict(char) for char in characters_data]
 
@@ -517,10 +1133,7 @@ def outline(
             click.echo(f"✅ Loaded {len(characters)} characters", err=True)
 
         # Load locations
-        if verbose:
-            click.echo(f"🗺️  Loading locations from {locations_file}...", err=True)
-
-        with open(locations_file, encoding="utf-8") as f:
+        with open(paths.locations, encoding="utf-8") as f:
             locations_data = json.load(f)
         locations = [Location.from_dict(loc) for loc in locations_data]
 
@@ -541,20 +1154,12 @@ def outline(
         if verbose:
             click.echo(f"✅ Generated {structure} outline!", err=True)
 
-        # Output results
-        if output:
-            # Save to JSON file
-            outline_dict = story_outline.to_dict()
-            output_path = Path(output)
-            output_path.parent.mkdir(parents=True, exist_ok=True)
+        # Save to project
+        outline_dict = story_outline.to_dict()
+        with open(paths.outline, "w", encoding="utf-8") as f:
+            json.dump(outline_dict, f, indent=2, ensure_ascii=False)
 
-            with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(outline_dict, f, indent=2, ensure_ascii=False)
-
-            click.echo(f"💾 Saved to: {output}")
-        else:
-            # Pretty print to console with tree structure
-            _print_outline_tree(story_outline)
+        click.echo(f"💾 Saved outline to: {paths.outline}", err=True)
 
     except FileNotFoundError as e:
         click.echo(f"❌ Error: File not found: {e.filename}", err=True)
@@ -572,37 +1177,7 @@ def outline(
 
 
 @cli.command()
-@click.option(
-    "-i",
-    "--idea",
-    "idea_file",
-    required=True,
-    type=click.Path(exists=True),
-    help="Path to story idea JSON file",
-)
-@click.option(
-    "-c",
-    "--characters",
-    "characters_file",
-    required=True,
-    type=click.Path(exists=True),
-    help="Path to characters JSON file",
-)
-@click.option(
-    "-l",
-    "--locations",
-    "locations_file",
-    required=True,
-    type=click.Path(exists=True),
-    help="Path to locations JSON file",
-)
-@click.option(
-    "--outline",
-    "outline_file",
-    required=True,
-    type=click.Path(exists=True),
-    help="Path to outline JSON file",
-)
+@click.argument("project")
 @click.option(
     "--model",
     default="gpt-4",
@@ -614,12 +1189,6 @@ def outline(
     type=int,
     default=2000,
     help="Target word count for the story (default: 2000)",
-)
-@click.option(
-    "-o",
-    "--output",
-    type=click.Path(),
-    help="Output file path (if not specified, prints to console)",
 )
 @click.option(
     "--retries",
@@ -639,40 +1208,61 @@ def outline(
     is_flag=True,
     help="Enable verbose output (show prompts and AI responses)",
 )
+@click.option(
+    "--projects-dir",
+    type=click.Path(),
+    default="projects",
+    help="Root directory for projects (default: projects)",
+)
 def breakdown(
-    idea_file: str,
-    characters_file: str,
-    locations_file: str,
-    outline_file: str,
+    project: str,
     model: str,
     target_words: int,
-    output: str | None,
     retries: int,
     timeout: int,
     verbose: bool,
+    projects_dir: str,
 ):
-    """Generate scene-sequel breakdown from story outline.
+    """Generate scene-sequel breakdown for a project.
 
     Expands each leaf-level act in the outline into one or more scene-sequel pairs
     with proper goal/conflict/disaster structure (for scenes) and optional
     reaction/dilemma/decision (for sequels).
 
-    Example:
-        python -m storygen.iterative.cli breakdown \\
-            -i idea.json -c characters.json -l locations.json \\
-            --outline outline.json --model ollama/qwen3:30b \\
-            --words 2000 -o breakdown.json -v
+    Examples:
+        storygen-iter breakdown necromancer-duel --words 4000
+        storygen-iter breakdown my-story --model ollama/qwen3:30b -v
     """
     try:
+        # Get project paths
+        manager = ProjectManager(Path(projects_dir))
+        paths = manager.get_project(project)
+
+        # Check required files
+        if not paths.idea.exists():
+            click.echo("❌ No idea file found", err=True)
+            raise click.Abort()
+        if not paths.characters.exists():
+            click.echo("❌ No characters file found", err=True)
+            raise click.Abort()
+        if not paths.locations.exists():
+            click.echo("❌ No locations file found", err=True)
+            raise click.Abort()
+        if not paths.outline.exists():
+            click.echo("❌ No outline file found", err=True)
+            click.echo(f"� Run: storygen-iter outline {project}", err=True)
+            raise click.Abort()
+
+        if verbose:
+            click.echo(f"📖 Project: {project}", err=True)
+
         # Load input files
-        click.echo(f"📖 Loading story idea from {idea_file}...", err=True)
-        with open(idea_file, encoding="utf-8") as f:
+        with open(paths.idea, encoding="utf-8") as f:
             idea_data = json.load(f)
         story_idea = StoryIdea.from_dict(idea_data)
         click.echo(f"✅ Loaded idea: {story_idea.one_sentence[:60]}...", err=True)
 
-        click.echo(f"👥 Loading characters from {characters_file}...", err=True)
-        with open(characters_file, encoding="utf-8") as f:
+        with open(paths.characters, encoding="utf-8") as f:
             chars_data = json.load(f)
         # Support both array and object formats
         if isinstance(chars_data, list):
@@ -681,8 +1271,7 @@ def breakdown(
             characters = [Character.from_dict(c) for c in chars_data["characters"]]
         click.echo(f"✅ Loaded {len(characters)} characters", err=True)
 
-        click.echo(f"🗺️  Loading locations from {locations_file}...", err=True)
-        with open(locations_file, encoding="utf-8") as f:
+        with open(paths.locations, encoding="utf-8") as f:
             locs_data = json.load(f)
         # Support both array and object formats
         if isinstance(locs_data, list):
@@ -691,8 +1280,7 @@ def breakdown(
             locations = [Location.from_dict(loc) for loc in locs_data["locations"]]
         click.echo(f"✅ Loaded {len(locations)} locations", err=True)
 
-        click.echo(f"📋 Loading outline from {outline_file}...", err=True)
-        with open(outline_file, encoding="utf-8") as f:
+        with open(paths.outline, encoding="utf-8") as f:
             outline_data = json.load(f)
         outline = Outline.from_dict(outline_data)
         click.echo(f"✅ Loaded outline with {len(outline.acts)} acts", err=True)
@@ -720,35 +1308,16 @@ def breakdown(
         if verbose:
             click.echo(f"✅ Generated {len(scene_sequels)} scene-sequels!", err=True)
 
-        # Output results
-        if output:
-            # Save to JSON file
-            breakdown_dict = {
-                "scene_sequels": [ss.to_dict() for ss in scene_sequels],
-                "total_target_words": target_words,
-                "story_duration_hours": scene_sequels[-1].end_hours if scene_sequels else 0.0,
-            }
-            output_path = Path(output)
-            output_path.parent.mkdir(parents=True, exist_ok=True)
+        # Save to project
+        breakdown_dict = {
+            "scene_sequels": [ss.to_dict() for ss in scene_sequels],
+            "total_target_words": target_words,
+            "story_duration_hours": scene_sequels[-1].end_hours if scene_sequels else 0.0,
+        }
+        with open(paths.breakdown, "w", encoding="utf-8") as f:
+            json.dump(breakdown_dict, f, indent=2, ensure_ascii=False)
 
-            with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(breakdown_dict, f, indent=2, ensure_ascii=False)
-
-            click.echo(f"💾 Saved to: {output}")
-        else:
-            # Pretty print to console
-            click.echo("\n📝 Scene-Sequel Breakdown:\n")
-            for ss in scene_sequels:
-                click.echo(f"{ss.id} ({ss.type}): {ss.pov_character} @ {ss.location}")
-                click.echo(f"  ⏰ {ss.get_time_summary()}")
-                click.echo(f"  🎯 Target words: {ss.target_word_count}")
-                if ss.type == "scene":
-                    click.echo(f"  Goal: {ss.goal}")
-                    click.echo(f"  Disaster: {ss.disaster}")
-                else:
-                    if ss.decision:
-                        click.echo(f"  Decision: {ss.decision}")
-                click.echo()
+        click.echo(f"💾 Saved {len(scene_sequels)} scene-sequels to: {paths.breakdown}", err=True)
 
     except FileNotFoundError as e:
         click.echo(f"❌ Error: File not found: {e.filename}", err=True)
@@ -766,37 +1335,7 @@ def breakdown(
 
 
 @cli.command()
-@click.option(
-    "-i",
-    "--idea",
-    "idea_file",
-    required=True,
-    type=click.Path(exists=True),
-    help="Path to story idea JSON file",
-)
-@click.option(
-    "-c",
-    "--characters",
-    "characters_file",
-    required=True,
-    type=click.Path(exists=True),
-    help="Path to characters JSON file",
-)
-@click.option(
-    "-l",
-    "--locations",
-    "locations_file",
-    required=True,
-    type=click.Path(exists=True),
-    help="Path to locations JSON file",
-)
-@click.option(
-    "--breakdown",
-    "breakdown_file",
-    required=True,
-    type=click.Path(exists=True),
-    help="Path to breakdown JSON file (scene-sequels)",
-)
+@click.argument("project")
 @click.option(
     "--model",
     default="gpt-4",
@@ -819,12 +1358,6 @@ def breakdown(
     help="Number of previous scenes to include in context (default: 3)",
 )
 @click.option(
-    "-o",
-    "--output",
-    type=click.Path(),
-    help="Output file path (if not specified, prints to console)",
-)
-@click.option(
     "--retries",
     type=int,
     default=3,
@@ -842,42 +1375,56 @@ def breakdown(
     is_flag=True,
     help="Enable verbose output (show prompts and AI responses)",
 )
+@click.option(
+    "--projects-dir",
+    type=click.Path(),
+    default="projects",
+    help="Root directory for projects (default: projects)",
+)
 def prose(
-    idea_file: str,
-    characters_file: str,
-    locations_file: str,
-    breakdown_file: str,
+    project: str,
     model: str,
     temperature: float,
     writing_style: str | None,
     context_window: int,
-    output: str | None,
     retries: int,
     timeout: int,
     verbose: bool,
+    projects_dir: str,
 ):
-    """Generate prose for scene-sequels with markdown formatting.
+    """Generate prose for a project with markdown formatting.
 
     Takes a breakdown of scene-sequels and generates markdown prose for each one,
     maintaining continuity through summaries and key points. Automatically infers
     writing style from the story's tone and genre unless explicitly provided.
 
-    Example:
-        python -m storygen.iterative.cli prose \\
-            -i idea.json -c characters.json -l locations.json \\
-            --breakdown breakdown.json --model ollama/qwen3:30b \\
-            --temperature 0.7 -o prose.json -v
+    Supports incremental save - if generation fails, you can resume from where it stopped.
+
+    Examples:
+        storygen-iter prose necromancer-duel --model ollama/qwen3:30b
+        storygen-iter prose my-story --temperature 0.8 --writing-style "Hemingway: terse, direct" -v
     """
     try:
+        # Get project paths
+        manager = ProjectManager(Path(projects_dir))
+        paths = manager.get_project(project)
+
+        # Check required files
+        if not paths.breakdown.exists():
+            click.echo("❌ No breakdown file found", err=True)
+            click.echo(f"💡 Run: storygen-iter breakdown {project} --words 4000", err=True)
+            raise click.Abort()
+
+        if verbose:
+            click.echo(f"📖 Project: {project}", err=True)
+
         # Load input files
-        click.echo(f"📖 Loading story idea from {idea_file}...", err=True)
-        with open(idea_file, encoding="utf-8") as f:
+        with open(paths.idea, encoding="utf-8") as f:
             idea_data = json.load(f)
         story_idea = StoryIdea.from_dict(idea_data)
         click.echo(f"✅ Loaded idea: {story_idea.one_sentence[:60]}...", err=True)
 
-        click.echo(f"👥 Loading characters from {characters_file}...", err=True)
-        with open(characters_file, encoding="utf-8") as f:
+        with open(paths.characters, encoding="utf-8") as f:
             chars_data = json.load(f)
         if isinstance(chars_data, list):
             characters = [Character.from_dict(c) for c in chars_data]
@@ -885,8 +1432,7 @@ def prose(
             characters = [Character.from_dict(c) for c in chars_data["characters"]]
         click.echo(f"✅ Loaded {len(characters)} characters", err=True)
 
-        click.echo(f"🗺️  Loading locations from {locations_file}...", err=True)
-        with open(locations_file, encoding="utf-8") as f:
+        with open(paths.locations, encoding="utf-8") as f:
             locs_data = json.load(f)
         if isinstance(locs_data, list):
             locations = [Location.from_dict(loc) for loc in locs_data]
@@ -894,14 +1440,12 @@ def prose(
             locations = [Location.from_dict(loc) for loc in locs_data["locations"]]
         click.echo(f"✅ Loaded {len(locations)} locations", err=True)
 
-        click.echo(f"📋 Loading breakdown from {breakdown_file}...", err=True)
-
-        # Check if output file already exists (resume capability)
+        # Check if prose file already exists (resume capability)
         from storygen.iterative.models import SceneSequel
 
-        if output and Path(output).exists():
-            click.echo("🔄 Found existing output file, checking for resume...", err=True)
-            with open(output, encoding="utf-8") as f:
+        if paths.prose.exists():
+            click.echo("🔄 Found existing prose file, checking for resume...", err=True)
+            with open(paths.prose, encoding="utf-8") as f:
                 existing_data = json.load(f)
             scene_sequels = [SceneSequel.from_dict(ss) for ss in existing_data["scene_sequels"]]
             completed = sum(1 for ss in scene_sequels if ss.content)
@@ -911,14 +1455,14 @@ def prose(
                 )
             else:
                 # File exists but empty, load from breakdown
-                with open(breakdown_file, encoding="utf-8") as f:
+                with open(paths.breakdown, encoding="utf-8") as f:
                     breakdown_data = json.load(f)
                 scene_sequels = [
                     SceneSequel.from_dict(ss) for ss in breakdown_data["scene_sequels"]
                 ]
                 click.echo(f"✅ Loaded {len(scene_sequels)} scene-sequels", err=True)
         else:
-            with open(breakdown_file, encoding="utf-8") as f:
+            with open(paths.breakdown, encoding="utf-8") as f:
                 breakdown_data = json.load(f)
             scene_sequels = [SceneSequel.from_dict(ss) for ss in breakdown_data["scene_sequels"]]
             click.echo(f"✅ Loaded {len(scene_sequels)} scene-sequels", err=True)
@@ -943,41 +1487,22 @@ def prose(
             locations=locations,
             scene_sequels=scene_sequels,
             writing_style=writing_style,
-            output_path=output,  # Enable incremental saving
+            output_path=str(paths.prose),  # Enable incremental saving
         )
 
         # Calculate total words
         total_words = sum(ss.actual_word_count or 0 for ss in updated_scene_sequels)
         click.echo(f"✅ Generated {total_words:,} words of prose!", err=True)
 
-        # Output results
-        if output:
-            # Save to JSON file
-            prose_dict = {
-                "scene_sequels": [ss.to_dict() for ss in updated_scene_sequels],
-                "total_actual_words": total_words,
-            }
-            output_path = Path(output)
-            output_path.parent.mkdir(parents=True, exist_ok=True)
+        # Save to project
+        prose_dict = {
+            "scene_sequels": [ss.to_dict() for ss in updated_scene_sequels],
+            "total_actual_words": total_words,
+        }
+        with open(paths.prose, "w", encoding="utf-8") as f:
+            json.dump(prose_dict, f, indent=2, ensure_ascii=False)
 
-            with open(output_path, "w", encoding="utf-8") as f:
-                json.dump(prose_dict, f, indent=2, ensure_ascii=False)
-
-            click.echo(f"💾 Saved to: {output}")
-        else:
-            # Pretty print to console (sample only)
-            click.echo(f"\n📝 Generated Prose ({total_words:,} words):\n")
-            for i, ss in enumerate(updated_scene_sequels[:3], 1):  # Show first 3
-                click.echo(f"--- {ss.id} ({ss.type}) ---")
-                if ss.content:
-                    preview = ss.content[:200] + "..." if len(ss.content) > 200 else ss.content
-                    click.echo(preview)
-                click.echo(f"\nSummary: {ss.summary}")
-                click.echo(f"Key Points: {', '.join(ss.key_points or [])}")
-                click.echo()
-
-            if len(updated_scene_sequels) > 3:
-                click.echo(f"... (and {len(updated_scene_sequels) - 3} more)")
+        click.echo(f"💾 Saved {total_words:,} words to: {paths.prose}", err=True)
 
     except FileNotFoundError as e:
         click.echo(f"❌ Error: File not found: {e.filename}", err=True)
@@ -995,44 +1520,7 @@ def prose(
 
 
 @cli.command()
-@click.option(
-    "-i",
-    "--idea",
-    "idea_file",
-    required=True,
-    type=click.Path(exists=True),
-    help="Path to story idea JSON file",
-)
-@click.option(
-    "-c",
-    "--characters",
-    "characters_file",
-    required=True,
-    type=click.Path(exists=True),
-    help="Path to characters JSON file",
-)
-@click.option(
-    "-l",
-    "--locations",
-    "locations_file",
-    required=True,
-    type=click.Path(exists=True),
-    help="Path to locations JSON file",
-)
-@click.option(
-    "--prose",
-    "prose_file",
-    required=True,
-    type=click.Path(exists=True),
-    help="Path to prose JSON file (scene-sequels with content)",
-)
-@click.option(
-    "-o",
-    "--output",
-    type=click.Path(),
-    required=True,
-    help="Output EPUB file path",
-)
+@click.argument("project")
 @click.option(
     "--author",
     default="AI Generated",
@@ -1040,7 +1528,7 @@ def prose(
 )
 @click.option(
     "--title",
-    help="Override story title (uses one-sentence from idea if not provided)",
+    help="Override story title (AI-generated from content if not provided)",
 )
 @click.option(
     "--chapters",
@@ -1069,12 +1557,14 @@ def prose(
     is_flag=True,
     help="Enable verbose output (show chapter decisions)",
 )
+@click.option(
+    "--projects-dir",
+    type=click.Path(),
+    default="projects",
+    help="Root directory for projects (default: projects)",
+)
 def epub(
-    idea_file: str,
-    characters_file: str,
-    locations_file: str,
-    prose_file: str,
-    output: str,
+    project: str,
     author: str,
     title: str | None,
     chapters: str,
@@ -1082,48 +1572,56 @@ def epub(
     force_breaks: str | None,
     model: str,
     verbose: bool,
+    projects_dir: str,
 ):
-    """Generate EPUB from prose with intelligent chapter breaks.
+    """Generate EPUB for a project with intelligent chapter breaks.
 
     Takes completed prose and formats it into a polished EPUB file with:
+    - AI-generated title (analyzes story content for resonant title)
     - Intelligent chapter break placement (act boundaries, time gaps, POV changes)
     - Scene break formatting (major/minor based on context)
     - Markdown to HTML conversion
     - Table of contents
     - Dramatis personae
 
-    Example:
-        python -m storygen.iterative.cli epub \\
-            -i idea.json -c characters.json -l locations.json \\
-            --prose prose.json -o story.epub \\
-            --author "Jane Doe" --chapters numbered \\
-            --chapter-length 2500 -v
+    Examples:
+        storygen-iter epub necromancer-duel --author "Mark Cromwell"
+        storygen-iter epub my-story --chapters titled --chapter-length 2500 -v
     """
     try:
+        # Get project paths
+        manager = ProjectManager(Path(projects_dir))
+        paths = manager.get_project(project)
+
+        # Check required files
+        if not paths.prose.exists():
+            click.echo("❌ No prose file found", err=True)
+            click.echo(f"💡 Run: storygen-iter prose {project}", err=True)
+            raise click.Abort()
+
+        if verbose:
+            click.echo(f"📖 Project: {project}", err=True)
+
         # Load input files
-        click.echo(f"📖 Loading story idea from {idea_file}...", err=True)
-        with open(idea_file, encoding="utf-8") as f:
+        with open(paths.idea, encoding="utf-8") as f:
             idea_data = json.load(f)
         story_idea = StoryIdea.from_dict(idea_data)
 
-        click.echo(f"👥 Loading characters from {characters_file}...", err=True)
-        with open(characters_file, encoding="utf-8") as f:
+        with open(paths.characters, encoding="utf-8") as f:
             chars_data = json.load(f)
         if isinstance(chars_data, list):
             characters = [Character.from_dict(c) for c in chars_data]
         else:
             characters = [Character.from_dict(c) for c in chars_data["characters"]]
 
-        click.echo(f"🗺️  Loading locations from {locations_file}...", err=True)
-        with open(locations_file, encoding="utf-8") as f:
+        with open(paths.locations, encoding="utf-8") as f:
             locs_data = json.load(f)
         if isinstance(locs_data, list):
             locations = [Location.from_dict(loc) for loc in locs_data]
         else:
             locations = [Location.from_dict(loc) for loc in locs_data["locations"]]
 
-        click.echo(f"📝 Loading prose from {prose_file}...", err=True)
-        with open(prose_file, encoding="utf-8") as f:
+        with open(paths.prose, encoding="utf-8") as f:
             prose_data = json.load(f)
 
         from storygen.iterative.models import SceneSequel
@@ -1153,17 +1651,17 @@ def epub(
             verbose=verbose,
         )
 
-        output_path = formatter.format(
+        formatter.format(
             story_idea=story_idea,
             characters=characters,
             locations=locations,
             scene_sequels=scene_sequels,
-            output_path=output,
+            output_path=str(paths.epub),
             title_override=title,
             force_chapter_breaks=force_break_list,
         )
 
-        click.echo(f"✅ EPUB generated: {output_path}", err=True)
+        click.echo(f"✅ EPUB generated: {paths.epub}", err=True)
         click.echo(f"📊 {len(scene_sequels)} scenes, {total_words:,} words", err=True)
 
     except FileNotFoundError as e:

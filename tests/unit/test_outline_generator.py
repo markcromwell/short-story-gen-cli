@@ -19,7 +19,7 @@ class TestOutlineGeneratorInitialization:
         assert generator.model == "gpt-4"
         assert generator.structure_type == "three-act"
         assert generator.max_retries == 3
-        assert generator.timeout == 60
+        assert generator.timeout == 600  # Updated to 10 minutes for slower models
 
     def test_initialization_custom(self):
         """Test initialization with custom values."""

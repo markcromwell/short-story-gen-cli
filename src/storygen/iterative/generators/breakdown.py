@@ -33,7 +33,7 @@ class BreakdownGenerator:
         self,
         model: str = "gpt-4",
         max_retries: int = 3,
-        timeout: int = 60,
+        timeout: int = 600,
         verbose: bool = False,
     ):
         """
@@ -42,7 +42,7 @@ class BreakdownGenerator:
         Args:
             model: The AI model to use (default: gpt-4)
             max_retries: Maximum number of retry attempts (default: 3)
-            timeout: Timeout in seconds for AI calls (default: 60)
+            timeout: Timeout in seconds for AI calls (default: 600 = 10 minutes)
             verbose: Enable verbose logging of prompts and responses (default: False)
         """
         self.model = model

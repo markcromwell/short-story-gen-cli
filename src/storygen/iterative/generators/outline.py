@@ -29,7 +29,7 @@ class OutlineGenerator:
         model: str = "gpt-4",
         structure_type: str = "three-act",
         max_retries: int = 3,
-        timeout: int = 60,
+        timeout: int = 600,
         verbose: bool = False,
     ):
         """
@@ -40,7 +40,7 @@ class OutlineGenerator:
             structure_type: Structure template to use (default: three-act)
                 Options: three-act, hero-journey, fichtean
             max_retries: Maximum number of retry attempts (default: 3)
-            timeout: Timeout in seconds for AI calls (default: 60)
+            timeout: Timeout in seconds for AI calls (default: 600 = 10 minutes)
             verbose: Enable verbose logging of prompts and responses (default: False)
 
         Raises:

@@ -26,7 +26,7 @@ class TestBreakdownGeneratorInitialization:
 
         assert generator.model == "gpt-4"
         assert generator.max_retries == 3
-        assert generator.timeout == 60
+        assert generator.timeout == 600  # Updated to 10 minutes for slower models
         assert generator.verbose is False
 
     def test_initialization_custom(self):

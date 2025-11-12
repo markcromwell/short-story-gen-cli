@@ -26,7 +26,8 @@ class LocationGenerator:
         self,
         model: str = "gpt-4",
         max_retries: int = 3,
-        timeout: int = 60,
+        timeout: int = 600,
+        verbose: bool = False,
     ):
         """
         Initialize the location generator.
@@ -34,41 +35,61 @@ class LocationGenerator:
         Args:
             model: The AI model to use (default: gpt-4)
             max_retries: Maximum number of retry attempts (default: 3)
-            timeout: Timeout in seconds for AI calls (default: 60)
+            timeout: Timeout in seconds for AI calls (default: 600 = 10 minutes)
+            verbose: Enable verbose logging of prompts and responses (default: False)
         """
         self.model = model
         self.max_retries = max_retries
         self.timeout = timeout
+        self.verbose = verbose
 
-    def _build_prompt(self, story_idea: StoryIdea) -> tuple[str, str]:
+    def _build_prompt(
+        self, story_idea: StoryIdea, story_type: str = "short-story"
+    ) -> tuple[str, str]:
         """
         Build the system and user prompts for location generation.
 
         Args:
             story_idea: The story concept to generate locations for
+            story_type: Type of story (flash-fiction, short-story, novelette, novella, novel)
 
         Returns:
             Tuple of (system_prompt, user_prompt)
         """
-        system_prompt = """You are an expert world-builder and location designer for creative writing.
-Generate 3-7 key locations for a story that will serve as important settings for scenes and plot events.
+        # Location count guidance based on story type
+        loc_counts = {
+            "flash-fiction": (1, 2, "1-2 locations (single scene focus)"),
+            "short-story": (2, 4, "2-4 locations (limited scope)"),
+            "novelette": (3, 6, "3-6 locations (moderate world-building)"),
+            "novella": (5, 8, "5-8 locations (expanded world)"),
+            "novel": (8, 12, "8-12+ locations (rich world-building)"),
+        }
+
+        min_locs, max_locs, count_desc = loc_counts.get(story_type, (2, 4, "2-4 locations"))
+
+        system_prompt = f"""You are an expert world-builder and location designer for creative writing.
+
+STORY LENGTH: {story_type.upper()}
+LOCATION COUNT: {count_desc}
+
+Generate {min_locs}-{max_locs} key locations for a story that will serve as important settings for scenes and plot events.
 
 Each location should be vivid, atmospheric, and serve the story's narrative needs.
 
 Return ONLY valid JSON in this exact format:
-{
+{{
   "locations": [
-    {
+    {{
       "name": "The location's name",
       "description": "Physical details - what it looks like, smells like, sounds like (2-4 sentences)",
       "significance": "Why this location matters to the story and plot (1-2 sentences)",
       "atmosphere": "The mood and feeling of this place (1 sentence)"
-    }
+    }}
   ]
-}
+}}
 
 Requirements:
-- Generate 3-7 locations (minimum 3, maximum 7)
+- Generate {min_locs}-{max_locs} locations appropriate for a {story_type}
 - Each location MUST have: name, description, significance, atmosphere
 - Locations should fit the story's genre, tone, and setting
 - Include variety: indoor/outdoor, public/private, safe/dangerous
@@ -85,7 +106,7 @@ Genres: {', '.join(story_idea.genres)}
 Tone: {story_idea.tone}
 Themes: {', '.join(story_idea.themes)}
 
-Generate 3-7 key locations that fit this story's world and needs."""
+Generate {min_locs}-{max_locs} key locations that fit this {story_type}'s world and scope."""
 
         return system_prompt, user_prompt
 
@@ -128,15 +149,15 @@ Generate 3-7 key locations that fit this story's world and needs."""
 
         locations = data["locations"]
 
-        # Validate count
-        if len(locations) < 3:
+        # Validate count (1-12 to accommodate all story types)
+        if len(locations) < 1:
             raise LocationGenerationError(
-                f"Must generate at least 3 locations, got {len(locations)}"
+                f"Must generate at least 1 location, got {len(locations)}"
             )
 
-        if len(locations) > 7:
+        if len(locations) > 12:
             raise LocationGenerationError(
-                f"Must generate at most 7 locations, got {len(locations)}"
+                f"Must generate at most 12 locations, got {len(locations)}"
             )
 
         # Validate each location
@@ -158,12 +179,13 @@ Generate 3-7 key locations that fit this story's world and needs."""
 
         return locations
 
-    def generate(self, story_idea: StoryIdea) -> list[Location]:
+    def generate(self, story_idea: StoryIdea, story_type: str = "short-story") -> list[Location]:
         """
         Generate locations for a story idea.
 
         Args:
             story_idea: The story concept to generate locations for
+            story_type: Type of story (flash-fiction, short-story, novelette, novella, novel)
 
         Returns:
             List of Location objects
@@ -171,11 +193,19 @@ Generate 3-7 key locations that fit this story's world and needs."""
         Raises:
             LocationGenerationError: If generation fails after all retries
         """
-        system_prompt, user_prompt = self._build_prompt(story_idea)
+        system_prompt, user_prompt = self._build_prompt(story_idea, story_type)
 
         last_error = None
         for attempt in range(self.max_retries):
             try:
+                if self.verbose:
+                    print("\n" + "=" * 80)
+                    print("SENDING TO AI MODEL:")
+                    print("=" * 80)
+                    print(f"\nSYSTEM PROMPT:\n{system_prompt}\n")
+                    print(f"\nUSER PROMPT:\n{user_prompt}\n")
+                    print("=" * 80)
+
                 # Call AI
                 response = litellm.completion(
                     model=self.model,
@@ -196,13 +226,29 @@ Generate 3-7 key locations that fit this story's world and needs."""
                 if not response_text:
                     raise LocationGenerationError("Empty response from AI model")
 
+                if self.verbose:
+                    print("\n" + "=" * 80)
+                    print("RECEIVED FROM AI MODEL:")
+                    print("=" * 80)
+                    print(f"\n{response_text}\n")
+                    print("=" * 80)
+
                 # Parse and validate
                 loc_dicts = self._parse_response(response_text)
 
+                if self.verbose:
+                    print("\n" + "=" * 80)
+                    print("PARSED LOCATIONS:")
+                    print("=" * 80)
+                    for i, loc in enumerate(loc_dicts, 1):
+                        print(f"\n{i}. {loc['name']}")
+                        print(f"   Atmosphere: {loc['atmosphere']}")
+                    print("=" * 80)
+
                 # Create Location objects
-                locations = []
+                locations: list[Location] = []
                 for loc_data in loc_dicts:
-                    loc = Location(
+                    loc = Location(  # type: ignore[assignment]
                         name=loc_data["name"],
                         description=loc_data["description"],
                         significance=loc_data["significance"],

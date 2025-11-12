@@ -31,7 +31,7 @@ class ProseGenerator:
         self,
         model: str = "gpt-4",
         max_retries: int = 3,
-        timeout: int = 120,
+        timeout: int = 600,
         temperature: float = 0.7,
         context_window: int = 3,
         verbose: bool = False,
@@ -42,7 +42,7 @@ class ProseGenerator:
         Args:
             model: LiteLLM model identifier (e.g., "gpt-4", "ollama/qwen3:30b")
             max_retries: Maximum retry attempts for failed API calls
-            timeout: Timeout in seconds for each API call
+            timeout: Timeout in seconds for each API call (default: 600 = 10 minutes)
             temperature: Sampling temperature (0.0-1.0, higher = more creative)
             context_window: Number of previous scene-sequels to include for continuity
             verbose: Whether to print detailed progress
