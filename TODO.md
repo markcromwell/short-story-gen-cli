@@ -5,14 +5,14 @@
 ### Code Refactoring & Architecture Improvements
 *(See REFACTOR_CLI.md, REFACTOR_BASEGENERATOR.md, and ARCHITECTURE_REVIEW.md for details)*
 
-- [ ] **Phase 1: CLI Modularization** (4-6 hours)
+- [x] **Phase 1: CLI Modularization** (4-6 hours) ✅ COMPLETED
   - Split monolithic 1,699-line cli.py into cli/ package
   - Structure: main.py + commands/project.py + commands/generate.py + commands/prose.py + commands/export.py + commands/utils.py
   - **Includes**: Replace print() with proper logging module throughout
   - Benefits: Single responsibility, easier testing, better maintainability
   - See: REFACTOR_CLI.md
 
-- [ ] **Phase 2: BaseGenerator Extraction** (8-10 hours)
+- [x] **Phase 2: BaseGenerator Extraction** (8-10 hours) ✅ COMPLETED
   - Create generators/base.py with BaseGenerator abstract class
   - Extract common retry/error/logging logic (~700 duplicated lines)
   - Migrate all 7 generators to inherit from BaseGenerator
@@ -20,7 +20,7 @@
   - Benefits: DRY principle, single place for bug fixes, reduces codebase by ~1,893 lines
   - See: REFACTOR_BASEGENERATOR.md
 
-- [ ] **Phase 3: Setting Integration** (3-4 hours)
+- [x] **Phase 3: Setting Integration** (3-4 hours) ✅ COMPLETED
   - Update CharacterGenerator to use setting field for period-appropriate names
   - Update LocationGenerator to generate setting-consistent locations
   - Update OutlineGenerator to include setting constraints in prompts
@@ -28,12 +28,18 @@
   - Test with different eras: "Wild West 1889", "1950s Paris", "Sci-Fi 2287"
   - Benefits: Completes setting feature, ensures worldbuilding coherence
 
-- [ ] **Phase 4: Models Splitting** (3-4 hours)
+- [x] **Phase 4: Models Splitting** (3-4 hours) ✅ COMPLETED
   - Split 753-line models.py into domain modules
   - Structure: models/story.py, models/characters.py, models/locations.py, models/structure.py, models/feedback.py, models/project.py
   - Benefits: Better organization, easier navigation
 
 ## Medium Priority
+
+- [ ] **Minimal EPUB Unit Tests** - Add granular unit tests for EPUB generation components
+  - Test individual EPUB formatting functions (scene breaks, chapter detection, etc.)
+  - Test EPUB metadata generation without full file creation
+  - Test XHTML content generation in isolation
+  - Benefits: Faster test execution, better isolation of EPUB bugs, easier debugging
 
 ### Research Phase for Settings
 - [ ] **Historical Research Tool** - For real-life settings like "Wild West 1889", "1920s Paris", "Victorian London"
@@ -119,12 +125,12 @@
 
 ### Recommended Order
 
-1. Complete Phase 3 (Setting Integration) - finishes feature in progress
-2. Do Phase 1 (CLI split) - biggest maintainability win
-3. Do Phase 2 (BaseGenerator) - biggest code reduction win
-4. Do Phase 4 (Models split) - organizational cleanup
+1. Complete Phase 3 (Setting Integration) - finishes feature in progress ✅ DONE
+2. Do Phase 1 (CLI split) - biggest maintainability win ✅ DONE
+3. Do Phase 2 (BaseGenerator) - biggest code reduction win ✅ DONE
+4. Do Phase 4 (Models split) - organizational cleanup ✅ DONE
 5. Consider web service when ready for SaaS/multi-user
 
 ---
 
-*Last Updated: November 12, 2025*
+*Last Updated: December 2024 - All major refactoring phases completed!*

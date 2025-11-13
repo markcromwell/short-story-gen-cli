@@ -8,6 +8,7 @@ from collections.abc import Callable
 from typing import Any, Generic, TypeVar
 
 import litellm
+from litellm.cost_calculator import completion_cost
 
 # Type variable for return type of generate methods
 T = TypeVar("T")
@@ -191,6 +192,15 @@ class BaseGenerator(ABC, Generic[T]):
             "total_tokens": getattr(response, "usage", {}).get("total_tokens", 0),
         }
 
+        # Calculate cost using litellm
+        try:
+            cost = completion_cost(completion_response=response)
+            usage_info["total_cost"] = cost
+        except Exception as e:
+            # If cost calculation fails, set to 0 and log warning
+            self.logger.warning(f"Failed to calculate cost: {e}")
+            usage_info["total_cost"] = 0.0
+
         return response_text, usage_info  # type: ignore[no-any-return]
 
     def _generate_with_retry(
@@ -226,6 +236,7 @@ class BaseGenerator(ABC, Generic[T]):
             "prompt_tokens": 0,
             "completion_tokens": 0,
             "total_tokens": 0,
+            "total_cost": 0.0,
             "retries": 0,
         }
 
@@ -246,6 +257,7 @@ class BaseGenerator(ABC, Generic[T]):
                 total_usage["prompt_tokens"] += usage_info["prompt_tokens"]
                 total_usage["completion_tokens"] += usage_info["completion_tokens"]
                 total_usage["total_tokens"] += usage_info["total_tokens"]
+                total_usage["total_cost"] += usage_info.get("total_cost", 0.0)
                 total_usage["retries"] = attempt
 
                 self.logger.info(f"Successfully generated after {attempt + 1} attempt(s)")

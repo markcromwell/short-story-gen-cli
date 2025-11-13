@@ -48,10 +48,10 @@ logger = logging.getLogger(__name__)
     help=f"Maximum retry attempts (default: {DEFAULT_MAX_RETRIES})",
 )
 @click.option(
-    "--projects-dir",
-    type=click.Path(),
-    default="projects",
-    help="Root directory for projects (default: projects)",
+    "--max-cost",
+    type=float,
+    default=None,
+    help="Maximum cost in USD to allow before stopping (default: no limit)",
 )
 def generate_all(
     name: str,
@@ -61,7 +61,8 @@ def generate_all(
     model: str,
     timeout: int,
     retries: int,
-    projects_dir: str,
+    projects_dir: str = "projects",
+    max_cost: float | None = None,
 ):
     """
     Generate a complete story from pitch to EPUB in one command.
@@ -74,11 +75,13 @@ def generate_all(
     5. Generate outline
     6. Generate scene-sequel breakdown
     7. Generate prose
-    8. Generate EPUB
+    8. Export to polished EPUB
+
+    Cost tracking: Shows real-time costs and stops if --max-cost limit is exceeded.
 
     Examples:
         storygen-iter all bank-heist --pitch "A sophisticated bank robbery" --words 10000 --model ollama/qwen3:30b
-        storygen-iter all fantasy-quest --pitch "A quest for the lost crown" --words 8000
+        storygen-iter all fantasy-quest --pitch "A quest for the lost crown" --words 8000 --max-cost 2.50
     """
     try:
         import click
@@ -90,7 +93,19 @@ def generate_all(
         click.echo(f"📊 Target: {words} words")
         click.echo(f"🤖 Model: {model}")
         click.echo(f"⏱️  Timeout: {timeout}s per step")
+        if max_cost is not None:
+            click.echo(f"💰 Max cost: ${max_cost:.2f}")
         click.echo()
+
+        def check_cost_limit(current_cost: float, step_name: str) -> None:
+            """Check if current cost exceeds the maximum allowed cost."""
+            if max_cost is not None and current_cost > max_cost:
+                click.echo("\n❌ COST LIMIT EXCEEDED!")
+                click.echo(f"   Step: {step_name}")
+                click.echo(f"   Current cost: ${current_cost:.4f}")
+                click.echo(f"   Max allowed: ${max_cost:.2f}")
+                click.echo("   Stopping generation to prevent overspending.")
+                raise click.Abort()
 
         manager = ProjectManager(Path(projects_dir))
 
@@ -149,6 +164,8 @@ def generate_all(
             total_usage["completion_tokens"] += usage_info.get("completion_tokens", 0)
             total_usage["total_cost"] += usage_info.get("total_cost", 0.0)
 
+        check_cost_limit(total_usage["total_cost"], "idea generation")
+
         # Step 3: Generate characters
         click.echo("\n" + "=" * 70)
         click.echo("Step 3/8: Generating characters...")
@@ -186,6 +203,8 @@ def generate_all(
             total_usage["completion_tokens"] += usage_info.get("completion_tokens", 0)
             total_usage["total_cost"] += usage_info.get("total_cost", 0.0)
 
+        check_cost_limit(total_usage["total_cost"], "character generation")
+
         # Step 4: Generate locations
         click.echo("\n" + "=" * 70)
         click.echo("Step 4/8: Generating locations...")
@@ -220,6 +239,8 @@ def generate_all(
             total_usage["prompt_tokens"] += usage_info.get("prompt_tokens", 0)
             total_usage["completion_tokens"] += usage_info.get("completion_tokens", 0)
             total_usage["total_cost"] += usage_info.get("total_cost", 0.0)
+
+        check_cost_limit(total_usage["total_cost"], "location generation")
 
         # Step 5: Generate outline
         click.echo("\n" + "=" * 70)
@@ -265,6 +286,8 @@ def generate_all(
             total_usage["prompt_tokens"] += usage_info.get("prompt_tokens", 0)
             total_usage["completion_tokens"] += usage_info.get("completion_tokens", 0)
             total_usage["total_cost"] += usage_info.get("total_cost", 0.0)
+
+        check_cost_limit(total_usage["total_cost"], "outline generation")
 
         # Step 6: Generate breakdown
         click.echo("\n" + "=" * 70)
@@ -321,6 +344,8 @@ def generate_all(
             total_usage["prompt_tokens"] += usage_info.get("prompt_tokens", 0)
             total_usage["completion_tokens"] += usage_info.get("completion_tokens", 0)
             total_usage["total_cost"] += usage_info.get("total_cost", 0.0)
+
+        check_cost_limit(total_usage["total_cost"], "scene breakdown generation")
 
         # Step 7: Generate prose
         click.echo("\n" + "=" * 70)
@@ -383,6 +408,8 @@ def generate_all(
             total_usage["completion_tokens"] += usage_info.get("completion_tokens", 0)
             total_usage["total_cost"] += usage_info.get("total_cost", 0.0)
 
+        check_cost_limit(total_usage["total_cost"], "prose generation")
+
         # Step 8: Generate EPUB
         click.echo("\n" + "=" * 70)
         click.echo("Step 8/8: Generating EPUB...")
@@ -409,13 +436,26 @@ def generate_all(
 
         # Display usage summary
         if total_usage["total_tokens"] > 0:
-            click.echo("\n📊 USAGE SUMMARY:")
+            click.echo("\n💰 COST & USAGE SUMMARY:")
+            click.echo("-" * 50)
             click.echo(f"   Total tokens: {total_usage['total_tokens']:,}")
             click.echo(f"   Prompt tokens: {total_usage['prompt_tokens']:,}")
             click.echo(f"   Completion tokens: {total_usage['completion_tokens']:,}")
-            if total_usage["total_cost"] > 0:
-                click.echo(f"   Estimated cost: ${total_usage['total_cost']:.4f}")
+            click.echo(f"   💵 Total cost: ${total_usage['total_cost']:.4f}")
             click.echo(f"   Steps completed: {len(total_usage['steps'])}")
+
+            # Show cost breakdown by step
+            click.echo("\n   Cost breakdown by step:")
+            for step_info in total_usage["steps"]:
+                step_name = step_info["step"]
+                usage = step_info["usage"]
+                if usage and usage.get("total_cost", 0) > 0:
+                    cost = usage.get("total_cost", 0)
+                    click.echo(f"     • {step_name}: ${cost:.4f}")
+
+            if max_cost is not None:
+                remaining = max_cost - total_usage["total_cost"]
+                click.echo(f"\n   Budget remaining: ${remaining:.4f} (of ${max_cost:.2f} limit)")
 
         paths = manager.get_project(name)
         epub_path = manager.get_epub_path(name)
