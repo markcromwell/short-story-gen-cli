@@ -286,15 +286,22 @@ def status(name: str, projects_dir: str):
             ("outline", "Outline", paths.outline),
             ("breakdown", "Breakdown", paths.breakdown),
             ("prose", "Prose", paths.prose),
-            ("epub", "EPUB", paths.epub),
+            ("epub", "EPUB", None),  # Will be resolved dynamically
         ]
 
         for key, label, path in stages:
             exists = status_dict[key]
             icon = "✅" if exists else "⬜"
 
+            # Special handling for EPUB to show actual filename
+            if key == "epub" and exists:
+                epub_path = manager.get_epub_path(name)
+                if epub_path:
+                    click.echo(f"  {icon} {label:<15} {epub_path.name}")
+                    continue
+
             # Special handling for prose to show progress
-            if key == "prose" and exists:
+            if key == "prose" and exists and path:
                 try:
                     with open(paths.prose, encoding="utf-8") as f:
                         prose_data = json.load(f)
@@ -313,7 +320,11 @@ def status(name: str, projects_dir: str):
                 except (FileNotFoundError, json.JSONDecodeError, KeyError):
                     pass
 
-            click.echo(f"  {icon} {label:<15} {path.name}")
+            # Display filename (or generic label if path is None, like for EPUB)
+            if path:
+                click.echo(f"  {icon} {label:<15} {path.name}")
+            else:
+                click.echo(f"  {icon} {label:<15} (not found)")
 
         # Suggest next step
         click.echo("\n🚀 Next step:")
@@ -351,7 +362,11 @@ def status(name: str, projects_dir: str):
             if not status_dict["epub"]:
                 click.echo(f"  storygen-iter epub {name}")
             else:
-                click.echo(f"  🎉 Project complete! EPUB at: {paths.epub}")
+                epub_path = manager.get_epub_path(name)
+                if epub_path:
+                    click.echo(f"  🎉 Project complete! EPUB at: {epub_path}")
+                else:
+                    click.echo(f"  storygen-iter epub {name}")
 
     except FileNotFoundError as e:
         logger.error(f"Project not found: {e}")

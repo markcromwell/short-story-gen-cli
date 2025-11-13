@@ -487,6 +487,22 @@ class EpubFormatter:
         if self.verbose:
             print(f"✅ EPUB saved to: {output_file}")
 
+        # Save EPUB filename to config for status tracking
+        if config_path and output_file.name != "story.epub":
+            try:
+                import json
+
+                with open(config_path, encoding="utf-8") as f:
+                    config_data = json.load(f)
+                config_data["epub_filename"] = output_file.name
+                with open(config_path, "w", encoding="utf-8") as f:
+                    json.dump(config_data, f, indent=2, ensure_ascii=False)
+                if self.verbose:
+                    print(f"💾 Saved EPUB filename to config: {output_file.name}")
+            except Exception as e:
+                if self.verbose:
+                    print(f"⚠️  Could not save EPUB filename: {e}")
+
         return output_file
 
     def _group_by_chapters(

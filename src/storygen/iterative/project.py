@@ -125,6 +125,12 @@ class ProjectManager:
         """
         paths = self.get_project(name)
 
+        # Check if EPUB exists using filename from config
+        epub_exists = False
+        epub_path = self.get_epub_path(name)
+        if epub_path:
+            epub_exists = epub_path.exists()
+
         return {
             "idea": paths.idea.exists(),
             "characters": paths.characters.exists(),
@@ -132,8 +138,35 @@ class ProjectManager:
             "outline": paths.outline.exists(),
             "breakdown": paths.breakdown.exists(),
             "prose": paths.prose.exists(),
-            "epub": paths.epub.exists(),
+            "epub": epub_exists,
         }
+
+    def get_epub_path(self, name: str) -> Path | None:
+        """Get the EPUB file path from config.
+
+        Args:
+            name: Project name
+
+        Returns:
+            Path to EPUB file if configured, None otherwise
+
+        Raises:
+            FileNotFoundError: If project doesn't exist
+        """
+        paths = self.get_project(name)
+
+        try:
+            with open(paths.config, encoding="utf-8") as f:
+                config_data: dict[str, str] = json.load(f)
+            epub_filename = config_data.get("epub_filename")
+            if epub_filename:
+                return Path(paths.root / epub_filename)
+        except (FileNotFoundError, json.JSONDecodeError, KeyError):
+            pass
+
+        # Fallback to default name if not in config
+        fallback: Path | None = paths.epub if paths.epub.exists() else None
+        return fallback
 
     def save_pitch(self, name: str, pitch: str) -> None:
         """Save a pitch to project metadata.

@@ -19,6 +19,7 @@ class StoryConfig:
     created_at: str
     updated_at: str
     title: str | None = None  # AI-generated or user-provided title
+    epub_filename: str | None = None  # Generated EPUB filename (e.g., "gurgle.epub")
 
     def __post_init__(self):
         """Validate story type and target words."""
