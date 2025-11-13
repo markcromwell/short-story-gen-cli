@@ -102,22 +102,27 @@ class ContinuityEditor(BaseEditor):
 
         # Extract potential character names (capitalized words that appear multiple times)
         words = story_text.split()
-        capitalized_words = [word.strip('.,!?;:') for word in words if word[0].isupper() and len(word) > 2]
+        capitalized_words = [
+            word.strip(".,!?;:") for word in words if word[0].isupper() and len(word) > 2
+        ]
 
         # Count frequency
         from collections import Counter
+
         word_counts = Counter(capitalized_words)
 
         # Consider words that appear multiple times as potential characters
         potential_characters = [word for word, count in word_counts.items() if count >= 2]
 
         for name in potential_characters[:10]:  # Limit to top 10
-            characters.append({
-                "name": name,
-                "mentions": word_counts[name],
-                "traits": [],  # Would be populated by AI analysis
-                "relationships": [],  # Would be populated by AI analysis
-            })
+            characters.append(
+                {
+                    "name": name,
+                    "mentions": word_counts[name],
+                    "traits": [],  # Would be populated by AI analysis
+                    "relationships": [],  # Would be populated by AI analysis
+                }
+            )
 
         return characters
 
@@ -127,12 +132,14 @@ class ContinuityEditor(BaseEditor):
         timeline = []
 
         for i, scene in enumerate(scenes):
-            timeline.append({
-                "scene_id": f"scene_{i+1}",
-                "title": scene.get("title", f"Scene {i+1}"),
-                "events": [],  # Would be populated by AI analysis
-                "sequence": i,
-            })
+            timeline.append(
+                {
+                    "scene_id": f"scene_{i+1}",
+                    "title": scene.get("title", f"Scene {i+1}"),
+                    "events": [],  # Would be populated by AI analysis
+                    "sequence": i,
+                }
+            )
 
         return timeline
 
@@ -262,7 +269,9 @@ Provide specific feedback on any world-building continuity issues found."""
                 )
             )
 
-        if "name" in feedback_lower and ("wrong" in feedback_lower or "different" in feedback_lower):
+        if "name" in feedback_lower and (
+            "wrong" in feedback_lower or "different" in feedback_lower
+        ):
             issues.append(
                 EditorialIssue(
                     severity="major",
@@ -273,7 +282,9 @@ Provide specific feedback on any world-building continuity issues found."""
                 )
             )
 
-        if "relationship" in feedback_lower and ("confusing" in feedback_lower or "inconsistent" in feedback_lower):
+        if "relationship" in feedback_lower and (
+            "confusing" in feedback_lower or "inconsistent" in feedback_lower
+        ):
             issues.append(
                 EditorialIssue(
                     severity="minor",
@@ -292,7 +303,9 @@ Provide specific feedback on any world-building continuity issues found."""
 
         feedback_lower = feedback.lower()
 
-        if "timeline" in feedback_lower and ("gap" in feedback_lower or "missing" in feedback_lower):
+        if "timeline" in feedback_lower and (
+            "gap" in feedback_lower or "missing" in feedback_lower
+        ):
             issues.append(
                 EditorialIssue(
                     severity="major",
@@ -315,7 +328,9 @@ Provide specific feedback on any world-building continuity issues found."""
                     )
                 )
 
-        if "foreshadowing" in feedback_lower and ("missing" in feedback_lower or "unresolved" in feedback_lower):
+        if "foreshadowing" in feedback_lower and (
+            "missing" in feedback_lower or "unresolved" in feedback_lower
+        ):
             issues.append(
                 EditorialIssue(
                     severity="minor",
@@ -334,7 +349,9 @@ Provide specific feedback on any world-building continuity issues found."""
 
         feedback_lower = feedback.lower()
 
-        if "world" in feedback_lower and ("inconsistent" in feedback_lower or "contradiction" in feedback_lower):
+        if "world" in feedback_lower and (
+            "inconsistent" in feedback_lower or "contradiction" in feedback_lower
+        ):
             issues.append(
                 EditorialIssue(
                     severity="major",
@@ -345,7 +362,9 @@ Provide specific feedback on any world-building continuity issues found."""
                 )
             )
 
-        if "location" in feedback_lower and ("wrong" in feedback_lower or "different" in feedback_lower):
+        if "location" in feedback_lower and (
+            "wrong" in feedback_lower or "different" in feedback_lower
+        ):
             issues.append(
                 EditorialIssue(
                     severity="minor",
@@ -356,7 +375,9 @@ Provide specific feedback on any world-building continuity issues found."""
                 )
             )
 
-        if ("magic" in feedback_lower or "technology" in feedback_lower) and "inconsistent" in feedback_lower:
+        if (
+            "magic" in feedback_lower or "technology" in feedback_lower
+        ) and "inconsistent" in feedback_lower:
             issues.append(
                 EditorialIssue(
                     severity="major",
@@ -378,8 +399,11 @@ Provide specific feedback on any world-building continuity issues found."""
         if total_issues == 0:
             return "Excellent continuity throughout the story. Characters, plot, and world elements are consistent and well-maintained."
 
-        major_issues = sum(1 for issue in character_issues + plot_issues + world_issues
-                          if issue.severity == "major")
+        major_issues = sum(
+            1
+            for issue in character_issues + plot_issues + world_issues
+            if issue.severity == "major"
+        )
 
         if major_issues > 3:
             return f"Significant continuity issues found ({total_issues} total). Major problems with character, plot, and world consistency require attention."
@@ -404,14 +428,18 @@ Provide specific feedback on any world-building continuity issues found."""
             strengths.append("Consistent world-building and setting details")
 
         # Add general strengths
-        strengths.extend([
-            "Clear narrative timeline",
-            "Well-established character relationships",
-        ])
+        strengths.extend(
+            [
+                "Clear narrative timeline",
+                "Well-established character relationships",
+            ]
+        )
 
         return strengths
 
-    def _create_continuity_revisions(self, issues: list[EditorialIssue]) -> list[RevisionSuggestion]:
+    def _create_continuity_revisions(
+        self, issues: list[EditorialIssue]
+    ) -> list[RevisionSuggestion]:
         """Create revision suggestions based on continuity issues."""
         revisions = []
 

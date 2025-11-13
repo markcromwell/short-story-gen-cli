@@ -238,7 +238,9 @@ Provide specific feedback on any language level issues found."""
                 )
             )
 
-        if "pov" in feedback_lower and ("inconsistent" in feedback_lower or "shifts" in feedback_lower):
+        if "pov" in feedback_lower and (
+            "inconsistent" in feedback_lower or "shifts" in feedback_lower
+        ):
             issues.append(
                 EditorialIssue(
                     severity="major",
@@ -269,7 +271,9 @@ Provide specific feedback on any language level issues found."""
 
         feedback_lower = feedback.lower()
 
-        if "voice" in feedback_lower and ("inconsistent" in feedback_lower or "changes" in feedback_lower):
+        if "voice" in feedback_lower and (
+            "inconsistent" in feedback_lower or "changes" in feedback_lower
+        ):
             issues.append(
                 EditorialIssue(
                     severity="major",
@@ -280,7 +284,9 @@ Provide specific feedback on any language level issues found."""
                 )
             )
 
-        if "tone" in feedback_lower and ("shifts" in feedback_lower or "inconsistent" in feedback_lower):
+        if "tone" in feedback_lower and (
+            "shifts" in feedback_lower or "inconsistent" in feedback_lower
+        ):
             issues.append(
                 EditorialIssue(
                     severity="minor",
@@ -310,7 +316,9 @@ Provide specific feedback on any language level issues found."""
 
         feedback_lower = feedback.lower()
 
-        if "sentence" in feedback_lower and ("monotonous" in feedback_lower or "repetitive" in feedback_lower):
+        if "sentence" in feedback_lower and (
+            "monotonous" in feedback_lower or "repetitive" in feedback_lower
+        ):
             issues.append(
                 EditorialIssue(
                     severity="minor",
@@ -332,7 +340,9 @@ Provide specific feedback on any language level issues found."""
                 )
             )
 
-        if "complex" in feedback_lower and ("overly" in feedback_lower or "complicated" in feedback_lower):
+        if "complex" in feedback_lower and (
+            "overly" in feedback_lower or "complicated" in feedback_lower
+        ):
             issues.append(
                 EditorialIssue(
                     severity="minor",
@@ -351,7 +361,9 @@ Provide specific feedback on any language level issues found."""
 
         feedback_lower = feedback.lower()
 
-        if "vocabulary" in feedback_lower and ("inconsistent" in feedback_lower or "mismatched" in feedback_lower):
+        if "vocabulary" in feedback_lower and (
+            "inconsistent" in feedback_lower or "mismatched" in feedback_lower
+        ):
             issues.append(
                 EditorialIssue(
                     severity="minor",
@@ -362,7 +374,9 @@ Provide specific feedback on any language level issues found."""
                 )
             )
 
-        if "register" in feedback_lower and ("inconsistent" in feedback_lower or "mixed" in feedback_lower):
+        if "register" in feedback_lower and (
+            "inconsistent" in feedback_lower or "mixed" in feedback_lower
+        ):
             issues.append(
                 EditorialIssue(
                     severity="minor",
@@ -373,7 +387,9 @@ Provide specific feedback on any language level issues found."""
                 )
             )
 
-        if ("age" in feedback_lower or "audience" in feedback_lower) and ("inappropriate" in feedback_lower):
+        if ("age" in feedback_lower or "audience" in feedback_lower) and (
+            "inappropriate" in feedback_lower
+        ):
             issues.append(
                 EditorialIssue(
                     severity="major",
@@ -390,13 +406,18 @@ Provide specific feedback on any language level issues found."""
         self, pov_issues: list, voice_issues: list, prose_issues: list, language_issues: list
     ) -> str:
         """Generate overall style assessment."""
-        total_issues = len(pov_issues) + len(voice_issues) + len(prose_issues) + len(language_issues)
+        total_issues = (
+            len(pov_issues) + len(voice_issues) + len(prose_issues) + len(language_issues)
+        )
 
         if total_issues == 0:
             return "Excellent writing style with consistent POV, voice, and engaging prose rhythm."
 
-        major_issues = sum(1 for issue in pov_issues + voice_issues + prose_issues + language_issues
-                          if issue.severity == "major")
+        major_issues = sum(
+            1
+            for issue in pov_issues + voice_issues + prose_issues + language_issues
+            if issue.severity == "major"
+        )
 
         if major_issues > 2:
             return f"Significant style issues found ({total_issues} total). Major problems with POV consistency and voice require attention."
@@ -424,10 +445,12 @@ Provide specific feedback on any language level issues found."""
             strengths.append("Appropriate language level for target audience")
 
         # Add general strengths
-        strengths.extend([
-            "Clear and engaging writing style",
-            "Appropriate tone for the story genre",
-        ])
+        strengths.extend(
+            [
+                "Clear and engaging writing style",
+                "Appropriate tone for the story genre",
+            ]
+        )
 
         return strengths
 

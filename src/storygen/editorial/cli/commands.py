@@ -13,6 +13,7 @@ from ..base import EditorialFeedback, EditorialIssue, StoryContext
 from ..core.config import load_editorial_config
 from ..core.job_manager import JobManager, JobStatus
 from ..core.model_manager import ModelManager
+from ..editors.comprehensive import ComprehensiveEditor
 from ..editors.continuity import ContinuityEditor
 from ..editors.structural import StructuralEditor
 from ..editors.style import StyleEditor
@@ -650,6 +651,9 @@ async def _create_mock_editor(
     elif editor_type == "style":
         # Use StyleEditor for POV, voice, and prose analysis
         return StyleEditor(model_manager, config)
+    elif editor_type == "comprehensive":
+        # Use ComprehensiveEditor for combined analysis
+        return ComprehensiveEditor(model_manager, config)
     else:
         # Use mock editor for idea analysis (for now)
         class MockEditor:
