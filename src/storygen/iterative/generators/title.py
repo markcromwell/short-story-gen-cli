@@ -77,10 +77,13 @@ class TitleGenerator(BaseGenerator[str]):
             self._validate_title(title)
             return title
 
+        # Build prompts
+        system_prompt, user_prompt = self._build_prompt()
+
         # Use base class retry logic
         title = self._generate_with_retry(
-            system_prompt="",  # Built in _build_prompt
-            user_prompt="",  # Built in _build_prompt
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
             parser=parse_and_validate,
             temperature=0.8,  # Higher temperature for creative titles
             error_class=TitleGenerationError,

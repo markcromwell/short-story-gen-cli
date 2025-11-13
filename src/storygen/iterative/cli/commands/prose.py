@@ -215,14 +215,14 @@ def breakdown(
 @click.option(
     "--retries",
     type=int,
-    default=3,
-    help="Maximum retry attempts (default: 3)",
+    default=DEFAULT_MAX_RETRIES,
+    help=f"Maximum retry attempts (default: {DEFAULT_MAX_RETRIES})",
 )
 @click.option(
     "--timeout",
     type=int,
-    default=120,
-    help="Timeout in seconds per scene-sequel (default: 120)",
+    default=DEFAULT_TIMEOUT_SECONDS,
+    help=f"Timeout in seconds per scene-sequel (default: {DEFAULT_TIMEOUT_SECONDS}s)",
 )
 @click.option(
     "-v",
