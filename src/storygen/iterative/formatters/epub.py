@@ -616,7 +616,8 @@ class EpubFormatter:
     body {
         font-family: Georgia, "Times New Roman", serif;
         line-height: 1.6;
-        margin: 2em;
+        padding: 2em;
+        margin: 0;
     }
     h1, h2 {
         font-weight: normal;
@@ -639,13 +640,21 @@ class EpubFormatter:
         text-align: center;
         page-break-before: always;
     }
+    /* Universal paragraph indentation */
     p {
         text-align: justify;
-        margin: 0 0 0.7em 0;
-        text-indent: 2em;
+        margin: 0 0 1em 0;
+        text-indent: 1.5em;
     }
+    /* Never indent first paragraph after headings */
+    h1 + p,
+    h2 + p,
+    h3 + p {
+        text-indent: 0 !important;
+    }
+    /* Explicit no-indent class */
     p.no-indent {
-        text-indent: 0;
+        text-indent: 0 !important;
     }
     .title-page {
         margin-top: 25vh;
@@ -672,10 +681,11 @@ class EpubFormatter:
         font-style: italic;
         color: #555;
     }
+    /* Scene breaks with consistent spacing */
     .scene-break {
+        text-indent: 0 !important;
         text-align: center;
-        margin: 1.8em 0 1.2em 0;
-        text-indent: 0;
+        margin: 2em 0;
         font-size: 1.1em;
     }
     ul.character-list {
