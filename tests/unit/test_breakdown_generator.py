@@ -332,7 +332,7 @@ class TestBreakdownGeneratorParseResponse:
         with pytest.raises(BreakdownGenerationError) as exc_info:
             generator._parse_response(response, "Opening")
 
-        assert "No JSON array found" in str(exc_info.value)
+        assert "No valid JSON array or objects found" in str(exc_info.value)
 
     def test_parse_response_not_array_raises(self):
         """Test parsing non-array JSON raises error."""
@@ -342,7 +342,7 @@ class TestBreakdownGeneratorParseResponse:
         with pytest.raises(BreakdownGenerationError) as exc_info:
             generator._parse_response(response, "Opening")
 
-        assert "No JSON array found" in str(exc_info.value)
+        assert "Scene-sequel missing required fields" in str(exc_info.value)
 
     def test_parse_response_empty_array(self):
         """Test parsing empty array returns empty list."""

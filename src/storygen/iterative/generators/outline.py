@@ -1,6 +1,5 @@
 """Outline generator for story creation with flexible structure templates."""
 
-import json
 from typing import Any
 
 from storygen.iterative.exceptions import ConfigError
@@ -198,94 +197,10 @@ Return ONLY the complete JSON array, nothing else."""
         Raises:
             OutlineGenerationError: If response is invalid
         """
-        # Remove markdown code blocks if present
-        text = response_text.strip()
-        if text.startswith("```"):
-            lines = text.split("\n")
-            text = "\n".join(lines[1:-1]) if len(lines) > 2 else text
-            if text.startswith("json"):
-                text = text[4:].strip()
-
-        # Try to extract JSON - handle both array format and multiple objects
-        # Look for array first: [ {...}, {...}, {...} ]
-        array_start = text.find("[")
-
-        if array_start != -1:
-            # Find matching closing bracket for array
-            bracket_count = 0
-            end_idx = -1
-            for i in range(array_start, len(text)):
-                if text[i] == "[":
-                    bracket_count += 1
-                elif text[i] == "]":
-                    bracket_count -= 1
-                    if bracket_count == 0:
-                        end_idx = i + 1
-                        break
-
-            if end_idx != -1:
-                json_text = text[array_start:end_idx]
-                try:
-                    data = json.loads(json_text)
-                    if isinstance(data, list):
-                        # Successfully parsed array format
-                        pass
-                except json.JSONDecodeError:
-                    # Array parsing failed, fall through to object extraction
-                    data = None
-            else:
-                data = None
-        else:
-            data = None
-
-        # If array format failed, try extracting multiple { } objects
-        if data is None:
-            objects = []
-            pos = 0
-            while pos < len(text):
-                # Find next object start
-                obj_start = text.find("{", pos)
-                if obj_start == -1:
-                    break
-
-                # Find matching closing brace
-                brace_count = 0
-                obj_end = -1
-                for i in range(obj_start, len(text)):
-                    if text[i] == "{":
-                        brace_count += 1
-                    elif text[i] == "}":
-                        brace_count -= 1
-                        if brace_count == 0:
-                            obj_end = i + 1
-                            break
-
-                if obj_end == -1:
-                    break
-
-                # Try to parse this object
-                obj_text = text[obj_start:obj_end]
-                try:
-                    obj = json.loads(obj_text)
-                    # Only add if it looks like an act (has 'title' field)
-                    if isinstance(obj, dict) and "title" in obj:
-                        objects.append(obj)
-                except json.JSONDecodeError:
-                    pass
-
-                pos = obj_end
-
-            if objects:
-                data = objects
-            else:
-                raise OutlineGenerationError("No valid JSON array or objects found in response")
-
-        # Validate it's a list of acts
-        if not isinstance(data, list):
-            raise OutlineGenerationError("Response must be a JSON array of acts")
-
-        if not data:
-            raise OutlineGenerationError("Response must contain at least one act")
+        # Use base class JSON array parsing
+        data = self.parse_json_array_response(
+            response_text, min_items=1, error_class=OutlineGenerationError
+        )
 
         # Convert to Act objects and auto-assign order based on position
         try:

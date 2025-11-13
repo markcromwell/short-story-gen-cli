@@ -1,6 +1,5 @@
 """Location generator for story creation."""
 
-import json
 from typing import Any
 
 from storygen.iterative.generators.base import BaseGenerator, GenerationError
@@ -124,21 +123,10 @@ Generate {min_locs}-{max_locs} key locations that fit this {story_type}'s world 
         Raises:
             LocationGenerationError: If response is invalid
         """
-        # Remove markdown code blocks if present
-        text = response_text.strip()
-        if text.startswith("```"):
-            lines = text.split("\n")
-            text = "\n".join(lines[1:-1]) if len(lines) > 2 else text
-            if text.startswith("json"):
-                text = text[4:].strip()
+        # Use base class JSON parsing
+        data = self.parse_json_response(response_text, error_class=LocationGenerationError)
 
-        # Parse JSON
-        try:
-            data = json.loads(text)
-        except json.JSONDecodeError as e:
-            raise LocationGenerationError(f"Invalid JSON response: {e}")
-
-        # Validate structure
+        # Validate structure specific to locations
         if not isinstance(data, dict):
             raise LocationGenerationError("Response must be a JSON object")
 

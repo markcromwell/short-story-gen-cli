@@ -1,6 +1,5 @@
 """Scene-sequel breakdown generator - expands outline acts into scene-sequel pairs."""
 
-import json
 from typing import Any
 
 from storygen.iterative.generators.base import BaseGenerator, GenerationError
@@ -365,24 +364,11 @@ Return ONLY the valid JSON array, nothing else."""
         Raises:
             BreakdownGenerationError: If parsing fails
         """
-        # Extract JSON array from response
         try:
-            # Find [ and ] brackets
-            start = response.find("[")
-            end = response.rfind("]")
-
-            if start == -1 or end == -1:
-                raise BreakdownGenerationError(
-                    f"No JSON array found in response for act '{act_title}'"
-                )
-
-            json_str = response[start : end + 1]
-            data = json.loads(json_str)
-
-            if not isinstance(data, list):
-                raise BreakdownGenerationError(
-                    f"Expected JSON array for act '{act_title}', got {type(data)}"
-                )
+            # Use base class JSON array parsing
+            data = self.parse_json_array_response(
+                response, min_items=0, error_class=BreakdownGenerationError
+            )
 
             # Convert to SceneSequel objects
             scene_sequels = []
@@ -413,7 +399,8 @@ Return ONLY the valid JSON array, nothing else."""
 
             return scene_sequels
 
-        except json.JSONDecodeError as e:
-            raise BreakdownGenerationError(f"Invalid JSON in response for act '{act_title}': {e}")
+        except BreakdownGenerationError:
+            # Re-raise with act context
+            raise
         except Exception as e:
             raise BreakdownGenerationError(f"Failed to parse response for act '{act_title}': {e}")

@@ -100,7 +100,7 @@ class TestLocationGenerator:
     def test_parse_response_invalid_json(self):
         """Test error on invalid JSON."""
         generator = LocationGenerator()
-        with pytest.raises(LocationGenerationError, match="Invalid JSON"):
+        with pytest.raises(LocationGenerationError, match="Failed to parse JSON response"):
             generator._parse_response("not valid json")
 
     def test_parse_response_missing_locations_field(self):

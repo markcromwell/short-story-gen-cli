@@ -28,6 +28,7 @@ class TestCLIStructure:
             "breakdown",
             "prose",
             "epub",
+            "all",
         }
         actual_commands = set(cli.commands.keys())
         assert (

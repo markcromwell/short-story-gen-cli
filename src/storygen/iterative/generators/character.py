@@ -2,7 +2,6 @@
 Character generation using AI.
 """
 
-import json
 from typing import Any
 
 from storygen.iterative.generators.base import BaseGenerator, GenerationError
@@ -188,22 +187,10 @@ Generate {min_chars}-{max_chars} characters appropriate for a {story_type}."""
         Raises:
             CharacterGenerationError: If response is invalid
         """
-        # Try to extract JSON if wrapped in markdown code blocks
-        text = response_text.strip()
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
-        text = text.strip()
+        # Use base class JSON parsing (without required_fields since we validate structure below)
+        data = self.parse_json_response(response_text, error_class=CharacterGenerationError)
 
-        try:
-            data = json.loads(text)
-        except json.JSONDecodeError as e:
-            raise CharacterGenerationError(f"Failed to parse JSON response: {e}")
-
-        # Validate structure
+        # Validate structure specific to characters
         if "characters" not in data:
             raise CharacterGenerationError("Response missing 'characters' field")
 

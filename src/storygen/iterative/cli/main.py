@@ -8,7 +8,7 @@ import click
 from dotenv import load_dotenv
 
 # Import command modules
-from storygen.iterative.cli.commands import export, generate, project, prose
+from storygen.iterative.cli.commands import export, generate, pipeline, project, prose
 
 # Load environment variables (for API keys)
 load_dotenv()
@@ -66,6 +66,9 @@ cli.add_command(prose.prose)
 
 # Register export commands
 cli.add_command(export.epub)
+
+# Register pipeline command
+cli.add_command(pipeline.generate_all, name="all")
 
 
 if __name__ == "__main__":

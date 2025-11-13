@@ -2,7 +2,6 @@
 Story idea generation using AI.
 """
 
-import json
 from typing import Any
 
 from storygen.iterative.generators.base import BaseGenerator, GenerationError
@@ -99,43 +98,29 @@ Return ONLY valid JSON, no other text or markdown formatting."""
         Raises:
             IdeaGenerationError: If response is invalid
         """
-        # Try to extract JSON if wrapped in markdown code blocks
-        text = response_text.strip()
-        if text.startswith("```json"):
-            text = text[7:]
-        if text.startswith("```"):
-            text = text[3:]
-        if text.endswith("```"):
-            text = text[:-3]
-        text = text.strip()
+        # Use base class JSON parsing
+        data = self.parse_json_response(
+            response_text,
+            required_fields=[
+                "raw_idea",
+                "one_sentence",
+                "expanded",
+                "genres",
+                "tone",
+                "themes",
+                "setting",
+            ],
+            error_class=IdeaGenerationError,
+        )
 
-        try:
-            data = json.loads(text)
-        except json.JSONDecodeError as e:
-            raise IdeaGenerationError(f"Failed to parse JSON response: {e}")
-
-        # Validate required fields
-        required_fields = [
-            "raw_idea",
-            "one_sentence",
-            "expanded",
-            "genres",
-            "tone",
-            "themes",
-            "setting",
-        ]
-        missing = [f for f in required_fields if f not in data]
-        if missing:
-            raise IdeaGenerationError(f"Missing required fields: {missing}")
-
-        # Validate types
+        # Additional validation specific to ideas
         if not isinstance(data["genres"], list) or not data["genres"]:
             raise IdeaGenerationError("genres must be a non-empty list")
 
         if not isinstance(data["themes"], list) or not data["themes"]:
             raise IdeaGenerationError("themes must be a non-empty list")
 
-        return data  # type: ignore[no-any-return]
+        return data
 
     def _log_parsed(self, parsed_data: Any) -> None:
         """Override to provide custom logging for idea data."""
@@ -166,24 +151,30 @@ Return ONLY valid JSON, no other text or markdown formatting."""
         """
         system_prompt = self._build_prompt(user_prompt, story_type)
 
-        # Parser that converts response text to StoryIdea
-        def parse_to_idea(response_text: str) -> StoryIdea:
-            data = self._parse_response(response_text)
-            return StoryIdea(
-                raw_idea=data["raw_idea"],
-                one_sentence=data["one_sentence"],
-                expanded=data["expanded"],
-                genres=data["genres"],
-                tone=data["tone"],
-                themes=data["themes"],
-                setting=data["setting"],
-            )
-
-        # Use base class retry logic
-        return self._generate_with_retry(
+        # Use the new JSON parser method
+        data = self.generate_with_json_parser(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
-            parser=parse_to_idea,
+            required_fields=[
+                "raw_idea",
+                "one_sentence",
+                "expanded",
+                "genres",
+                "tone",
+                "themes",
+                "setting",
+            ],
             temperature=0.8,
             error_class=IdeaGenerationError,
+        )
+
+        # Convert to StoryIdea object
+        return StoryIdea(
+            raw_idea=data["raw_idea"],
+            one_sentence=data["one_sentence"],
+            expanded=data["expanded"],
+            genres=data["genres"],
+            tone=data["tone"],
+            themes=data["themes"],
+            setting=data["setting"],
         )

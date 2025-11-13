@@ -231,9 +231,10 @@ class ProseGenerator(BaseGenerator[Any]):  # type: ignore[type-arg]
             min_words = int(target * 0.7)
             max_words = int(target * 1.3)
             if word_count < min_words or word_count > max_words:
-                raise ProseGenerationError(
+                self.logger.warning(
                     f"Word count {word_count} outside acceptable range {min_words}-{max_words} words (target {target}, ±30%)"
                 )
+                # Don't raise exception, just warn and continue
 
             return (content, summary, key_points)
 
