@@ -171,9 +171,13 @@ class TestLocationGenerator:
                 )
             )
         ]
+        # Add usage information to mock response
+        mock_response.usage = {
+            "prompt_tokens": 180,
+            "completion_tokens": 250,
+            "total_tokens": 430
+        }
         mock_completion.return_value = mock_response
-
-        generator = LocationGenerator(model="test-model")
         story_idea = StoryIdea(
             raw_idea="test",
             one_sentence="test story",
@@ -184,7 +188,8 @@ class TestLocationGenerator:
             setting="Test setting",
         )
 
-        locations = generator.generate(story_idea)
+        generator = LocationGenerator(model="test-model")
+        locations, usage_info = generator.generate(story_idea)
 
         assert len(locations) == 3
         assert all(isinstance(loc, Location) for loc in locations)
@@ -205,7 +210,12 @@ class TestLocationGenerator:
                             content='{"locations": [{"name": "Lab", "description": "Desc", "significance": "Sig", "atmosphere": "Atm"}, {"name": "Hall", "description": "Desc2", "significance": "Sig2", "atmosphere": "Atm2"}, {"name": "Bay", "description": "Desc3", "significance": "Sig3", "atmosphere": "Atm3"}]}'
                         )
                     )
-                ]
+                ],
+                usage={
+                    "prompt_tokens": 180,
+                    "completion_tokens": 250,
+                    "total_tokens": 430
+                }
             ),
         ]
 
@@ -220,7 +230,7 @@ class TestLocationGenerator:
             setting="Test setting",
         )
 
-        locations = generator.generate(story_idea)
+        locations, usage_info = generator.generate(story_idea)
         assert len(locations) == 3
         assert mock_sleep.called
 
@@ -238,7 +248,12 @@ class TestLocationGenerator:
                             content='{"locations": [{"name": "Lab", "description": "Desc", "significance": "Sig", "atmosphere": "Atm"}, {"name": "Hall", "description": "Desc2", "significance": "Sig2", "atmosphere": "Atm2"}, {"name": "Bay", "description": "Desc3", "significance": "Sig3", "atmosphere": "Atm3"}]}'
                         )
                     )
-                ]
+                ],
+                usage={
+                    "prompt_tokens": 180,
+                    "completion_tokens": 250,
+                    "total_tokens": 430
+                }
             ),
         ]
 
@@ -253,7 +268,7 @@ class TestLocationGenerator:
             setting="Test setting",
         )
 
-        locations = generator.generate(story_idea)
+        locations, usage_info = generator.generate(story_idea)
         assert len(locations) == 3
 
     @patch("storygen.iterative.generators.base.litellm.completion")
@@ -289,7 +304,12 @@ class TestLocationGenerator:
                             content='{"locations": [{"name": "Lab", "description": "Desc", "significance": "Sig", "atmosphere": "Atm"}, {"name": "Hall", "description": "Desc2", "significance": "Sig2", "atmosphere": "Atm2"}, {"name": "Bay", "description": "Desc3", "significance": "Sig3", "atmosphere": "Atm3"}]}'
                         )
                     )
-                ]
+                ],
+                usage={
+                    "prompt_tokens": 180,
+                    "completion_tokens": 250,
+                    "total_tokens": 430
+                }
             ),
         ]
 
@@ -304,7 +324,7 @@ class TestLocationGenerator:
             setting="Test setting",
         )
 
-        generator.generate(story_idea)
+        result, usage_info = generator.generate(story_idea)
 
         # Check exponential backoff: 1s, 2s
         assert mock_sleep.call_count == 2
@@ -322,6 +342,12 @@ class TestLocationGenerator:
                 )
             )
         ]
+        # Add usage information to mock response
+        mock_response.usage = {
+            "prompt_tokens": 180,
+            "completion_tokens": 250,
+            "total_tokens": 430
+        }
         mock_completion.return_value = mock_response
 
         generator = LocationGenerator(model="ollama/qwen3:30b")
@@ -335,7 +361,7 @@ class TestLocationGenerator:
             setting="Test setting",
         )
 
-        generator.generate(story_idea)
+        result, usage_info = generator.generate(story_idea)
 
         # Verify the custom model was used
         assert mock_completion.call_args[1]["model"] == "ollama/qwen3:30b"

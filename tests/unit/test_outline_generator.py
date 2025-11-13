@@ -313,9 +313,15 @@ class TestOutlineGeneratorGeneration:
         )
         mock_choice.message = mock_message
         mock_response.choices = [mock_choice]
+        # Add usage information to mock response
+        mock_response.usage = {
+            "prompt_tokens": 250,
+            "completion_tokens": 350,
+            "total_tokens": 600
+        }
 
         with patch("litellm.completion", return_value=mock_response):
-            outline = generator.generate(idea, characters, locations)
+            outline, usage_info = generator.generate(idea, characters, locations)
 
         assert isinstance(outline, Outline)
         assert outline.structure_type == "three-act"
@@ -368,10 +374,16 @@ class TestOutlineGeneratorGeneration:
         )
         mock_choice.message = mock_message
         mock_success.choices = [mock_choice]
+        # Add usage information to mock response
+        mock_success.usage = {
+            "prompt_tokens": 250,
+            "completion_tokens": 350,
+            "total_tokens": 600
+        }
 
         with patch("litellm.completion", side_effect=[TimeoutError(), mock_success]):
             with patch("time.sleep"):  # Skip actual sleep
-                outline = generator.generate(idea, characters, locations)
+                outline, usage_info = generator.generate(idea, characters, locations)
 
         assert isinstance(outline, Outline)
 
@@ -417,10 +429,16 @@ class TestOutlineGeneratorGeneration:
         )
         mock_good_choice.message = mock_good_message
         mock_good.choices = [mock_good_choice]
+        # Add usage information to mock response
+        mock_good.usage = {
+            "prompt_tokens": 250,
+            "completion_tokens": 350,
+            "total_tokens": 600
+        }
 
         with patch("litellm.completion", side_effect=[mock_bad, mock_good]):
             with patch("time.sleep"):
-                outline = generator.generate(idea, characters, locations)
+                outline, usage_info = generator.generate(idea, characters, locations)
 
         assert isinstance(outline, Outline)
 
@@ -449,7 +467,7 @@ class TestOutlineGeneratorGeneration:
         with patch("litellm.completion", side_effect=TimeoutError()):
             with patch("time.sleep", side_effect=track_sleep):
                 with pytest.raises(OutlineGenerationError):
-                    generator.generate(idea, characters, locations)
+                    outline, usage_info = generator.generate(idea, characters, locations)
 
         # Should have exponential backoff: 1, 2
         assert sleep_times == [1, 2]

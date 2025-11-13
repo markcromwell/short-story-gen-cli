@@ -4,6 +4,7 @@ Pipeline command for running full story generation in one go.
 
 import logging
 from pathlib import Path
+from typing import Any
 
 import click
 
@@ -94,7 +95,7 @@ def generate_all(
         manager = ProjectManager(Path(projects_dir))
 
         # Track usage across all steps
-        total_usage = {
+        total_usage: dict[str, Any] = {
             "total_tokens": 0,
             "prompt_tokens": 0,
             "completion_tokens": 0,
@@ -166,7 +167,9 @@ def generate_all(
             model=model, max_retries=retries, timeout=timeout, verbose=False
         )
         click.echo(f"🤖 Calling AI with {model}...", err=True)
-        characters_list, usage_info = character_generator.generate(story_idea, story_type=story_type)
+        characters_list, usage_info = character_generator.generate(
+            story_idea, story_type=story_type
+        )
         click.echo(f"✅ Generated {len(characters_list)} characters!", err=True)
 
         # Save characters
@@ -244,7 +247,9 @@ def generate_all(
             model=model, max_retries=retries, timeout=timeout, verbose=False
         )
         click.echo(f"🤖 Calling AI with {model}...", err=True)
-        story_outline, usage_info = outline_generator.generate(story_idea, characters_list, locations_list)
+        story_outline, usage_info = outline_generator.generate(
+            story_idea, characters_list, locations_list
+        )
         click.echo("✅ Generated three-act outline!", err=True)
 
         # Save outline
@@ -344,7 +349,9 @@ def generate_all(
             breakdown_data = json.load(f)
         scene_sequels = [SceneSequel.from_dict(ss) for ss in breakdown_data["scene_sequels"]]
 
-        prose_generator = ProseGenerator(model=model, max_retries=retries, timeout=timeout, verbose=False)
+        prose_generator = ProseGenerator(
+            model=model, max_retries=retries, timeout=timeout, verbose=False
+        )
         click.echo(f"🤖 Calling AI with {model} for each scene...")
         updated_scene_sequels, usage_info = prose_generator.generate(
             story_idea=story_idea,

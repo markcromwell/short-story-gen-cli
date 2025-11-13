@@ -68,6 +68,12 @@ class TestCharacterGenerator:
         mock_response.choices = [Mock()]
         mock_response.choices[0].message = Mock()
         mock_response.choices[0].message.content = json.dumps(valid_characters_response)
+        # Add usage information to mock response
+        mock_response.usage = {
+            "prompt_tokens": 200,
+            "completion_tokens": 300,
+            "total_tokens": 500
+        }
         return mock_response
 
     def test_initialization_defaults(self):
@@ -292,7 +298,7 @@ class TestCharacterGenerator:
         mock_completion.return_value = mock_litellm_response
 
         generator = CharacterGenerator(model="gpt-4")
-        characters = generator.generate(story_idea)
+        characters, usage_info = generator.generate(story_idea)
 
         # Should return Character objects
         assert len(characters) == 3
@@ -320,7 +326,7 @@ class TestCharacterGenerator:
         generator = CharacterGenerator(model="gpt-4", max_retries=2)
 
         with patch("time.sleep"):  # Don't actually sleep in tests
-            characters = generator.generate(story_idea)
+            characters, usage_info = generator.generate(story_idea)
 
         assert len(characters) == 3
         assert mock_completion.call_count == 2
@@ -340,13 +346,19 @@ class TestCharacterGenerator:
         good_response.choices = [Mock()]
         good_response.choices[0].message = Mock()
         good_response.choices[0].message.content = json.dumps(valid_characters_response)
+        # Add usage information to good response
+        good_response.usage = {
+            "prompt_tokens": 200,
+            "completion_tokens": 300,
+            "total_tokens": 500
+        }
 
         mock_completion.side_effect = [bad_response, good_response]
 
         generator = CharacterGenerator(max_retries=2)
 
         with patch("time.sleep"):
-            characters = generator.generate(story_idea)
+            characters, usage_info = generator.generate(story_idea)
 
         assert len(characters) == 3
         assert mock_completion.call_count == 2
@@ -376,7 +388,7 @@ class TestCharacterGenerator:
         generator = CharacterGenerator(max_retries=3)
 
         with patch("time.sleep") as mock_sleep:
-            result = generator.generate(story_idea)
+            result, usage_info = generator.generate(story_idea)
 
         # Should have succeeded after retries
         assert isinstance(result, list)
@@ -395,7 +407,7 @@ class TestCharacterGenerator:
         mock_completion.return_value = mock_litellm_response
 
         generator = CharacterGenerator(model="ollama/qwen3:30b")
-        characters = generator.generate(story_idea)
+        characters, usage_info = generator.generate(story_idea)
 
         assert len(characters) == 3
         # Verify correct model was used

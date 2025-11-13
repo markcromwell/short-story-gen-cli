@@ -39,6 +39,12 @@ def mock_litellm_response(valid_ai_response):
     mock_response.choices = [Mock()]
     mock_response.choices[0].message = Mock()
     mock_response.choices[0].message.content = json.dumps(valid_ai_response)
+    # Add usage information to mock response
+    mock_response.usage = {
+        "prompt_tokens": 150,
+        "completion_tokens": 200,
+        "total_tokens": 350
+    }
     return mock_response
 
 
@@ -144,7 +150,7 @@ class TestIdeaGenerator:
         mock_completion.return_value = mock_litellm_response
 
         generator = IdeaGenerator(model="gpt-4")
-        idea = generator.generate("A detective solves her own murder")
+        idea, usage_info = generator.generate("A detective solves her own murder")
 
         # Verify litellm called correctly
         mock_completion.assert_called_once()
@@ -168,7 +174,7 @@ class TestIdeaGenerator:
         generator = IdeaGenerator(model="gpt-4", max_retries=3)
 
         with patch("time.sleep"):  # Don't actually sleep in tests
-            idea = generator.generate("A detective solves crimes")
+            idea, usage_info = generator.generate("A detective solves crimes")
 
         # Should have retried once
         assert mock_completion.call_count == 2
@@ -188,7 +194,7 @@ class TestIdeaGenerator:
         generator = IdeaGenerator(model="gpt-4", max_retries=3)
 
         with patch("time.sleep"):
-            idea = generator.generate("A detective solves crimes")
+            idea, usage_info = generator.generate("A detective solves crimes")
 
         # Should have retried
         assert mock_completion.call_count == 2
@@ -221,7 +227,7 @@ class TestIdeaGenerator:
         generator = IdeaGenerator(model="gpt-4", max_retries=3)
 
         with patch("time.sleep") as mock_sleep:
-            result = generator.generate("A detective solves crimes")
+            result, usage_info = generator.generate("A detective solves crimes")
 
         # Should have succeeded after retries
         assert isinstance(result, StoryIdea)
@@ -242,11 +248,17 @@ class TestIdeaGenerator:
         mock_response.choices = [Mock()]
         mock_response.choices[0].message = Mock()
         mock_response.choices[0].message.content = json.dumps(response_data)
+        # Add usage information to mock response
+        mock_response.usage = {
+            "prompt_tokens": 150,
+            "completion_tokens": 200,
+            "total_tokens": 350
+        }
 
         mock_completion.return_value = mock_response
 
         generator = IdeaGenerator()
-        idea = generator.generate("A detective story")
+        idea, usage_info = generator.generate("A detective story")
 
         # StoryIdea should normalize and deduplicate
         assert idea.genres == ["mystery", "thriller"]
@@ -258,7 +270,7 @@ class TestIdeaGenerator:
         mock_completion.return_value = mock_litellm_response
 
         generator = IdeaGenerator(model="ollama/qwen3:30b")
-        idea = generator.generate("A space adventure")
+        idea, usage_info = generator.generate("A space adventure")
 
         # Verify correct model used
         call_kwargs = mock_completion.call_args[1]

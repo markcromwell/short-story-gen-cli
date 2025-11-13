@@ -638,7 +638,7 @@ class TestBreakdownGeneratorGenerate:
             ],
         )
 
-        scene_sequels = generator.generate(
+        scene_sequels, usage_info = generator.generate(
             story_idea=story_idea,
             characters=characters,
             locations=locations,
@@ -729,7 +729,7 @@ class TestBreakdownGeneratorGenerate:
             ],
         )
 
-        scene_sequels = generator.generate(
+        scene_sequels, usage_info = generator.generate(
             story_idea=story_idea,
             characters=characters,
             locations=locations,
@@ -804,7 +804,7 @@ class TestBreakdownGeneratorGenerate:
             ],
         )
 
-        scene_sequels = generator.generate(
+        scene_sequels, usage_info = generator.generate(
             story_idea=story_idea,
             characters=characters,
             locations=locations,
@@ -880,7 +880,7 @@ class TestBreakdownGeneratorGenerate:
             ],
         )
 
-        scene_sequels = generator.generate(
+        scene_sequels, usage_info = generator.generate(
             story_idea=story_idea,
             characters=characters,
             locations=locations,
