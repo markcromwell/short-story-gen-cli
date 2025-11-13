@@ -155,18 +155,19 @@ def epub(
             verbose=verbose,
         )
 
-        formatter.format(
+        epub_path = formatter.format(
             story_idea=story_idea,
             characters=characters,
             locations=locations,
             scene_sequels=scene_sequels,
             output_path=str(paths.epub),
+            config_path=paths.config,
             title_override=title,
             force_chapter_breaks=force_break_list,
         )
 
-        logger.info(f"Successfully generated EPUB: {paths.epub}")
-        click.echo(f"✅ EPUB generated: {paths.epub}", err=True)
+        logger.info(f"Successfully generated EPUB: {epub_path}")
+        click.echo(f"✅ EPUB generated: {epub_path}", err=True)
         click.echo(
             f"📊 {len(scene_sequels)} scenes, {format_word_count(total_words)} words", err=True
         )

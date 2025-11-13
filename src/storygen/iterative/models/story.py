@@ -18,6 +18,7 @@ class StoryConfig:
     pitch: str
     created_at: str
     updated_at: str
+    title: str | None = None  # AI-generated or user-provided title
 
     def __post_init__(self):
         """Validate story type and target words."""

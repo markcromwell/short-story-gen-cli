@@ -303,6 +303,7 @@ class EpubFormatter:
         locations: list[Location],
         scene_sequels: list[SceneSequel],
         output_path: str,
+        config_path: Path | None = None,
         title_override: str | None = None,
         force_chapter_breaks: list[str] | None = None,
     ) -> Path:
@@ -315,7 +316,8 @@ class EpubFormatter:
             locations: List of locations
             scene_sequels: List of scene-sequels with prose
             output_path: Output file path
-            title_override: Override story title
+            config_path: Path to story_config.json for loading/saving generated title
+            title_override: Override story title (takes precedence over saved/generated)
             force_chapter_breaks: Scene-sequel IDs to force chapter breaks before
 
         Returns:
@@ -343,18 +345,55 @@ class EpubFormatter:
         if title_override:
             title = title_override
         else:
-            if self.verbose:
-                print("📝 Generating title with AI (analyzing complete story)...")
-            title = self.title_generator.generate(
-                raw_idea=story_idea.raw_idea,
-                one_sentence=story_idea.one_sentence,
-                genres=story_idea.genres,
-                themes=story_idea.themes,
-                tone=story_idea.tone,
-                scene_sequels=scene_sequels,
-            )
-            if self.verbose:
-                print(f"✨ Generated title: {title}")
+            # Try to load saved title from config first
+            title = None
+            if config_path and config_path.exists():
+                try:
+                    import json
+
+                    with open(config_path, encoding="utf-8") as f:
+                        config_data = json.load(f)
+                    title = config_data.get("title")
+                    if title and self.verbose:
+                        print(f"📖 Using saved title: {title}")
+                except Exception as e:
+                    if self.verbose:
+                        print(f"⚠️  Could not load saved title: {e}")
+
+            # Generate new title if no saved title found
+            if not title:
+                if self.verbose:
+                    print("📝 Generating title with AI (analyzing complete story)...")
+                title = self.title_generator.generate(
+                    raw_idea=story_idea.raw_idea,
+                    one_sentence=story_idea.one_sentence,
+                    genres=story_idea.genres,
+                    themes=story_idea.themes,
+                    tone=story_idea.tone,
+                    scene_sequels=scene_sequels,
+                )
+                if self.verbose:
+                    print(f"✨ Generated title: {title}")
+
+                # Save title to config for future use
+                if config_path:
+                    try:
+                        import json
+
+                        with open(config_path, encoding="utf-8") as f:
+                            config_data = json.load(f)
+                        config_data["title"] = title
+                        with open(config_path, "w", encoding="utf-8") as f:
+                            json.dump(config_data, f, indent=2, ensure_ascii=False)
+                        if self.verbose:
+                            print(f"💾 Saved title to: {config_path.name}")
+                    except Exception as e:
+                        if self.verbose:
+                            print(f"⚠️  Could not save title: {e}")
+
+        # Ensure we have a title (should never be None at this point)
+        if not title:
+            title = "Untitled Story"
 
         book.set_identifier(f"story_{datetime.now().strftime('%Y%m%d%H%M%S')}")
         book.set_title(title)
@@ -428,8 +467,20 @@ class EpubFormatter:
             spine.append(dramatis_personae)
         book.spine = spine
 
-        # Write file
-        output_file = Path(output_path)
+        # Write file - use title in filename if available
+        output_path_obj = Path(output_path)
+        if title and output_path_obj.name == "story.epub":
+            # Create filesystem-safe filename from title
+            safe_filename = re.sub(r'[<>:"/\\|?*]', "", title)  # Remove invalid chars
+            safe_filename = safe_filename.strip().replace(" ", "_").lower()
+            safe_filename = re.sub(r"_+", "_", safe_filename)  # Collapse multiple underscores
+            if safe_filename:
+                output_file = output_path_obj.parent / f"{safe_filename}.epub"
+            else:
+                output_file = output_path_obj
+        else:
+            output_file = output_path_obj
+
         output_file.parent.mkdir(parents=True, exist_ok=True)
         epub.write_epub(output_file, book)
 

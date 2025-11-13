@@ -259,6 +259,15 @@ def status(name: str, projects_dir: str):
         if pitch:
             click.echo(f"💡 Pitch: {pitch}\n")
 
+        # Show title if generated
+        try:
+            with open(paths.config, encoding="utf-8") as f:
+                config_data = json.load(f)
+                if config_data.get("title"):
+                    click.echo(f"📖 Title: {config_data['title']}\n")
+        except (FileNotFoundError, json.JSONDecodeError, KeyError):
+            pass
+
         # Show setting if idea exists
         if status_dict["idea"]:
             try:
