@@ -204,10 +204,11 @@ class BaseGenerator(ABC, Generic[T]):
         self._log_request(system_prompt, user_prompt)
 
         last_error = None
+        current_user_prompt = user_prompt
         for attempt in range(self.max_retries):
             try:
                 # Call AI
-                response_text = self._call_ai(system_prompt, user_prompt, temperature)
+                response_text = self._call_ai(system_prompt, current_user_prompt, temperature)
                 self._log_response(response_text)
 
                 # Parse and validate
@@ -224,6 +225,9 @@ class BaseGenerator(ABC, Generic[T]):
                 if attempt < self.max_retries - 1:
                     wait_time = 2**attempt  # Exponential backoff: 1, 2, 4, 8...
                     self.logger.info(f"Retrying in {wait_time} seconds...")
+
+                    # Add error feedback to next attempt
+                    current_user_prompt = f"{user_prompt}\n\nPREVIOUS ATTEMPT FAILED: {e}\nPlease correct this issue in your response."
 
                     if self.verbose:
                         print(f"\n⚠️  Attempt {attempt + 1} failed: {e}")

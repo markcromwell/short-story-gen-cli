@@ -224,13 +224,13 @@ class ProseGenerator(BaseGenerator[Any]):  # type: ignore[type-arg]
             issues = self._validate_prose(scene_sequel, content, word_count)
 
             if issues and self.verbose:
-                print(f"   ⚠️  Validation issues: {', '.join(issues)}")
+                print(f"   Validation issues: {', '.join(issues)}")
 
-            # Check if word count is acceptable (±20%)
+            # Check if word count is acceptable (±30% - relaxed for smaller models)
             target = scene_sequel.target_word_count
-            if word_count < target * 0.8 or word_count > target * 1.2:
+            if word_count < target * 0.7 or word_count > target * 1.3:
                 raise ProseGenerationError(
-                    f"Word count {word_count} too far from target {target} (±20%)"
+                    f"Word count {word_count} too far from target {target} (±30%)"
                 )
 
             return (content, summary, key_points)
