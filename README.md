@@ -1,10 +1,11 @@
-# Short Story Generator CLI 🎨📚
+# Story Generator CLI 🎨📚
 
-AI-powered command-line tool to generate creative short stories using multiple AI providers.
+AI-powered command-line tool to generate creative stories of any length using multiple AI providers.
 
 ## Features
 
 - **Multiple AI Providers**: Switch between OpenAI, Anthropic Claude, Ollama (local), and more
+- **Flexible Story Lengths**: Generate anything from flash fiction to full novels (1,500+ words)
 - **Structured Story Output**: Generate stories with title, scenes, genre, and metadata (JSON or formatted text)
 - **EPUB Generation**: Create professional ebook files from AI-generated stories
 - **Test-Driven Development**: Built with TDD principles, comprehensive test coverage

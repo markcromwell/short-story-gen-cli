@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "storygen"
 version = "0.1.0"
-description = "AI-powered short story generator CLI"
+description = "AI-powered story generator CLI - from flash fiction to novels"
 readme = "README.md"
 authors = [
     { name = "Mark Cromwell", email = "markcromwell@gmail.com" }

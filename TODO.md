@@ -35,7 +35,7 @@
 
 ## Medium Priority
 
-- [ ] **Minimal EPUB Unit Tests** - Add granular unit tests for EPUB generation components
+- [x] **Minimal EPUB Unit Tests** - Add granular unit tests for EPUB generation components ✅ COMPLETED
   - Test individual EPUB formatting functions (scene breaks, chapter detection, etc.)
   - Test EPUB metadata generation without full file creation
   - Test XHTML content generation in isolation

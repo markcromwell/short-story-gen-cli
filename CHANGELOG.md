@@ -52,8 +52,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Documentation
 - README.md with installation and usage instructions
-- QUICKSTART.md for rapid setup
-- TESTING.md for test documentation
-- GROK_GUIDE.md for xAI Grok-specific instructions
+- docs/quickstart-guide.md for rapid setup
+- docs/TESTING.md for test documentation
+- docs/grok-guide.md for xAI Grok-specific instructions
+- docs/README.md for documentation organization
 
 [0.1.0]: https://github.com/markcromwell/short-story-gen-cli/releases/tag/v0.1.0
