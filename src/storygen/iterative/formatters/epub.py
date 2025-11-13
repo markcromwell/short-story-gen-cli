@@ -364,7 +364,7 @@ class EpubFormatter:
             if not title:
                 if self.verbose:
                     print("📝 Generating title with AI (analyzing complete story)...")
-                title = self.title_generator.generate(
+                generated_title, title_usage_info = self.title_generator.generate(
                     raw_idea=story_idea.raw_idea,
                     one_sentence=story_idea.one_sentence,
                     genres=story_idea.genres,
@@ -372,6 +372,7 @@ class EpubFormatter:
                     tone=story_idea.tone,
                     scene_sequels=scene_sequels,
                 )
+                title = generated_title
                 if self.verbose:
                     print(f"✨ Generated title: {title}")
 

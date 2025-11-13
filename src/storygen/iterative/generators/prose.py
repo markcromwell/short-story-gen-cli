@@ -61,7 +61,7 @@ class ProseGenerator(BaseGenerator[Any]):  # type: ignore[type-arg]
         scene_sequels: list[SceneSequel],
         writing_style: str | None = None,
         output_path: str | None = None,
-    ) -> list[SceneSequel]:
+    ) -> tuple[list[SceneSequel], dict[str, Any]]:
         """
         Generate prose for all scene-sequels in order.
 
@@ -74,7 +74,7 @@ class ProseGenerator(BaseGenerator[Any]):  # type: ignore[type-arg]
             output_path: Optional path to save progress incrementally after each scene
 
         Returns:
-            Updated list of scene-sequels with content, summary, and key_points filled
+            Tuple of (updated list of scene-sequels with content, usage information dict)
 
         Raises:
             ProseGenerationError: If generation fails after all retries
@@ -91,6 +91,16 @@ class ProseGenerator(BaseGenerator[Any]):  # type: ignore[type-arg]
             print(f"   Temperature: {self.temperature}")
             print(f"   Context window: {self.context_window} previous scenes")
             print(f"   Writing style: {writing_style}\n")
+
+        # Track usage across all scene generations
+        total_usage = {
+            "total_tokens": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_cost": 0.0,
+            "retries": 0,
+            "duration": 0.0,
+        }
 
         # Generate prose for each scene-sequel in order
         for i, ss in enumerate(scene_sequels):
@@ -111,7 +121,7 @@ class ProseGenerator(BaseGenerator[Any]):  # type: ignore[type-arg]
                 print(f"   Target: {ss.target_word_count} words")
 
             # Generate prose for this scene-sequel
-            self._generate_scene_sequel_prose(
+            usage_info = self._generate_scene_sequel_prose(
                 scene_sequel=ss,
                 current_index=i,
                 all_scene_sequels=scene_sequels,
@@ -120,6 +130,15 @@ class ProseGenerator(BaseGenerator[Any]):  # type: ignore[type-arg]
                 locations=locations,
                 writing_style=writing_style,
             )
+
+            # Accumulate usage
+            if usage_info:
+                total_usage["total_tokens"] += usage_info.get("total_tokens", 0)
+                total_usage["prompt_tokens"] += usage_info.get("prompt_tokens", 0)
+                total_usage["completion_tokens"] += usage_info.get("completion_tokens", 0)
+                total_usage["total_cost"] += usage_info.get("total_cost", 0.0)
+                total_usage["retries"] += usage_info.get("retries", 0)
+                total_usage["duration"] += usage_info.get("duration", 0.0)
 
             if self.verbose:
                 print(f"   Generated: {ss.actual_word_count} words")
@@ -137,7 +156,7 @@ class ProseGenerator(BaseGenerator[Any]):  # type: ignore[type-arg]
             print("✅ Prose generation complete!")
             print(f"   Total words: {sum(ss.actual_word_count for ss in scene_sequels)}")
 
-        return scene_sequels
+        return scene_sequels, total_usage
 
     def infer_writing_style(self, tone: str, genres: list[str]) -> str:
         """
@@ -188,7 +207,7 @@ class ProseGenerator(BaseGenerator[Any]):  # type: ignore[type-arg]
         characters: list[Character],
         locations: list[Location],
         writing_style: str,
-    ) -> None:
+    ) -> dict[str, Any]:
         """
         Generate prose for a single scene-sequel.
 
@@ -202,6 +221,9 @@ class ProseGenerator(BaseGenerator[Any]):  # type: ignore[type-arg]
             characters: All characters
             locations: All locations
             writing_style: Writing style to use
+
+        Returns:
+            Usage information dict from the AI call
         """
         # Store scene-specific parameters for _build_prompt
         self._scene_sequel = scene_sequel
@@ -242,19 +264,22 @@ class ProseGenerator(BaseGenerator[Any]):  # type: ignore[type-arg]
         system_prompt, user_prompt = self._build_prompt()
 
         # Use base class retry logic
-        content, summary, key_points = self._generate_with_retry(
+        (result, usage_info) = self._generate_with_retry(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             parser=parse_and_validate,
             temperature=self.temperature,
             error_class=ProseGenerationError,
         )
+        content, summary, key_points = result
 
         # Update scene-sequel
         scene_sequel.content = content
         scene_sequel.summary = summary
         scene_sequel.key_points = key_points
         scene_sequel.actual_word_count = len(content.split())
+
+        return usage_info
 
     def _build_prompt(self) -> tuple[str, str]:
         """Build prompts for prose generation using stored parameters."""

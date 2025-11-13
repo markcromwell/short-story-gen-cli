@@ -52,7 +52,7 @@ class BreakdownGenerator(BaseGenerator[list[SceneSequel]]):
         locations: list[Location],
         outline: Outline,
         target_words: int = 2000,
-    ) -> list[SceneSequel]:
+    ) -> tuple[list[SceneSequel], dict[str, Any]]:
         """
         Generate scene-sequel breakdown from outline.
 
@@ -64,7 +64,7 @@ class BreakdownGenerator(BaseGenerator[list[SceneSequel]]):
             target_words: Target word count for entire story
 
         Returns:
-            List of SceneSequel objects
+            Tuple of (list of SceneSequel objects, usage_info dict)
 
         Raises:
             BreakdownGenerationError: If generation fails after retries
@@ -80,6 +80,15 @@ class BreakdownGenerator(BaseGenerator[list[SceneSequel]]):
         current_time = 0.0  # Track story time
         ss_counter = 1
 
+        # Initialize usage accumulator
+        usage_accumulator = {
+            "duration": 0.0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "retries": 0,
+        }
+
         for act in leaf_acts:
             if self.verbose:
                 print(f"\n{'=' * 80}")
@@ -90,7 +99,7 @@ class BreakdownGenerator(BaseGenerator[list[SceneSequel]]):
             act_word_count = int(target_words * act.percentage)
 
             # Generate scene-sequels for this act
-            act_scenes = self._generate_act_breakdown(
+            act_scenes, act_usage = self._generate_act_breakdown(
                 act=act,
                 story_idea=story_idea,
                 characters=characters,
@@ -98,6 +107,15 @@ class BreakdownGenerator(BaseGenerator[list[SceneSequel]]):
                 act_word_count=act_word_count,
                 current_time=current_time,
                 starting_id=ss_counter,
+            )
+
+            # Accumulate usage
+            usage_accumulator["duration"] += act_usage.get("duration", 0.0)
+            usage_accumulator["prompt_tokens"] += act_usage.get("prompt_tokens", 0)
+            usage_accumulator["completion_tokens"] += act_usage.get("completion_tokens", 0)
+            usage_accumulator["total_tokens"] += act_usage.get("total_tokens", 0)
+            usage_accumulator["retries"] = max(
+                usage_accumulator["retries"], act_usage.get("retries", 0)
             )
 
             # Validate and add to list
@@ -121,7 +139,7 @@ class BreakdownGenerator(BaseGenerator[list[SceneSequel]]):
             print(f"📊 Story duration: {current_time:.1f} hours (~{current_time/24:.1f} days)")
             print(f"{'=' * 80}\n")
 
-        return scene_sequels
+        return scene_sequels, usage_accumulator
 
     def _get_leaf_acts(self, acts: list[Act]) -> list[Act]:
         """
@@ -152,7 +170,7 @@ class BreakdownGenerator(BaseGenerator[list[SceneSequel]]):
         act_word_count: int,
         current_time: float,
         starting_id: int,
-    ) -> list[SceneSequel]:
+    ) -> tuple[list[SceneSequel], dict[str, Any]]:
         """
         Generate scene-sequel pairs for a single act.
 
@@ -166,7 +184,7 @@ class BreakdownGenerator(BaseGenerator[list[SceneSequel]]):
             starting_id: Starting ID number for scene-sequels
 
         Returns:
-            List of SceneSequel objects for this act
+            Tuple of (list of SceneSequel objects, usage_info dict)
 
         Raises:
             BreakdownGenerationError: If generation fails after retries
@@ -186,13 +204,15 @@ class BreakdownGenerator(BaseGenerator[list[SceneSequel]]):
             return self._parse_breakdown_response(response_text, act.title)
 
         # Use base class retry logic
-        return self._generate_with_retry(
+        scene_sequels, usage_info = self._generate_with_retry(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             parser=parse_to_scene_sequels,
             temperature=0.7,
             error_class=BreakdownGenerationError,
         )
+
+        return scene_sequels, usage_info
 
     def _log_parsed(self, parsed_data: Any) -> None:
         """Override to provide custom logging for breakdown data."""

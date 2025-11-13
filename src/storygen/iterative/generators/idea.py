@@ -135,7 +135,9 @@ Return ONLY valid JSON, no other text or markdown formatting."""
             self.logger.debug(f"Setting: {parsed_data['setting']}")
             self.logger.debug("=" * 80)
 
-    def generate(self, user_prompt: str, story_type: str = "short-story") -> StoryIdea:
+    def generate(
+        self, user_prompt: str, story_type: str = "short-story"
+    ) -> tuple[StoryIdea, dict[str, Any]]:
         """
         Generate a story idea from a user prompt.
 
@@ -144,7 +146,7 @@ Return ONLY valid JSON, no other text or markdown formatting."""
             story_type: Type of story (flash-fiction, short-story, novelette, novella, novel)
 
         Returns:
-            StoryIdea object
+            Tuple of (StoryIdea object, usage_info dict)
 
         Raises:
             IdeaGenerationError: If generation fails after all retries
@@ -152,7 +154,7 @@ Return ONLY valid JSON, no other text or markdown formatting."""
         system_prompt = self._build_prompt(user_prompt, story_type)
 
         # Use the new JSON parser method
-        data = self.generate_with_json_parser(
+        data, usage_info = self.generate_with_json_parser(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             required_fields=[
@@ -169,7 +171,7 @@ Return ONLY valid JSON, no other text or markdown formatting."""
         )
 
         # Convert to StoryIdea object
-        return StoryIdea(
+        story_idea = StoryIdea(
             raw_idea=data["raw_idea"],
             one_sentence=data["one_sentence"],
             expanded=data["expanded"],
@@ -178,3 +180,5 @@ Return ONLY valid JSON, no other text or markdown formatting."""
             themes=data["themes"],
             setting=data["setting"],
         )
+
+        return story_idea, usage_info

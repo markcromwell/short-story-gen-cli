@@ -168,7 +168,9 @@ Generate {min_locs}-{max_locs} key locations that fit this {story_type}'s world 
 
         return locations
 
-    def generate(self, story_idea: StoryIdea, story_type: str = "short-story") -> list[Location]:
+    def generate(
+        self, story_idea: StoryIdea, story_type: str = "short-story"
+    ) -> tuple[list[Location], dict[str, Any]]:
         """
         Generate locations for a story idea.
 
@@ -177,7 +179,7 @@ Generate {min_locs}-{max_locs} key locations that fit this {story_type}'s world 
             story_type: Type of story (flash-fiction, short-story, novelette, novella, novel)
 
         Returns:
-            List of Location objects
+            Tuple of (list of Location objects, usage_info dict)
 
         Raises:
             LocationGenerationError: If generation fails after all retries
@@ -199,13 +201,15 @@ Generate {min_locs}-{max_locs} key locations that fit this {story_type}'s world 
             return locations
 
         # Use base class retry logic
-        return self._generate_with_retry(
+        locations, usage_info = self._generate_with_retry(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             parser=parse_to_locations,
             temperature=0.8,
             error_class=LocationGenerationError,
         )
+
+        return locations, usage_info
 
     def _log_parsed(self, parsed_data: Any) -> None:
         """Override to provide custom logging for location data."""

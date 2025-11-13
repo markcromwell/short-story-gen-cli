@@ -229,7 +229,7 @@ Return ONLY the complete JSON array, nothing else."""
         story_idea: StoryIdea,
         characters: list[Character],
         locations: list[Location],
-    ) -> Outline:
+    ) -> tuple[Outline, dict[str, Any]]:
         """
         Generate outline for the story using the specified structure template.
 
@@ -239,7 +239,7 @@ Return ONLY the complete JSON array, nothing else."""
             locations: List of locations
 
         Returns:
-            Outline object with acts containing story_application
+            Tuple of (Outline object, usage_info dict)
 
         Raises:
             OutlineGenerationError: If generation fails after all retries
@@ -252,6 +252,15 @@ Return ONLY the complete JSON array, nothing else."""
 
         last_error = None
         error_feedback = None
+
+        # Initialize usage accumulator
+        usage_accumulator = {
+            "duration": 0.0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "retries": 0,
+        }
 
         for attempt in range(self.max_retries):
             try:
@@ -297,13 +306,20 @@ Return ONLY the corrected JSON array, no explanations."""
                     extra_kwargs["response_format"] = {"type": "json_object"}
 
                 # Call AI using base class helper
-                response = self._call_ai(
+                response, usage_info = self._call_ai(
                     system_prompt,
                     current_user_prompt,
                     temperature=temperature,
                     stream=False,
                     **extra_kwargs,
                 )
+
+                # Accumulate usage info
+                usage_accumulator["duration"] += usage_info["duration"]
+                usage_accumulator["prompt_tokens"] += usage_info["prompt_tokens"]
+                usage_accumulator["completion_tokens"] += usage_info["completion_tokens"]
+                usage_accumulator["total_tokens"] += usage_info["total_tokens"]
+                usage_accumulator["retries"] = attempt
 
                 # Log response using base class
                 self._log_response(response)
@@ -337,7 +353,7 @@ Return ONLY the corrected JSON array, no explanations."""
                         print(f"\n❌ VALIDATION ERRORS: {errors}")
                     raise OutlineGenerationError(f"Outline validation failed: {errors}")
 
-                return outline
+                return outline, usage_accumulator
 
             except Exception as e:
                 last_error = e

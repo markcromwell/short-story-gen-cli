@@ -4,6 +4,8 @@ Title generator for stories.
 Generates compelling titles based on story idea, genres, and themes.
 """
 
+from typing import Any
+
 from storygen.iterative.exceptions import ValidationError
 from storygen.iterative.generators.base import BaseGenerator, GenerationError
 
@@ -43,7 +45,7 @@ class TitleGenerator(BaseGenerator[str]):
         themes: list[str],
         tone: str,
         scene_sequels: list | None = None,
-    ) -> str:
+    ) -> tuple[str, dict[str, Any]]:
         """
         Generate a compelling title for the story.
 
@@ -56,7 +58,7 @@ class TitleGenerator(BaseGenerator[str]):
             scene_sequels: Optional list of SceneSequel objects with actual story content
 
         Returns:
-            Generated title (2-5 words, punchy and memorable)
+            Tuple of (generated title, usage information dict)
         """
         if self.verbose:
             print(f"📖 Generating title with {self.model}...")
@@ -81,7 +83,7 @@ class TitleGenerator(BaseGenerator[str]):
         system_prompt, user_prompt = self._build_prompt()
 
         # Use base class retry logic
-        title = self._generate_with_retry(
+        (title, usage_info) = self._generate_with_retry(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             parser=parse_and_validate,
@@ -92,7 +94,7 @@ class TitleGenerator(BaseGenerator[str]):
         if self.verbose:
             print(f"✅ Generated title: {title}")
 
-        return title
+        return title, usage_info
 
     def _build_prompt(self) -> tuple[str, str]:
         """Build prompts for title generation."""

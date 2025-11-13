@@ -37,12 +37,19 @@ def cli(ctx, verbose: bool):
     Each stage builds on the previous, allowing review and iteration.
     """
     # Configure logging based on verbose flag
-    level = logging.DEBUG if verbose else logging.INFO
+    level = logging.DEBUG if verbose else logging.WARNING
     logging.basicConfig(
         level=level,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S",
     )
+
+    # Suppress noisy third-party libraries unless verbose
+    if not verbose:
+        logging.getLogger("litellm").setLevel(logging.WARNING)
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+        logging.getLogger("openai").setLevel(logging.WARNING)
+        logging.getLogger("anthropic").setLevel(logging.WARNING)
 
     # Store verbose in context for commands that need it
     ctx.ensure_object(dict)

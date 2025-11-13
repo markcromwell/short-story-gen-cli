@@ -217,7 +217,9 @@ Generate {min_chars}-{max_chars} characters appropriate for a {story_type}."""
 
         return characters
 
-    def generate(self, story_idea: StoryIdea, story_type: str = "short-story") -> list[Character]:
+    def generate(
+        self, story_idea: StoryIdea, story_type: str = "short-story"
+    ) -> tuple[list[Character], dict[str, Any]]:
         """
         Generate characters for a story idea.
 
@@ -226,7 +228,7 @@ Generate {min_chars}-{max_chars} characters appropriate for a {story_type}."""
             story_type: Type of story (flash-fiction, short-story, novelette, novella, novel)
 
         Returns:
-            List of Character objects
+            Tuple of (list of Character objects, usage_info dict)
 
         Raises:
             CharacterGenerationError: If generation fails after all retries
@@ -250,13 +252,15 @@ Generate {min_chars}-{max_chars} characters appropriate for a {story_type}."""
             return characters
 
         # Use base class retry logic
-        return self._generate_with_retry(
+        characters, usage_info = self._generate_with_retry(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             parser=parse_to_characters,
             temperature=0.8,
             error_class=CharacterGenerationError,
         )
+
+        return characters, usage_info
 
     def _log_parsed(self, parsed_data: Any) -> None:
         """Override to provide custom logging for character data."""

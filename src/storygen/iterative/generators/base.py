@@ -130,7 +130,7 @@ class BaseGenerator(ABC, Generic[T]):
         temperature: float = 0.8,
         stream: bool = False,
         **kwargs: Any,
-    ) -> str:
+    ) -> tuple[str, dict[str, Any]]:
         """
         Call the AI model with retry logic.
 
@@ -142,11 +142,15 @@ class BaseGenerator(ABC, Generic[T]):
             **kwargs: Additional arguments to pass to litellm.completion
 
         Returns:
-            Response text from AI
+            Tuple of (response_text, usage_info) where usage_info contains token counts and timing
 
         Raises:
             GenerationError: If AI call fails
         """
+        import time
+
+        start_time = time.time()
+
         # Debug logging
         if self.verbose:
             self.logger.debug(f"System prompt length: {len(system_prompt)} chars")
@@ -166,6 +170,9 @@ class BaseGenerator(ABC, Generic[T]):
             **kwargs,
         )
 
+        end_time = time.time()
+        duration = end_time - start_time
+
         # Extract response text
         if not hasattr(response, "choices") or not response.choices:  # type: ignore[union-attr]
             raise GenerationError("Invalid response format from AI model")
@@ -176,16 +183,24 @@ class BaseGenerator(ABC, Generic[T]):
         if not response_text:
             raise GenerationError("Empty response from AI model")
 
-        return response_text  # type: ignore[no-any-return]
+        # Extract usage information
+        usage_info = {
+            "duration": duration,
+            "prompt_tokens": getattr(response, "usage", {}).get("prompt_tokens", 0),
+            "completion_tokens": getattr(response, "usage", {}).get("completion_tokens", 0),
+            "total_tokens": getattr(response, "usage", {}).get("total_tokens", 0),
+        }
+
+        return response_text, usage_info  # type: ignore[no-any-return]
 
     def _generate_with_retry(
         self,
         system_prompt: str,
         user_prompt: str,
-        parser: Callable[[str], T],
+        parser: Callable[[str], Any],
         temperature: float = 0.8,
         error_class: type[Exception] = GenerationError,
-    ) -> T:
+    ) -> tuple[T, dict[str, Any]]:
         """
         Generate content with automatic retry on failure.
 
@@ -197,7 +212,7 @@ class BaseGenerator(ABC, Generic[T]):
             error_class: Exception class to raise on final failure
 
         Returns:
-            Parsed result
+            Tuple of (parsed_result, usage_info) where usage_info contains timing and token counts
 
         Raises:
             error_class: If generation fails after all retries
@@ -206,18 +221,35 @@ class BaseGenerator(ABC, Generic[T]):
 
         last_error = None
         current_user_prompt = user_prompt
+        total_usage = {
+            "duration": 0.0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_tokens": 0,
+            "retries": 0,
+        }
+
         for attempt in range(self.max_retries):
             try:
                 # Call AI
-                response_text = self._call_ai(system_prompt, current_user_prompt, temperature)
+                response_text, usage_info = self._call_ai(
+                    system_prompt, current_user_prompt, temperature
+                )
                 self._log_response(response_text)
 
                 # Parse and validate
                 parsed_data = parser(response_text)
                 self._log_parsed(parsed_data)
 
+                # Accumulate usage info
+                total_usage["duration"] += usage_info["duration"]
+                total_usage["prompt_tokens"] += usage_info["prompt_tokens"]
+                total_usage["completion_tokens"] += usage_info["completion_tokens"]
+                total_usage["total_tokens"] += usage_info["total_tokens"]
+                total_usage["retries"] = attempt
+
                 self.logger.info(f"Successfully generated after {attempt + 1} attempt(s)")
-                return parsed_data
+                return parsed_data, total_usage
 
             except Exception as e:
                 last_error = e
@@ -414,7 +446,7 @@ class BaseGenerator(ABC, Generic[T]):
         required_fields: list[str] | None = None,
         temperature: float = 0.8,
         error_class: type[Exception] = GenerationError,
-    ) -> dict[str, Any]:
+    ) -> tuple[dict[str, Any], dict[str, Any]]:
         """
         Generate content using JSON parsing pattern.
 
@@ -431,7 +463,7 @@ class BaseGenerator(ABC, Generic[T]):
             error_class: Exception class to raise on error
 
         Returns:
-            Parsed JSON dict
+            Tuple of (parsed_json_dict, usage_info) where usage_info contains timing and token counts
 
         Raises:
             error_class: If generation or parsing fails
@@ -441,23 +473,24 @@ class BaseGenerator(ABC, Generic[T]):
         def parse_json(response_text: str) -> dict[str, Any]:
             return self.parse_json_response(response_text, required_fields, error_class)
 
-        # Use base class retry logic with type casting
-        return self._generate_with_retry(  # type: ignore[return-value]
+        # Use base class retry logic
+        result, usage_info = self._generate_with_retry(
             system_prompt=system_prompt,
             user_prompt=user_prompt,
             parser=parse_json,
             temperature=temperature,
             error_class=error_class,
         )
+        return result, usage_info  # type: ignore[return-value]
 
     @abstractmethod
-    def generate(self, *args: Any, **kwargs: Any) -> T:
+    def generate(self, *args: Any, **kwargs: Any) -> tuple[T, dict[str, Any]]:
         """Generate the content.
 
         Subclasses must implement this method to define their specific generation logic.
         Should typically call _generate_with_retry() internally.
 
         Returns:
-            Generated content of type T
+            Tuple of (generated content of type T, usage information dict)
         """
         pass

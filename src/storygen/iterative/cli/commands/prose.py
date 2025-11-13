@@ -136,7 +136,7 @@ def breakdown(
         click.echo(f"✅ Loaded outline with {len(outline.acts)} acts", err=True)
 
         # Generate breakdown
-        click.echo(f"📝 Generating scene-sequel breakdown with {model}...", err=True)
+        click.echo(f"🤖 Generating scene-sequel breakdown with {model}...", err=True)
 
         from storygen.iterative.generators.breakdown import BreakdownGenerator
 
@@ -147,7 +147,7 @@ def breakdown(
             verbose=verbose,
         )
 
-        scene_sequels = generator.generate(
+        scene_sequels, usage_info = generator.generate(
             story_idea=story_idea,
             characters=characters,
             locations=locations,
@@ -155,9 +155,7 @@ def breakdown(
             target_words=target_words,
         )
 
-        logger.info(f"Generated {len(scene_sequels)} scene-sequels")
-        if verbose:
-            click.echo(f"✅ Generated {len(scene_sequels)} scene-sequels!", err=True)
+        click.echo(f"✅ Generated {len(scene_sequels)} scene-sequels!", err=True)
 
         # Save to project
         breakdown_dict = {
@@ -330,7 +328,7 @@ def prose(
             click.echo(f"✅ Loaded {len(scene_sequels)} scene-sequels", err=True)
 
         # Generate prose
-        click.echo(f"📝 Generating prose with {model}...", err=True)
+        click.echo(f"🤖 Generating prose with {model} (this may take a while)...", err=True)
 
         from storygen.iterative.generators.prose import ProseGenerator
 
@@ -343,7 +341,7 @@ def prose(
             verbose=verbose,
         )
 
-        updated_scene_sequels = generator.generate(
+        updated_scene_sequels, usage_info = generator.generate(
             story_idea=story_idea,
             characters=characters,
             locations=locations,
@@ -354,7 +352,6 @@ def prose(
 
         # Calculate total words
         total_words = sum(ss.actual_word_count or 0 for ss in updated_scene_sequels)
-        logger.info(f"Generated {total_words} words of prose")
         click.echo(f"✅ Generated {format_word_count(total_words)} words of prose!", err=True)
 
         # Save to project

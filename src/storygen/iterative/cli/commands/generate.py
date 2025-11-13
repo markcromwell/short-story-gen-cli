@@ -133,11 +133,12 @@ def idea(
 
         # Generate idea
         generator = IdeaGenerator(model=model, max_retries=retries, verbose=verbose)
-        story_idea = generator.generate(prompt, story_type=story_type)
+        click.echo(f"🤖 Generating story idea with {model}...", err=True)
+        story_idea, usage_info = generator.generate(prompt, story_type=story_type)
+        click.echo("✅ Story idea generated successfully!", err=True)
 
         logger.info(f"Successfully generated story idea: {story_idea.one_sentence[:50]}...")
         if verbose:
-            click.echo("✅ Story idea generated successfully!", err=True)
             click.echo(f"📚 Genres: {', '.join(story_idea.genres)}", err=True)
             click.echo(f"🎭 Themes: {', '.join(story_idea.themes)}", err=True)
             click.echo(f"🌍 Setting: {story_idea.setting}", err=True)
@@ -275,11 +276,9 @@ def characters(
         generator = CharacterGenerator(
             model=model, max_retries=retries, timeout=timeout, verbose=verbose
         )
-        characters_list = generator.generate(story_idea, story_type=story_type)
-
-        logger.info(f"Generated {len(characters_list)} characters")
-        if verbose:
-            click.echo(f"✅ Generated {len(characters_list)} characters!", err=True)
+        click.echo(f"🤖 Generating characters with {model}...", err=True)
+        characters_list, usage_info = generator.generate(story_idea, story_type=story_type)
+        click.echo(f"✅ Generated {len(characters_list)} characters!", err=True)
 
         # Save to project
         characters_data = [char.to_dict() for char in characters_list]
@@ -399,11 +398,9 @@ def locations(
         generator = LocationGenerator(
             model=model, max_retries=retries, timeout=timeout, verbose=verbose
         )
-        locations_list = generator.generate(story_idea, story_type=story_type)
-
-        logger.info(f"Generated {len(locations_list)} locations")
-        if verbose:
-            click.echo(f"✅ Generated {len(locations_list)} locations!", err=True)
+        click.echo(f"🤖 Generating locations with {model}...", err=True)
+        locations_list, usage_info = generator.generate(story_idea, story_type=story_type)
+        click.echo(f"✅ Generated {len(locations_list)} locations!", err=True)
 
         # Save to project
         locations_dicts = [loc.to_dict() for loc in locations_list]
@@ -618,11 +615,9 @@ def outline(
             timeout=timeout,
             verbose=verbose,
         )
-        story_outline = generator.generate(story_idea, characters, locations)
-
-        logger.info(f"Generated {structure} outline with {len(story_outline.acts)} acts")
-        if verbose:
-            click.echo(f"✅ Generated {structure} outline!", err=True)
+        click.echo(f"🤖 Generating {structure} outline with {model}...", err=True)
+        story_outline, usage_info = generator.generate(story_idea, characters, locations)
+        click.echo(f"✅ Generated {structure} outline!", err=True)
 
         # Save to project
         outline_dict = story_outline.to_dict()

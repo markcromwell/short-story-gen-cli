@@ -82,7 +82,7 @@ def generate_all(
     try:
         import click
 
-        from storygen.iterative.cli.commands import export, generate, project, prose
+        from storygen.iterative.cli.commands import export, project
 
         click.echo(f"\n🚀 Starting full story generation: {name}")
         click.echo(f"📝 Pitch: {pitch}")
@@ -92,6 +92,15 @@ def generate_all(
         click.echo()
 
         manager = ProjectManager(Path(projects_dir))
+
+        # Track usage across all steps
+        total_usage = {
+            "total_tokens": 0,
+            "prompt_tokens": 0,
+            "completion_tokens": 0,
+            "total_cost": 0.0,
+            "steps": [],
+        }
 
         # Step 1: Create project
         click.echo("=" * 70)
@@ -111,94 +120,267 @@ def generate_all(
         click.echo("\n" + "=" * 70)
         click.echo("Step 2/8: Generating story idea...")
         click.echo("=" * 70)
-        ctx.invoke(
-            generate.idea,
-            prompt_or_project=name,
-            model=model,
-            output=None,
-            retries=retries,
-            verbose=False,
-            projects_dir=projects_dir,
-        )
+        import json
+
+        from storygen.iterative.generators.idea import IdeaGenerator
+        from storygen.iterative.models import StoryConfig
+
+        paths = manager.get_project(name)
+
+        # Load story config
+        config = StoryConfig.load(paths.root)
+        prompt = config.pitch
+
+        idea_generator = IdeaGenerator(model=model, max_retries=retries, verbose=False)
+        click.echo(f"🤖 Calling AI with {model}...", err=True)
+        story_idea, usage_info = idea_generator.generate(prompt, story_type=story_type)
+        click.echo("✅ Story idea generated!", err=True)
+
+        # Save the generated idea
+        with open(paths.idea, "w", encoding="utf-8") as f:
+            json.dump(story_idea.to_dict(), f, indent=2, ensure_ascii=False)
+
+        # Track usage
+        total_usage["steps"].append({"step": "idea", "usage": usage_info})
+        if usage_info:
+            total_usage["total_tokens"] += usage_info.get("total_tokens", 0)
+            total_usage["prompt_tokens"] += usage_info.get("prompt_tokens", 0)
+            total_usage["completion_tokens"] += usage_info.get("completion_tokens", 0)
+            total_usage["total_cost"] += usage_info.get("total_cost", 0.0)
 
         # Step 3: Generate characters
         click.echo("\n" + "=" * 70)
         click.echo("Step 3/8: Generating characters...")
         click.echo("=" * 70)
-        ctx.invoke(
-            generate.characters,
-            project=name,
-            model=model,
-            retries=retries,
-            timeout=timeout,
-            verbose=False,
-            projects_dir=projects_dir,
+        import json
+
+        from storygen.iterative.generators.character import CharacterGenerator
+        from storygen.iterative.models import Character, StoryIdea
+
+        # Load story idea for character generation
+        with open(paths.idea, encoding="utf-8") as f:
+            idea_data = json.load(f)
+        story_idea = StoryIdea.from_dict(idea_data)
+
+        character_generator = CharacterGenerator(
+            model=model, max_retries=retries, timeout=timeout, verbose=False
         )
+        click.echo(f"🤖 Calling AI with {model}...", err=True)
+        characters_list, usage_info = character_generator.generate(story_idea, story_type=story_type)
+        click.echo(f"✅ Generated {len(characters_list)} characters!", err=True)
+
+        # Save characters
+        characters_data = [char.to_dict() for char in characters_list]
+        with open(paths.characters, "w", encoding="utf-8") as f:
+            json.dump(characters_data, f, indent=2, ensure_ascii=False)
+        click.echo(f"💾 Saved {len(characters_list)} characters to: {paths.characters}", err=True)
+
+        # Track usage
+        total_usage["steps"].append({"step": "characters", "usage": usage_info})
+        if usage_info:
+            total_usage["total_tokens"] += usage_info.get("total_tokens", 0)
+            total_usage["prompt_tokens"] += usage_info.get("prompt_tokens", 0)
+            total_usage["completion_tokens"] += usage_info.get("completion_tokens", 0)
+            total_usage["total_cost"] += usage_info.get("total_cost", 0.0)
 
         # Step 4: Generate locations
         click.echo("\n" + "=" * 70)
         click.echo("Step 4/8: Generating locations...")
         click.echo("=" * 70)
-        ctx.invoke(
-            generate.locations,
-            project=name,
-            model=model,
-            retries=retries,
-            timeout=timeout,
-            verbose=False,
-            projects_dir=projects_dir,
+        import json
+
+        from storygen.iterative.generators.location import LocationGenerator
+        from storygen.iterative.models import Location
+
+        # Load story idea for location generation
+        with open(paths.idea, encoding="utf-8") as f:
+            idea_data = json.load(f)
+        story_idea = StoryIdea.from_dict(idea_data)
+
+        location_generator = LocationGenerator(
+            model=model, max_retries=retries, timeout=timeout, verbose=False
         )
+        click.echo(f"🤖 Calling AI with {model}...", err=True)
+        locations_list, usage_info = location_generator.generate(story_idea, story_type=story_type)
+        click.echo(f"✅ Generated {len(locations_list)} locations!", err=True)
+
+        # Save locations
+        locations_data = [loc.to_dict() for loc in locations_list]
+        with open(paths.locations, "w", encoding="utf-8") as f:
+            json.dump(locations_data, f, indent=2, ensure_ascii=False)
+        click.echo(f"💾 Saved {len(locations_list)} locations to: {paths.locations}", err=True)
+
+        # Track usage
+        total_usage["steps"].append({"step": "locations", "usage": usage_info})
+        if usage_info:
+            total_usage["total_tokens"] += usage_info.get("total_tokens", 0)
+            total_usage["prompt_tokens"] += usage_info.get("prompt_tokens", 0)
+            total_usage["completion_tokens"] += usage_info.get("completion_tokens", 0)
+            total_usage["total_cost"] += usage_info.get("total_cost", 0.0)
 
         # Step 5: Generate outline
         click.echo("\n" + "=" * 70)
         click.echo("Step 5/8: Generating outline...")
         click.echo("=" * 70)
-        ctx.invoke(
-            generate.outline,
-            project=name,
-            model=model,
-            retries=retries,
-            timeout=timeout,
-            verbose=False,
-            projects_dir=projects_dir,
+        import json
+
+        from storygen.iterative.generators.outline import OutlineGenerator
+        from storygen.iterative.models import Outline
+
+        # Load required data for outline generation
+        with open(paths.idea, encoding="utf-8") as f:
+            idea_data = json.load(f)
+        story_idea = StoryIdea.from_dict(idea_data)
+
+        with open(paths.characters, encoding="utf-8") as f:
+            chars_data = json.load(f)
+        characters_list = [Character.from_dict(c) for c in chars_data]
+
+        with open(paths.locations, encoding="utf-8") as f:
+            locs_data = json.load(f)
+        locations_list = [Location.from_dict(loc) for loc in locs_data]
+
+        outline_generator = OutlineGenerator(
+            model=model, max_retries=retries, timeout=timeout, verbose=False
         )
+        click.echo(f"🤖 Calling AI with {model}...", err=True)
+        story_outline, usage_info = outline_generator.generate(story_idea, characters_list, locations_list)
+        click.echo("✅ Generated three-act outline!", err=True)
+
+        # Save outline
+        outline_dict = story_outline.to_dict()
+        with open(paths.outline, "w", encoding="utf-8") as f:
+            json.dump(outline_dict, f, indent=2, ensure_ascii=False)
+        click.echo(f"💾 Saved outline to: {paths.outline}", err=True)
+
+        # Track usage
+        total_usage["steps"].append({"step": "outline", "usage": usage_info})
+        if usage_info:
+            total_usage["total_tokens"] += usage_info.get("total_tokens", 0)
+            total_usage["prompt_tokens"] += usage_info.get("prompt_tokens", 0)
+            total_usage["completion_tokens"] += usage_info.get("completion_tokens", 0)
+            total_usage["total_cost"] += usage_info.get("total_cost", 0.0)
 
         # Step 6: Generate breakdown
         click.echo("\n" + "=" * 70)
         click.echo("Step 6/8: Generating scene-sequel breakdown...")
         click.echo("=" * 70)
-        ctx.invoke(
-            prose.breakdown,
-            project=name,
-            model=model,
-            target_words=words,
-            retries=retries,
-            timeout=timeout,
-            verbose=False,
-            projects_dir=projects_dir,
+        import json
+
+        from storygen.iterative.generators.breakdown import BreakdownGenerator
+        from storygen.iterative.models import Character, Location, StoryIdea
+
+        # Load required data
+        with open(paths.idea, encoding="utf-8") as f:
+            idea_data = json.load(f)
+        story_idea = StoryIdea.from_dict(idea_data)
+
+        with open(paths.characters, encoding="utf-8") as f:
+            chars_data = json.load(f)
+        characters_list = [Character.from_dict(c) for c in chars_data]
+
+        with open(paths.locations, encoding="utf-8") as f:
+            locs_data = json.load(f)
+        locations_list = [Location.from_dict(loc) for loc in locs_data]
+
+        with open(paths.outline, encoding="utf-8") as f:
+            outline_data = json.load(f)
+        story_outline = Outline.from_dict(outline_data)
+
+        breakdown_generator = BreakdownGenerator(
+            model=model, max_retries=retries, timeout=timeout, verbose=False
         )
+        click.echo(f"🤖 Calling AI with {model}...", err=True)
+        scene_sequels, usage_info = breakdown_generator.generate(
+            story_idea=story_idea,
+            characters=characters_list,
+            locations=locations_list,
+            outline=story_outline,
+            target_words=words,
+        )
+        click.echo("✅ Scene-sequel breakdown generated!", err=True)
+
+        # Save the breakdown
+        breakdown_dict = {
+            "scene_sequels": [ss.to_dict() for ss in scene_sequels],
+            "total_target_words": words,
+            "story_duration_hours": scene_sequels[-1].end_hours if scene_sequels else 0.0,
+        }
+        with open(paths.breakdown, "w", encoding="utf-8") as f:
+            json.dump(breakdown_dict, f, indent=2, ensure_ascii=False)
+
+        # Track usage
+        total_usage["steps"].append({"step": "breakdown", "usage": usage_info})
+        if usage_info:
+            total_usage["total_tokens"] += usage_info.get("total_tokens", 0)
+            total_usage["prompt_tokens"] += usage_info.get("prompt_tokens", 0)
+            total_usage["completion_tokens"] += usage_info.get("completion_tokens", 0)
+            total_usage["total_cost"] += usage_info.get("total_cost", 0.0)
 
         # Step 7: Generate prose
         click.echo("\n" + "=" * 70)
         click.echo("Step 7/8: Generating prose (this may take a while)...")
         click.echo("=" * 70)
-        ctx.invoke(
-            prose.prose,
-            project=name,
-            model=model,
-            temperature=0.7,
-            writing_style=None,
-            context_window=4000,
-            retries=retries,
-            timeout=timeout,
-            verbose=False,
-            projects_dir=projects_dir,
+        import json
+
+        from storygen.iterative.cli.commands.utils import format_word_count
+        from storygen.iterative.generators.prose import ProseGenerator
+        from storygen.iterative.models import SceneSequel
+
+        # Load required data for prose generation
+        with open(paths.idea, encoding="utf-8") as f:
+            idea_data = json.load(f)
+        story_idea = StoryIdea.from_dict(idea_data)
+
+        with open(paths.characters, encoding="utf-8") as f:
+            chars_data = json.load(f)
+        characters_list = [Character.from_dict(c) for c in chars_data]
+
+        with open(paths.locations, encoding="utf-8") as f:
+            locs_data = json.load(f)
+        locations_list = [Location.from_dict(loc) for loc in locs_data]
+
+        with open(paths.breakdown, encoding="utf-8") as f:
+            breakdown_data = json.load(f)
+        scene_sequels = [SceneSequel.from_dict(ss) for ss in breakdown_data["scene_sequels"]]
+
+        prose_generator = ProseGenerator(model=model, max_retries=retries, timeout=timeout, verbose=False)
+        click.echo(f"🤖 Calling AI with {model} for each scene...")
+        updated_scene_sequels, usage_info = prose_generator.generate(
+            story_idea=story_idea,
+            characters=characters_list,
+            locations=locations_list,
+            scene_sequels=scene_sequels,
+            writing_style=None,  # Auto-infer from tone/genre
+            output_path=str(paths.prose),
         )
+
+        # Calculate total words
+        total_words = sum(ss.actual_word_count or 0 for ss in updated_scene_sequels)
+        click.echo(f"✅ Generated {format_word_count(total_words)} words of prose!")
+
+        # Save to project
+        prose_dict = {
+            "scene_sequels": [ss.to_dict() for ss in updated_scene_sequels],
+            "total_actual_words": total_words,
+        }
+        with open(paths.prose, "w", encoding="utf-8") as f:
+            json.dump(prose_dict, f, indent=2, ensure_ascii=False)
+        click.echo(f"💾 Saved {format_word_count(total_words)} words to: {paths.prose}", err=True)
+
+        # Track usage
+        total_usage["steps"].append({"step": "prose", "usage": usage_info})
+        if usage_info:
+            total_usage["total_tokens"] += usage_info.get("total_tokens", 0)
+            total_usage["prompt_tokens"] += usage_info.get("prompt_tokens", 0)
+            total_usage["completion_tokens"] += usage_info.get("completion_tokens", 0)
+            total_usage["total_cost"] += usage_info.get("total_cost", 0.0)
 
         # Step 8: Generate EPUB
         click.echo("\n" + "=" * 70)
         click.echo("Step 8/8: Generating EPUB...")
         click.echo("=" * 70)
+        click.echo("📚 Formatting and generating EPUB file...", err=True)
         ctx.invoke(
             export.epub,
             project=name,
@@ -211,11 +393,22 @@ def generate_all(
             verbose=False,
             projects_dir=projects_dir,
         )
+        click.echo("✅ EPUB generated!", err=True)
 
         # Success!
         click.echo("\n" + "=" * 70)
         click.echo("🎉 COMPLETE! Story generation finished successfully!")
         click.echo("=" * 70)
+
+        # Display usage summary
+        if total_usage["total_tokens"] > 0:
+            click.echo("\n📊 USAGE SUMMARY:")
+            click.echo(f"   Total tokens: {total_usage['total_tokens']:,}")
+            click.echo(f"   Prompt tokens: {total_usage['prompt_tokens']:,}")
+            click.echo(f"   Completion tokens: {total_usage['completion_tokens']:,}")
+            if total_usage["total_cost"] > 0:
+                click.echo(f"   Estimated cost: ${total_usage['total_cost']:.4f}")
+            click.echo(f"   Steps completed: {len(total_usage['steps'])}")
 
         paths = manager.get_project(name)
         epub_path = manager.get_epub_path(name)
