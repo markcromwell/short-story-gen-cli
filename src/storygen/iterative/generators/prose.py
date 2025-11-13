@@ -228,9 +228,11 @@ class ProseGenerator(BaseGenerator[Any]):  # type: ignore[type-arg]
 
             # Check if word count is acceptable (±30% - relaxed for smaller models)
             target = scene_sequel.target_word_count
-            if word_count < target * 0.7 or word_count > target * 1.3:
+            min_words = int(target * 0.7)
+            max_words = int(target * 1.3)
+            if word_count < min_words or word_count > max_words:
                 raise ProseGenerationError(
-                    f"Word count {word_count} too far from target {target} (±30%)"
+                    f"Word count {word_count} outside acceptable range {min_words}-{max_words} words (target {target}, ±30%)"
                 )
 
             return (content, summary, key_points)

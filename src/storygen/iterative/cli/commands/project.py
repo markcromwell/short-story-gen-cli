@@ -283,6 +283,27 @@ def status(name: str, projects_dir: str):
         for key, label, path in stages:
             exists = status_dict[key]
             icon = "✅" if exists else "⬜"
+
+            # Special handling for prose to show progress
+            if key == "prose" and exists:
+                try:
+                    with open(paths.prose, encoding="utf-8") as f:
+                        prose_data = json.load(f)
+                        total = len(prose_data.get("scene_sequels", []))
+                        completed = sum(
+                            1
+                            for ss in prose_data.get("scene_sequels", [])
+                            if ss.get("content") and ss["content"].strip()
+                        )
+                        if completed < total:
+                            icon = "🔄"
+                            click.echo(
+                                f"  {icon} {label:<15} {path.name} ({completed}/{total} scenes)"
+                            )
+                            continue
+                except (FileNotFoundError, json.JSONDecodeError, KeyError):
+                    pass
+
             click.echo(f"  {icon} {label:<15} {path.name}")
 
         # Suggest next step
@@ -299,10 +320,29 @@ def status(name: str, projects_dir: str):
             click.echo(f"  storygen-iter breakdown {name} --words 4000")
         elif not status_dict["prose"]:
             click.echo(f"  storygen-iter prose {name}")
-        elif not status_dict["epub"]:
-            click.echo(f"  storygen-iter epub {name}")
-        else:
-            click.echo(f"  🎉 Project complete! EPUB at: {paths.epub}")
+        elif status_dict["prose"]:
+            # Check if prose is partially complete
+            try:
+                with open(paths.prose, encoding="utf-8") as f:
+                    prose_data = json.load(f)
+                    total = len(prose_data.get("scene_sequels", []))
+                    completed = sum(
+                        1
+                        for ss in prose_data.get("scene_sequels", [])
+                        if ss.get("content") and ss["content"].strip()
+                    )
+                    if completed < total:
+                        click.echo(
+                            f"  storygen-iter prose {name}  # Resume: {completed}/{total} scenes complete"
+                        )
+                        return
+            except (FileNotFoundError, json.JSONDecodeError, KeyError):
+                pass
+            # Prose is complete, check EPUB
+            if not status_dict["epub"]:
+                click.echo(f"  storygen-iter epub {name}")
+            else:
+                click.echo(f"  🎉 Project complete! EPUB at: {paths.epub}")
 
     except FileNotFoundError as e:
         logger.error(f"Project not found: {e}")
