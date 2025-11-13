@@ -2,115 +2,163 @@
 
 ## Overview
 
-The project-based workflow provides an organized way to manage story generation by keeping all related files in a dedicated project directory.
+The current system uses a flexible file-based approach where you can generate stories directly and save them as JSON files for further processing. Projects are managed through file organization rather than dedicated project directories.
 
 ## Quick Start
 
-### Create a New Project
+### Generate and Save a Story
 
 ```bash
-# With pitch
-storygen-iter new necromancer-duel --pitch "Two necromancers fight to the death over shared love"
+# Generate a structured story and save as JSON
+storygen generate "A detective who can see ghosts" --structured --format json > ghost-detective.json
 
-# Interactive (will prompt for pitch)
-storygen-iter new my-story
+# Generate with specific parameters
+storygen generate "A space adventure" --structured --format json --min-words 3000 --pov first_person > space-adventure.json
 ```
 
-This creates:
-```
-projects/
-  necromancer-duel/
-    metadata.json  # Contains pitch and other project info
-```
-
-### List All Projects
+### Editorial Analysis and Improvement
 
 ```bash
-storygen-iter projects
+# Analyze story structure
+storygen job start --prose ghost-detective.json --output structural-feedback.json
+
+# Check job progress
+storygen job status <job-id>
+
+# Apply AI-driven improvements
+storygen edit revise --feedback structural-feedback.json --input ghost-detective.json --output improved-ghost-detective.json
 ```
 
-Shows all projects with their completion status.
-
-### Check Project Status
+### Generate EPUB
 
 ```bash
-storygen-iter status necromancer-duel
+# Create EPUB from JSON story
+storygen generate "A detective who can see ghosts" --structured --epub ghost-detective.epub
 ```
 
-Shows which pipeline stages are complete and suggests next steps.
+## File Organization
 
-### Generate Story (Project Mode)
+While not enforced, a recommended structure for managing multiple stories:
+
+```
+stories/
+  ghost-detective/
+    story.json          # Original generated story
+    feedback.json       # Editorial analysis results
+    improved.json       # AI-revised version
+    story.epub          # Final EPUB file
+  space-adventure/
+    story.json
+    feedback.json
+    improved.json
+    story.epub
+```
+
+## Complete Workflow Example
 
 ```bash
-# Generate idea (uses saved pitch from metadata.json)
-storygen-iter idea necromancer-duel --model ollama/qwen3:30b
+# 1. Create directory for organization
+mkdir -p stories/cyberpunk-hacker
 
-# TODO: Remaining commands to be updated
-# storygen-iter characters necromancer-duel
-# storygen-iter locations necromancer-duel
-# storygen-iter outline necromancer-duel
-# storygen-iter breakdown necromancer-duel --words 4000
-# storygen-iter prose necromancer-duel
-# storygen-iter epub necromancer-duel
-```
+# 2. Generate initial story
+storygen generate "A cyberpunk hacker discovers a conspiracy" --structured --format json > stories/cyberpunk-hacker/story.json
 
-### Current Workaround (Manual Paths)
+# 3. Start editorial analysis
+storygen job start --prose stories/cyberpunk-hacker/story.json --output stories/cyberpunk-hacker/feedback.json
 
-Until all commands support project mode, you can use explicit paths:
+# 4. Monitor progress
+storygen job status <job-id>
 
-```bash
-# Create project structure
-storygen-iter new necromancer-duel --pitch "Two necromancers duel"
+# 5. Apply improvements when ready
+storygen edit revise --feedback stories/cyberpunk-hacker/feedback.json --input stories/cyberpunk-hacker/story.json --output stories/cyberpunk-hacker/improved.json
 
-# Generate with explicit paths
-storygen-iter idea necromancer-duel --model ollama/qwen3:30b  # ✅ Works!
-storygen-iter characters -i projects/necromancer-duel/idea.json -o projects/necromancer-duel/characters.json --model ollama/qwen3:30b
-storygen-iter locations -i projects/necromancer-duel/idea.json -o projects/necromancer-duel/locations.json --model ollama/qwen3:30b
-storygen-iter outline -i projects/necromancer-duel/idea.json -c projects/necromancer-duel/characters.json -l projects/necromancer-duel/locations.json -o projects/necromancer-duel/outline.json --model ollama/qwen3:30b
-# ... and so on
-```
-
-## Project Structure
-
-Each project has a standardized structure:
-
-```
-projects/
-  <project-name>/
-    metadata.json      # Pitch and project info
-    idea.json          # Story idea (hook, description, themes)
-    characters.json    # Generated characters
-    locations.json     # Generated locations
-    outline.json       # Scene outline (acts and scenes)
-    breakdown.json     # Detailed scene-sequel breakdown
-    prose.json         # Generated prose for all scenes
-    story.epub         # Final EPUB file
+# 6. Generate final EPUB
+storygen generate "A cyberpunk hacker discovers a conspiracy" --structured --epub stories/cyberpunk-hacker/story.epub
 ```
 
 ## Benefits
 
-- **Organization**: All files for a story in one place
-- **Clarity**: Standardized file names (always `idea.json`, never `necromancer_idea_v2_final.json`)
-- **Progress Tracking**: Easy to see what's done with `status` command
-- **Multiple Projects**: Work on several stories in parallel
-- **Incremental Save**: Resume failed prose generation automatically
+- **Flexibility**: Generate stories directly without project setup
+- **File-Based**: Easy to version control and share individual files
+- **Iterative**: Apply multiple rounds of editorial improvement
+- **Background Processing**: Long analyses run asynchronously
+- **Cost Control**: Track and limit AI API usage
+
+## Command Reference
+
+### Story Generation
+```bash
+storygen generate [PROMPT] [OPTIONS]
+
+Options:
+  --provider MODEL      AI provider (gpt-4, claude-3-sonnet, ollama/llama2)
+  --structured          Generate with title, scenes, metadata
+  --format json|text    Output format
+  --epub FILENAME       Generate EPUB file
+  --min-words COUNT     Minimum word count
+  --pov POV             Point of view
+  --structure TYPE      Story structure
+  --verbose             Show progress
+```
+
+### Editorial Commands
+```bash
+# Analyze story idea
+storygen edit idea --idea file.json --output feedback.json
+
+# Apply AI revisions
+storygen edit revise --feedback feedback.json --input story.json --output revised.json
+```
+
+### Job Management
+```bash
+# Start background analysis
+storygen job start --prose story.json --output feedback.json
+
+# Monitor and control
+storygen job status <job-id>
+storygen job list
+storygen job pause <job-id>
+storygen job resume <job-id>
+storygen job cancel <job-id>
+```
+
+## Tips
+
+1. **File Naming**: Use descriptive names for your JSON files
+2. **Version Control**: Commit story files to track changes
+3. **Backup Important Work**: Save versions before major revisions
+4. **Batch Processing**: Use job commands for multiple stories
+5. **Cost Monitoring**: Check costs with `--verbose` or config settings
+
+## Migration from Old System
+
+If you have old project directories from `storygen-iter`:
+
+```bash
+# Convert old project to new format
+# 1. Extract the story data from old files
+# 2. Generate new story with current system
+# 3. Use editorial commands for improvements
+
+# Example migration
+storygen generate "Your old story pitch" --structured --format json > migrated-story.json
+storygen job start --prose migrated-story.json --output feedback.json
+```
 
 ## Implementation Status
 
 ### ✅ Completed
-- `ProjectManager` class for managing project directories
-- `new` command - create project with pitch
-- `projects` command - list all projects with status
-- `status` command - show detailed project progress
-- `idea` command - generate idea in project mode
-- Projects directory added to `.gitignore`
+- Direct story generation with JSON output
+- AI-driven editorial revision system
+- Background job processing
+- EPUB generation
+- Comprehensive CLI with all commands working
+- Full test coverage (242 tests passing)
 
-### 🚧 In Progress
-- Update remaining commands (`characters`, `locations`, `outline`, `breakdown`, `prose`, `epub`) to accept project names
-- Helper function `resolve_project_or_path()` created for easy integration
-
-### 📋 Planned
-- `generate` command to run full pipeline in one go
-- Project templates (different structures for different story types)
-- Project export/import for sharing
-- Project metadata expansion (author, tags, creation date)
+### 📋 Future Enhancements
+- Project directory management (optional)
+- Story templates and presets
+- Batch processing for multiple stories
+- Advanced export options
+- Story comparison and diff tools

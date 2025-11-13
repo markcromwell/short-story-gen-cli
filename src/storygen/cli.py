@@ -13,11 +13,12 @@ from storygen.generator import StoryGenerator
 # Import editorial commands
 try:
     from .editorial.cli.commands import edit, job
+
     EDITORIAL_AVAILABLE = True
 except ImportError:
     EDITORIAL_AVAILABLE = False
-    edit = None
-    job = None
+    edit: click.Group | None = None
+    job: click.Group | None = None
 
 # Load environment variables (for API keys)
 load_dotenv()

@@ -1,18 +1,20 @@
 """Unit tests for editorial workflow core components."""
 
-import pytest
-import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
-from pathlib import Path
 import tempfile
+from pathlib import Path
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 from storygen.editorial.base import (
-    EditorialIssue, EditorialFeedback, RevisionSuggestion,
-    StoryContext, BaseEditor, ValidationError
+    BaseEditor,
+    EditorialFeedback,
+    EditorialIssue,
+    StoryContext,
 )
-from storygen.editorial.core.model_manager import ModelManager, CostTracker
-from storygen.editorial.core.job_manager import JobManager, JobStatus, JobMetadata
 from storygen.editorial.core.config import ConfigManager
+from storygen.editorial.core.job_manager import JobManager, JobStatus
+from storygen.editorial.core.model_manager import CostTracker, ModelManager
 
 
 class TestEditorialFeedback:
@@ -26,7 +28,7 @@ class TestEditorialFeedback:
             description="Plot hole detected",
             suggestion="Add transition scene",
             scene_ids=["scene_3"],
-            confidence_score=0.85
+            confidence_score=0.85,
         )
 
         assert issue.severity == "major"
@@ -40,7 +42,7 @@ class TestEditorialFeedback:
             overall_assessment="Good story with minor issues",
             issues=[],
             suggested_revisions=[],
-            strengths=["Strong characters"]
+            strengths=["Strong characters"],
         )
 
         assert feedback.editor_type == "TestEditor"
@@ -61,6 +63,7 @@ class TestBaseEditor:
     @pytest.fixture
     def base_editor(self, mock_model_manager):
         """Create a test base editor."""
+
         class TestEditor(BaseEditor):
             async def analyze(self, context):
                 return self._create_feedback_container("TestEditor")
@@ -101,12 +104,7 @@ class TestModelManager:
         """Test configuration."""
         return {
             "default_model": "ollama/qwen3:30b",
-            "models": {
-                "ollama": {
-                    "base_url": "http://localhost:11434",
-                    "timeout": 120
-                }
-            }
+            "models": {"ollama": {"base_url": "http://localhost:11434", "timeout": 120}},
         }
 
     @pytest.fixture
@@ -117,7 +115,7 @@ class TestModelManager:
     @pytest.mark.asyncio
     async def test_call_model_success(self, model_manager):
         """Test successful model call."""
-        with patch.object(model_manager, '_call_ollama', new_callable=AsyncMock) as mock_call:
+        with patch.object(model_manager, "_call_ollama", new_callable=AsyncMock) as mock_call:
             mock_call.return_value = "Test response"
 
             response = await model_manager.call_model("Test prompt")
@@ -191,7 +189,6 @@ class TestConfigManager:
     def config_manager(self):
         """Create a config manager for testing."""
         # Use the actual project config directory
-        import os
         project_root = Path(__file__).parent.parent.parent
         config_dir = project_root / "config"
         return ConfigManager(config_dir)

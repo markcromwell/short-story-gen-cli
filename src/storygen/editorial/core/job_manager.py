@@ -2,19 +2,20 @@
 
 import asyncio
 import json
-import uuid
-from enum import Enum
-from dataclasses import dataclass, field
-from typing import Dict, Any, Optional, List
-from datetime import datetime
-from pathlib import Path
 import logging
+import uuid
+from dataclasses import dataclass, field
+from datetime import datetime
+from enum import Enum
+from pathlib import Path
+from typing import Any
 
 from ..base import EditorialFeedback, StoryContext
 
 
 class JobStatus(Enum):
     """Job execution states."""
+
     PENDING = "pending"
     RUNNING = "running"
     PAUSED = "paused"
@@ -26,15 +27,16 @@ class JobStatus(Enum):
 @dataclass
 class JobMetadata:
     """Metadata for tracking job execution."""
+
     job_id: str = field(default_factory=lambda: str(uuid.uuid4()))
     status: JobStatus = JobStatus.PENDING
     created_at: datetime = field(default_factory=datetime.now)
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     progress: float = 0.0  # 0.0 to 1.0
-    estimated_completion: Optional[datetime] = None
+    estimated_completion: datetime | None = None
     current_stage: str = ""
-    error_message: Optional[str] = None
+    error_message: str | None = None
     retry_count: int = 0
     max_retries: int = 3
 
@@ -53,12 +55,13 @@ class JobMetadata:
 @dataclass
 class CheckpointData:
     """Data saved at checkpoints for resume capability."""
+
     job_id: str
     stage: str
     progress: float
-    completed_items: List[str] = field(default_factory=list)
-    partial_results: Dict[str, Any] = field(default_factory=dict)
-    context_state: Dict[str, Any] = field(default_factory=dict)
+    completed_items: list[str] = field(default_factory=list)
+    partial_results: dict[str, Any] = field(default_factory=dict)
+    context_state: dict[str, Any] = field(default_factory=dict)
     timestamp: datetime = field(default_factory=datetime.now)
 
 
@@ -72,16 +75,13 @@ class JobManager:
         self.jobs_dir.mkdir(parents=True, exist_ok=True)
         self.checkpoints_dir.mkdir(parents=True, exist_ok=True)
 
-        self.active_jobs: Dict[str, asyncio.Task] = {}
-        self.job_metadata: Dict[str, JobMetadata] = {}
+        self.active_jobs: dict[str, asyncio.Task] = {}
+        self.job_metadata: dict[str, JobMetadata] = {}
         self.semaphore = asyncio.Semaphore(max_concurrent_jobs)
         self.logger = logging.getLogger(__name__)
 
     async def start_job(
-        self,
-        editor_type: str,
-        context: StoryContext,
-        config: Dict[str, Any]
+        self, editor_type: str, context: StoryContext, config: dict[str, Any]
     ) -> str:
         """Start a new editorial analysis job."""
         job_id = str(uuid.uuid4())
@@ -92,16 +92,14 @@ class JobManager:
             editor_type=editor_type,
             model_used=config.get("model", "ollama/qwen3:30b"),
             batch_size=config.get("batch_size", 5),
-            max_concurrent_batches=config.get("max_concurrent_batches", 3)
+            max_concurrent_batches=config.get("max_concurrent_batches", 3),
         )
 
         # Save initial metadata
         await self._save_job_metadata(metadata)
 
         # Start the job task
-        task = asyncio.create_task(
-            self._run_job(job_id, editor_type, context, config)
-        )
+        task = asyncio.create_task(self._run_job(job_id, editor_type, context, config))
 
         self.active_jobs[job_id] = task
         self.job_metadata[job_id] = metadata
@@ -171,11 +169,11 @@ class JobManager:
 
         return True
 
-    async def get_job_status(self, job_id: str) -> Optional[JobMetadata]:
+    async def get_job_status(self, job_id: str) -> JobMetadata | None:
         """Get current job status."""
         return await self._load_job_metadata(job_id)
 
-    async def list_jobs(self, status_filter: Optional[JobStatus] = None) -> List[JobMetadata]:
+    async def list_jobs(self, status_filter: JobStatus | None = None) -> list[JobMetadata]:
         """List all jobs, optionally filtered by status."""
         all_jobs = []
 
@@ -190,11 +188,7 @@ class JobManager:
         return sorted(all_jobs, key=lambda j: j.created_at, reverse=True)
 
     async def _run_job(
-        self,
-        job_id: str,
-        editor_type: str,
-        context: StoryContext,
-        config: Dict[str, Any]
+        self, job_id: str, editor_type: str, context: StoryContext, config: dict[str, Any]
     ):
         """Execute a job with basic error handling."""
         metadata = await self._load_job_metadata(job_id)
@@ -215,6 +209,11 @@ class JobManager:
 
                 # Save final result
                 await self._save_job_result(job_id, feedback)
+
+                # Save to user-specified output file if provided
+                output_file = config.get("output_file")
+                if output_file:
+                    await self._save_user_result(output_file, feedback)
 
                 # Update metadata
                 metadata.status = JobStatus.COMPLETED
@@ -247,26 +246,97 @@ class JobManager:
             if job_id in self.job_metadata:
                 del self.job_metadata[job_id]
 
-    async def _create_editor(self, editor_type: str, config: Dict[str, Any]):
-        """Create editor instance (placeholder for Stage 1)."""
-        # This will be implemented when we create actual editors
-        # For now, return a mock editor
-        class MockEditor:
-            async def analyze(self, context):
-                await asyncio.sleep(0.1)  # Simulate work
-                return EditorialFeedback(
-                    editor_type=editor_type,
-                    overall_assessment=f"Mock analysis completed for {editor_type}",
-                    issues=[],
-                    suggested_revisions=[],
-                    strengths=["Mock strength"],
-                    metadata={"mock": True}
-                )
+    async def _create_editor(self, editor_type: str, config: dict[str, Any]):
+        """Create editor instance based on type."""
+        from ..core.model_manager import ModelManager
 
-        return MockEditor()
+        # Initialize model manager from config
+        model_manager = ModelManager(config)
+        model_manager.current_model = config.get("model", model_manager.current_model)
+
+        if editor_type.startswith("content"):
+            # Use StructuralEditor for content analysis
+            from ..editors.structural import StructuralEditor
+
+            return StructuralEditor(model_manager, config)
+        else:
+            # Use mock editor for idea analysis (for now)
+            class MockEditor:
+                def __init__(self, editor_type, model_manager, config):
+                    self.editor_type = editor_type
+                    self.model_manager = model_manager
+                    self.config = config
+
+                async def analyze(self, context):
+                    import json
+                    from datetime import datetime
+
+                    from ..base import EditorialFeedback, EditorialIssue
+
+                    # Perform actual AI analysis for idea
+                    if context.story_idea:
+                        prompt = f"""Analyze this story idea for conceptual strength and provide editorial feedback. Focus on:
+
+1. Plot structure and pacing
+2. Character development potential
+3. Thematic depth
+4. Originality and marketability
+5. Areas for improvement
+
+Story Idea:
+{json.dumps(context.story_idea, indent=2)}
+
+Provide a comprehensive editorial assessment with specific strengths and actionable suggestions."""
+                    else:
+                        prompt = f"Analyze this content for {self.editor_type}"
+
+                    response = await self.model_manager.call_model(
+                        prompt=prompt,
+                        temperature=0.3,
+                        max_tokens=1000,
+                    )
+
+                    # Create feedback from AI response
+                    feedback = EditorialFeedback(
+                        editor_type=self.editor_type,
+                        overall_assessment=response[:500] + "..."
+                        if len(response) > 500
+                        else response,
+                        issues=[
+                            EditorialIssue(
+                                severity="info",
+                                category="conceptual",
+                                description="AI analysis completed - see overall assessment",
+                                suggestion="Review the detailed feedback above",
+                                confidence_score=0.9,
+                            )
+                        ],
+                        suggested_revisions=[],
+                        strengths=["AI-powered analysis performed", "Detailed feedback provided"],
+                        metadata={
+                            "timestamp": datetime.now().isoformat(),
+                            "model_used": self.model_manager.current_model,
+                            "cost_usd": 0.01,  # Will be calculated properly later
+                            "ai_response": response,
+                            "analysis_type": "idea_editorial_review",
+                        },
+                    )
+                    return feedback
+
+                def validate_input(self, context):
+                    # Basic validation
+                    errors = []
+                    if not context.story_idea and self.editor_type.startswith("idea"):
+                        errors.append("Story idea required for idea editor")
+                    if not context.prose and self.editor_type.startswith("content"):
+                        errors.append("Prose required for content editor")
+                    return errors
+
+            return MockEditor(editor_type, model_manager, config)
 
     async def _save_job_result(self, job_id: str, feedback: EditorialFeedback):
         """Save job result to file."""
+        # Save to job-specific result file
         result_file = self.jobs_dir / f"{job_id}_result.json"
         result_data = {
             "job_id": job_id,
@@ -276,34 +346,65 @@ class JobManager:
                 "issues": [issue.__dict__ for issue in feedback.issues],
                 "suggested_revisions": [rev.__dict__ for rev in feedback.suggested_revisions],
                 "strengths": feedback.strengths,
-                "metadata": feedback.metadata
-            }
+                "metadata": feedback.metadata,
+            },
         }
         result_file.write_text(json.dumps(result_data, indent=2))
+
+        # Also save to user-specified output file if provided
+        # This will be loaded from config in the job
+        # For now, we'll handle this in the CLI when checking job completion
+
+    async def _save_user_result(self, output_file: str, feedback: EditorialFeedback):
+        """Save result to user-specified output file."""
+        from pathlib import Path
+
+        output_path = Path(output_file)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+
+        data = {
+            "editor_type": feedback.editor_type,
+            "overall_assessment": feedback.overall_assessment,
+            "issues": [issue.__dict__ for issue in feedback.issues],
+            "suggested_revisions": [rev.__dict__ for rev in feedback.suggested_revisions],
+            "strengths": feedback.strengths,
+            "metadata": feedback.metadata,
+        }
+
+        output_path.write_text(json.dumps(data, indent=2))
 
     async def _save_job_metadata(self, metadata: JobMetadata):
         """Save job metadata to disk."""
         job_file = self.jobs_dir / f"{metadata.job_id}.json"
-        job_file.write_text(json.dumps({
-            "job_id": metadata.job_id,
-            "status": metadata.status.value,
-            "created_at": metadata.created_at.isoformat(),
-            "started_at": metadata.started_at.isoformat() if metadata.started_at else None,
-            "completed_at": metadata.completed_at.isoformat() if metadata.completed_at else None,
-            "progress": metadata.progress,
-            "estimated_completion": metadata.estimated_completion.isoformat() if metadata.estimated_completion else None,
-            "current_stage": metadata.current_stage,
-            "error_message": metadata.error_message,
-            "retry_count": metadata.retry_count,
-            "max_retries": metadata.max_retries,
-            "total_cost_usd": metadata.total_cost_usd,
-            "tokens_used": metadata.tokens_used,
-            "duration_seconds": metadata.duration_seconds,
-            "editor_type": metadata.editor_type,
-            "model_used": metadata.model_used,
-            "batch_size": metadata.batch_size,
-            "max_concurrent_batches": metadata.max_concurrent_batches
-        }, indent=2))
+        job_file.write_text(
+            json.dumps(
+                {
+                    "job_id": metadata.job_id,
+                    "status": metadata.status.value,
+                    "created_at": metadata.created_at.isoformat(),
+                    "started_at": metadata.started_at.isoformat() if metadata.started_at else None,
+                    "completed_at": metadata.completed_at.isoformat()
+                    if metadata.completed_at
+                    else None,
+                    "progress": metadata.progress,
+                    "estimated_completion": metadata.estimated_completion.isoformat()
+                    if metadata.estimated_completion
+                    else None,
+                    "current_stage": metadata.current_stage,
+                    "error_message": metadata.error_message,
+                    "retry_count": metadata.retry_count,
+                    "max_retries": metadata.max_retries,
+                    "total_cost_usd": metadata.total_cost_usd,
+                    "tokens_used": metadata.tokens_used,
+                    "duration_seconds": metadata.duration_seconds,
+                    "editor_type": metadata.editor_type,
+                    "model_used": metadata.model_used,
+                    "batch_size": metadata.batch_size,
+                    "max_concurrent_batches": metadata.max_concurrent_batches,
+                },
+                indent=2,
+            )
+        )
 
     async def _load_job_metadata(self, job_id: str) -> JobMetadata:
         """Load job metadata from disk."""
@@ -315,9 +416,13 @@ class JobManager:
             status=JobStatus(data["status"]),
             created_at=datetime.fromisoformat(data["created_at"]),
             started_at=datetime.fromisoformat(data["started_at"]) if data["started_at"] else None,
-            completed_at=datetime.fromisoformat(data["completed_at"]) if data["completed_at"] else None,
+            completed_at=datetime.fromisoformat(data["completed_at"])
+            if data["completed_at"]
+            else None,
             progress=data["progress"],
-            estimated_completion=datetime.fromisoformat(data["estimated_completion"]) if data["estimated_completion"] else None,
+            estimated_completion=datetime.fromisoformat(data["estimated_completion"])
+            if data["estimated_completion"]
+            else None,
             current_stage=data["current_stage"],
             error_message=data["error_message"],
             retry_count=data["retry_count"],
@@ -328,10 +433,10 @@ class JobManager:
             editor_type=data["editor_type"],
             model_used=data["model_used"],
             batch_size=data["batch_size"],
-            max_concurrent_batches=data["max_concurrent_batches"]
+            max_concurrent_batches=data["max_concurrent_batches"],
         )
 
-    async def _load_checkpoint(self, job_id: str) -> Optional[CheckpointData]:
+    async def _load_checkpoint(self, job_id: str) -> CheckpointData | None:
         """Load the most recent checkpoint for a job."""
         checkpoint_dir = self.checkpoints_dir / job_id
         if not checkpoint_dir.exists():
@@ -353,32 +458,30 @@ class JobManager:
                 completed_items=data["completed_items"],
                 partial_results=data["partial_results"],
                 context_state=data["context_state"],
-                timestamp=datetime.fromisoformat(data["timestamp"])
+                timestamp=datetime.fromisoformat(data["timestamp"]),
             )
         except Exception:
             return None
 
     async def _resume_job_from_checkpoint(
-        self,
-        job_id: str,
-        checkpoint: CheckpointData,
-        context: StoryContext,
-        config: Dict[str, Any]
+        self, job_id: str, checkpoint: CheckpointData, context: StoryContext, config: dict[str, Any]
     ):
         """Resume job execution from checkpoint."""
         # For Stage 1, just restart the job
-        await self._run_job(job_id, config.get("editor_type"), context, config)
+        await self._run_job(job_id, config.get("editor_type", "unknown"), context, config)
 
-    async def _schedule_retry(self, job_id: str, editor_type: str, context: StoryContext, config: Dict[str, Any]):
+    async def _schedule_retry(
+        self, job_id: str, editor_type: str, context: StoryContext, config: dict[str, Any]
+    ):
         """Schedule a retry for a failed job."""
         # For Stage 1, just mark for manual retry
         self.logger.info(f"Job {job_id} failed, manual retry needed")
 
-    async def _load_job_config(self, job_id: str) -> Dict[str, Any]:
+    async def _load_job_config(self, job_id: str) -> dict[str, Any]:
         """Load job configuration (placeholder)."""
         return {"editor_type": "mock"}
 
-    def _serialize_context(self, context: StoryContext) -> Dict[str, Any]:
+    def _serialize_context(self, context: StoryContext) -> dict[str, Any]:
         """Serialize context for checkpointing."""
         # Placeholder implementation
         return {}

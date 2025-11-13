@@ -1,0 +1,26 @@
+{
+  "editor_type": "idea",
+  "overall_assessment": "Mock analysis completed - this is placeholder feedback",
+  "issues": [
+    {
+      "severity": "info",
+      "category": "structure",
+      "description": "Mock issue for testing",
+      "suggestion": "This is a placeholder suggestion",
+      "scene_ids": null,
+      "line_numbers": null,
+      "confidence_score": 0.8
+    }
+  ],
+  "suggested_revisions": [],
+  "strengths": [
+    "Good concept",
+    "Interesting premise"
+  ],
+  "metadata": {
+    "timestamp": "2025-11-13T10:40:44.264933",
+    "model_used": "xai/grok-4-fast-non-reasoning",
+    "cost_usd": 0.01,
+    "mock_analysis": true
+  }
+}

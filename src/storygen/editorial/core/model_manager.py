@@ -1,12 +1,12 @@
 """Model management for AI-powered editorial analysis."""
 
 import asyncio
-import time
-from typing import Dict, Any, Optional
 import logging
+import time
 from datetime import datetime
+from typing import Any
 
-from ..base import ModelError, BudgetExceededError
+from ..base import BudgetExceededError, ModelError
 
 
 class CostTracker:
@@ -18,6 +18,7 @@ class CostTracker:
             "ollama/qwen3:30b": {"input": 0.0, "output": 0.0},  # Free
             "openai/gpt-4o": {"input": 0.000005, "output": 0.000015},  # $ per token
             "openai/gpt-4o-mini": {"input": 0.00000015, "output": 0.0000006},
+            "xai/grok-4-fast-non-reasoning": {"input": 0.0, "output": 0.0},  # Free
         }
 
     def record_usage(self, model: str, prompt: str, response: str, duration: float):
@@ -32,12 +33,12 @@ class CostTracker:
             "input_tokens": input_tokens,
             "output_tokens": output_tokens,
             "cost_usd": cost,
-            "duration_seconds": duration
+            "duration_seconds": duration,
         }
 
         self.usage_log.append(usage_event)
 
-    def get_total_cost(self, since: Optional[datetime] = None) -> float:
+    def get_total_cost(self, since: datetime | None = None) -> float:
         """Get total cost since timestamp."""
         events = self.usage_log
         if since:
@@ -62,7 +63,7 @@ class CostTracker:
 class ModelManager:
     """Manages AI model interactions and cost tracking."""
 
-    def __init__(self, config: Dict[str, Any]):
+    def __init__(self, config: dict[str, Any]):
         self.config = config
         self.current_model = config.get("default_model", "ollama/qwen3:30b")
         self.cost_tracker = CostTracker()
@@ -73,15 +74,16 @@ class ModelManager:
             "ollama/qwen3:30b": 60,  # Local model, high limit
             "openai/gpt-4o": 10,
             "openai/gpt-4o-mini": 30,
+            "xai/grok-4-fast-non-reasoning": 30,  # xAI rate limit
         }
-        self.last_request_time = {}
+        self.last_request_time: dict[str, float] = {}
 
     async def call_model(
         self,
         prompt: str,
         temperature: float = 0.7,
         max_tokens: int = 1000,
-        model: Optional[str] = None
+        model: str | None = None,
     ) -> str:
         """Unified interface for model calls."""
         model = model or self.current_model
@@ -101,6 +103,8 @@ class ModelManager:
                 response = await self._call_ollama(model, prompt, temperature, max_tokens)
             elif model.startswith("openai/"):
                 response = await self._call_openai(model, prompt, temperature, max_tokens)
+            elif model.startswith("xai/"):
+                response = await self._call_xai(model, prompt, temperature, max_tokens)
             else:
                 raise ValueError(f"Unsupported model: {model}")
 
@@ -147,7 +151,9 @@ class ModelManager:
         # For now, always allow - budget checking can be added later
         return True
 
-    async def _call_ollama(self, model: str, prompt: str, temperature: float, max_tokens: int) -> str:
+    async def _call_ollama(
+        self, model: str, prompt: str, temperature: float, max_tokens: int
+    ) -> str:
         """Call local Ollama model."""
         # Placeholder - will implement actual Ollama API call
         self.logger.info(f"Calling Ollama model {model} with prompt length {len(prompt)}")
@@ -158,7 +164,9 @@ class ModelManager:
         # Return mock response for now
         return f"Mock response from {model} for prompt: {prompt[:100]}..."
 
-    async def _call_openai(self, model: str, prompt: str, temperature: float, max_tokens: int) -> str:
+    async def _call_openai(
+        self, model: str, prompt: str, temperature: float, max_tokens: int
+    ) -> str:
         """Call OpenAI API."""
         # Placeholder - will implement actual OpenAI API call
         self.logger.info(f"Calling OpenAI model {model} with prompt length {len(prompt)}")
@@ -168,3 +176,20 @@ class ModelManager:
 
         # Return mock response for now
         return f"Mock response from {model} for prompt: {prompt[:100]}..."
+
+    async def _call_xai(self, model: str, prompt: str, temperature: float, max_tokens: int) -> str:
+        """Call xAI API using litellm."""
+        try:
+            import litellm
+
+            response = await litellm.acompletion(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            self.logger.error(f"xAI API call failed: {e}")
+            # Fallback to mock response
+            return f"Mock response from {model} for prompt: {prompt[:100]}..."

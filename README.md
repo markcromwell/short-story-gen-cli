@@ -1,6 +1,6 @@
 # Story Generator CLI 🎨📚
 
-AI-powered command-line tool to generate creative stories of any length using multiple AI providers.
+AI-powered command-line tool to generate creative stories of any length using multiple AI providers, with comprehensive editorial workflow capabilities.
 
 ## Features
 
@@ -8,6 +8,9 @@ AI-powered command-line tool to generate creative stories of any length using mu
 - **Flexible Story Lengths**: Generate anything from flash fiction to full novels (1,500+ words)
 - **Structured Story Output**: Generate stories with title, scenes, genre, and metadata (JSON or formatted text)
 - **EPUB Generation**: Create professional ebook files from AI-generated stories
+- **AI-Powered Editorial Workflow**: Comprehensive editorial analysis and iterative improvement
+- **Revision System**: AI can automatically apply editorial feedback to improve stories
+- **Job Management**: Background processing for long-running editorial analyses
 - **Test-Driven Development**: Built with TDD principles, comprehensive test coverage
 - **Agile MVP**: Minimum viable product following agile methodology
 - **Free & Paid Options**: Use free local models or premium cloud APIs
@@ -167,9 +170,25 @@ storygen --epub heist.epub --author "Mark Cromwell" \
 storygen --provider ollama/llama2 --epub adventure.epub "A space odyssey"
 ```
 
+### Editorial Workflow:
+```bash
+# Automated iterative workflow (recommended)
+storygen edit all "A cyberpunk hacker discovers a conspiracy" --iterations 3 --quality-threshold 8.0
+
+# Manual step-by-step analysis
+storygen edit idea --idea idea.json --output feedback.json
+storygen edit revise --feedback feedback.json --input story.json --output revised_story.json
+
+# Background job processing
+storygen job start --prose story.json --output feedback.json
+storygen job status <job-id>
+```
+
 ### Get help:
 ```bash
 storygen --help
+storygen edit --help
+storygen job --help
 ```
 
 ## Supported AI Providers
@@ -248,7 +267,10 @@ git commit --no-verify
 - [x] MVP: CLI story generator with multiple providers
 - [x] Automated testing
 - [x] CI/CD pipeline
-- [ ] EPUB generation
+- [x] EPUB generation
+- [x] AI-powered editorial workflow system
+- [x] Revision system with AI-driven iterative improvements
+- [x] Job management for background processing
 - [ ] AI-generated cover art
 - [ ] AI-generated interior illustrations
 - [ ] Story templates and genres

@@ -1,0 +1,19 @@
+{
+  "editor_type": "structural",
+  "overall_assessment": "Mock response from ollama/qwen3:30b for prompt: Analyze the overall structure and pacing of this story. Focus on:\n\n1. Three-act structure adherence ...",
+  "issues": [],
+  "suggested_revisions": [],
+  "strengths": [
+    "Well-developed multi-scene structure",
+    "Clear narrative progression",
+    "Effective scene transitions"
+  ],
+  "metadata": {
+    "timestamp": "2025-11-13T10:54:07.899574",
+    "editor_version": "1.0.0",
+    "model_used": "ollama/qwen3:30b",
+    "scenes_analyzed": 18,
+    "analysis_type": "structural",
+    "batch_size": 5
+  }
+}
