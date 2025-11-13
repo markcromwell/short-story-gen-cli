@@ -11,7 +11,7 @@ class TestCLI:
     def test_cli_generates_story_with_prompt(self, mocker):
         """
         Test: CLI should accept a prompt and generate a story
-        Command: storygen "A robot learns to paint"
+        Command: storygen generate "A robot learns to paint"
         """
         from storygen.cli import main
 
@@ -21,7 +21,7 @@ class TestCLI:
         mock_instance.generate.return_value = "Once upon a time, a robot discovered colors..."
 
         runner = CliRunner()
-        result = runner.invoke(main, ["A robot learns to paint"])
+        result = runner.invoke(main, ["generate", "A robot learns to paint"])
 
         # Assert CLI ran successfully
         assert result.exit_code == 0
@@ -30,7 +30,7 @@ class TestCLI:
     def test_cli_accepts_provider_flag(self, mocker):
         """
         Test: CLI should accept --provider flag to switch AI models
-        Command: storygen --provider claude-3-sonnet "Test prompt"
+        Command: storygen generate --provider claude-3-sonnet "Test prompt"
         """
         from storygen.cli import main
 
@@ -39,7 +39,7 @@ class TestCLI:
         mock_instance.generate.return_value = "A test story"
 
         runner = CliRunner()
-        result = runner.invoke(main, ["--provider", "claude-3-sonnet", "Test prompt"])
+        result = runner.invoke(main, ["generate", "--provider", "claude-3-sonnet", "Test prompt"])
 
         assert result.exit_code == 0
         # Verify the generator was initialized with the correct provider and verbose=False
