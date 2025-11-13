@@ -254,10 +254,22 @@ class JobManager:
         model_manager = ModelManager(config)
         model_manager.current_model = config.get("model", model_manager.current_model)
 
-        if editor_type.startswith("content"):
-            # Use StructuralEditor for content analysis
+        if editor_type == "content-structural":
+            # Use StructuralEditor for scene and structure analysis
             from ..editors.structural import StructuralEditor
-
+            return StructuralEditor(model_manager, config)
+        elif editor_type == "content-continuity":
+            # Use ContinuityEditor for character and plot consistency
+            from ..editors.continuity import ContinuityEditor
+            return ContinuityEditor(model_manager, config)
+        elif editor_type == "content-style":
+            # Use StyleEditor for POV, voice, and prose analysis
+            from ..editors.style import StyleEditor
+            return StyleEditor(model_manager, config)
+        elif editor_type == "content-comprehensive":
+            # For comprehensive analysis, use StructuralEditor as default
+            # TODO: Implement comprehensive editor that combines all three
+            from ..editors.structural import StructuralEditor
             return StructuralEditor(model_manager, config)
         else:
             # Use mock editor for idea analysis (for now)

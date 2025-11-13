@@ -5,15 +5,17 @@ import json
 import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any, List
+from typing import Any
 
 import click
 
-from ..base import EditorialFeedback, EditorialIssue, RevisionSuggestion, StoryContext
+from ..base import EditorialFeedback, EditorialIssue, StoryContext
 from ..core.config import load_editorial_config
 from ..core.job_manager import JobManager, JobStatus
 from ..core.model_manager import ModelManager
+from ..editors.continuity import ContinuityEditor
 from ..editors.structural import StructuralEditor
+from ..editors.style import StyleEditor
 
 
 @click.group()
@@ -130,6 +132,8 @@ def start(
     if idea_file:
         job_id = asyncio.run(_start_idea_job(idea_file, output, model, max_cost))
     else:
+        # prose_file is guaranteed to be not None here due to the earlier check
+        assert prose_file is not None
         job_id = asyncio.run(
             _start_content_job(prose_file, focus, output, model, max_cost, batch_size)
         )
@@ -163,7 +167,7 @@ def cancel(job_id: str):
     "--status",
     type=click.Choice(["pending", "running", "paused", "completed", "failed", "cancelled"]),
 )
-def list(status: str | None):
+def list_jobs(status: str | None):
     """List jobs."""
     status_filter = JobStatus(status) if status else None
     asyncio.run(_list_jobs(status_filter))
@@ -612,6 +616,7 @@ async def _list_jobs(status_filter: JobStatus | None):
         job_manager = JobManager(Path(config.get("job_storage_dir", "./jobs")))
 
         jobs = await job_manager.list_jobs(status_filter)
+        assert jobs is not None  # list_jobs should never return None
 
         if not jobs:
             click.echo("No jobs found")
@@ -636,9 +641,15 @@ async def _create_mock_editor(
 ):
     """Create appropriate editor based on type."""
 
-    if editor_type.startswith("content"):
-        # Use real StructuralEditor for content analysis
+    if editor_type == "structural":
+        # Use StructuralEditor for scene and structure analysis
         return StructuralEditor(model_manager, config)
+    elif editor_type == "continuity":
+        # Use ContinuityEditor for character and plot consistency
+        return ContinuityEditor(model_manager, config)
+    elif editor_type == "style":
+        # Use StyleEditor for POV, voice, and prose analysis
+        return StyleEditor(model_manager, config)
     else:
         # Use mock editor for idea analysis (for now)
         class MockEditor:
