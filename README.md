@@ -10,7 +10,7 @@ AI-powered command-line tool to generate creative stories of any length using mu
 - **EPUB Generation**: Create professional ebook files from AI-generated stories
 - **AI-Powered Editorial Workflow**: Comprehensive editorial analysis and iterative improvement
 - **Revision System**: AI can automatically apply editorial feedback to improve stories
-- **Job Management**: Background processing for long-running editorial analyses
+- **Direct Analysis**: Immediate editorial feedback without background processing
 - **Test-Driven Development**: Built with TDD principles, comprehensive test coverage
 - **Agile MVP**: Minimum viable product following agile methodology
 - **Free & Paid Options**: Use free local models or premium cloud APIs
@@ -173,22 +173,18 @@ storygen --provider ollama/llama2 --epub adventure.epub "A space odyssey"
 ### Editorial Workflow:
 ```bash
 # Automated iterative workflow (recommended)
-storygen edit all "A cyberpunk hacker discovers a conspiracy" --iterations 3 --quality-threshold 8.0
+storygen edit workflow "A cyberpunk hacker discovers a conspiracy" --iterations 3 --quality-threshold 8.0
 
-# Manual step-by-step analysis
-storygen edit idea --idea idea.json --output feedback.json
-storygen edit revise --feedback feedback.json --input story.json --output revised_story.json
-
-# Background job processing
-storygen job start --prose story.json --output feedback.json
-storygen job status <job-id>
+# Direct analysis commands
+storygen edit analyze --prose story.json --output feedback.json
+storygen edit focus --prose story.json --focus comprehensive --output analysis.json
+storygen edit revise --prose story.json --feedback analysis.json --output revised_story.json
 ```
 
 ### Get help:
 ```bash
 storygen --help
 storygen edit --help
-storygen job --help
 ```
 
 ## Supported AI Providers
@@ -270,7 +266,7 @@ git commit --no-verify
 - [x] EPUB generation
 - [x] AI-powered editorial workflow system
 - [x] Revision system with AI-driven iterative improvements
-- [x] Job management for background processing
+- [x] Job management for background processing → **REMOVED**: Simplified to direct analysis operations
 - [ ] AI-generated cover art
 - [ ] AI-generated interior illustrations
 - [ ] Story templates and genres

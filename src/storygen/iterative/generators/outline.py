@@ -18,9 +18,20 @@ class OutlineGenerator(BaseGenerator[Outline]):
     """
     Generate story outlines using flexible structure templates.
 
-    Supports multiple structure types (three-act, hero's journey, fichtean)
-    with AI-powered story application. Loads a template and asks AI to fill
-    in how each act applies to the specific story.
+    Supports multiple structure types including:
+    - three-act: Traditional Hollywood three-act structure
+    - hero-journey: Joseph Campbell's Hero's Journey (12 stages)
+    - fichtean: Crisis-driven Fichtean curve
+    - save-the-cat: Blake Snyder's 15-beat structure
+    - seven-point: Dan Wells' seven-point structure
+    - short-story: Simplified arc for short fiction
+    - freytag: Freytag's Pyramid structure
+    - five-point: Five-point plot structure
+    - epiphany: Character-driven epiphany structure
+    - snowflake: Randy Ingermanson's Snowflake Method
+
+    Each template provides a hierarchical act structure with generic descriptions
+    that the AI fills in with story-specific applications.
     """
 
     def __init__(
@@ -37,7 +48,8 @@ class OutlineGenerator(BaseGenerator[Outline]):
         Args:
             model: The AI model to use (default: gpt-4)
             structure_type: Structure template to use (default: three-act)
-                Options: three-act, hero-journey, fichtean
+                Options: three-act, hero-journey, fichtean, save-the-cat,
+                seven-point, short-story, freytag, five-point, epiphany, snowflake
             max_retries: Maximum number of retry attempts (default: 3)
             timeout: Timeout in seconds for AI calls (default: 600 = 10 minutes)
             verbose: Enable verbose logging of prompts and responses (default: False)

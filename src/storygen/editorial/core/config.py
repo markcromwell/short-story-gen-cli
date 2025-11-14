@@ -61,7 +61,7 @@ class ConfigManager:
         """Get default configuration values."""
         return {
             "models": {
-                "default": "ollama/qwen3:30b",
+                "default": "xai/grok-4-fast-reasoning",
                 "ollama": {
                     "base_url": "http://localhost:11434",
                     "timeout": 120,
@@ -72,11 +72,14 @@ class ConfigManager:
                     "timeout": 60,
                     "supported_models": ["gpt-4o", "gpt-4o-mini"],
                 },
+                "xai": {
+                    "api_key_env": "XAI_API_KEY",
+                    "timeout": 60,
+                    "supported_models": ["grok-4-fast-reasoning", "grok-2-1212", "grok-beta"],
+                },
             },
             "editorial": {
                 "enabled": True,
-                "job_storage_dir": "./data/editorial/jobs",
-                "max_concurrent_jobs": 5,
                 "cost_control": {"enabled": True, "default_budget": 5.00, "alert_threshold": 0.80},
                 "editors": {
                     "idea": {
@@ -113,7 +116,8 @@ class ConfigManager:
                 main_config["editorial"] = {}
             main_config["editorial"].update(editorial_config)
         except ConfigError:
-            logger.warning("Editorial config file not found, using defaults")
+            # Use print instead of logger to avoid logging issues during config loading
+            print("Warning: Editorial config file not found, using defaults")
 
         return main_config.get("editorial", self._get_default_config()["editorial"])
 

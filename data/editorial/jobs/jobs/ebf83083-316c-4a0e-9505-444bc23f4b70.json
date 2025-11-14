@@ -1,0 +1,20 @@
+{
+  "job_id": "ebf83083-316c-4a0e-9505-444bc23f4b70",
+  "status": "completed",
+  "created_at": "2025-11-13T12:54:58.778256",
+  "started_at": "2025-11-13T12:54:58.778552",
+  "completed_at": "2025-11-13T12:55:38.691387",
+  "progress": 1.0,
+  "estimated_completion": null,
+  "current_stage": "",
+  "error_message": null,
+  "retry_count": 0,
+  "max_retries": 3,
+  "total_cost_usd": 0.0,
+  "tokens_used": 0,
+  "duration_seconds": 39.912835,
+  "editor_type": "content-comprehensive",
+  "model_used": "xai/grok-4-fast-reasoning",
+  "batch_size": 5,
+  "max_concurrent_batches": 3
+}

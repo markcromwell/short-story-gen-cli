@@ -14,6 +14,156 @@ class CharacterGenerationError(GenerationError):
     pass
 
 
+class CharacterDiscoveryGenerator(BaseGenerator[list[Character]]):
+    """
+    Analyzes story content (outline or prose) to discover new characters that emerged during writing.
+
+    This generator takes existing story content and identifies characters that weren't part of the
+    original character generation, categorizing them as major or minor characters.
+    """
+
+    def __init__(
+        self, model: str = "gpt-4", max_retries: int = 3, timeout: int = 600, verbose: bool = False
+    ):
+        """
+        Initialize the character discovery generator.
+
+        Args:
+            model: LiteLLM model string (e.g., "gpt-4", "ollama/qwen3:30b")
+            max_retries: Maximum number of retry attempts on failure
+            timeout: Timeout in seconds for each API call (default: 600 = 10 minutes)
+            verbose: Enable verbose logging of prompts and responses (default: False)
+        """
+        super().__init__(model=model, max_retries=max_retries, timeout=timeout, verbose=verbose)
+
+    def _build_prompt(
+        self,
+        content: str,
+        content_type: str,
+        existing_characters: list[Character],
+        story_idea: StoryIdea,
+    ) -> tuple[str, str]:
+        """
+        Build prompts for character discovery.
+
+        Args:
+            content: The story content to analyze (outline or prose)
+            content_type: "outline" or "prose"
+            existing_characters: Characters already generated
+            story_idea: The original story concept
+
+        Returns:
+            Tuple of (system_prompt, user_prompt)
+        """
+        system_prompt = """You are an expert literary analyst specializing in character identification and development.
+Your task is to analyze story content and identify characters that emerged during the writing process.
+
+Focus on:
+- Characters mentioned by name or clear identifiers
+- Characters with speaking roles or significant actions
+- Characters that drive plot or have meaningful relationships
+- Distinguish between major characters (significant plot role) and minor characters (supporting roles)
+
+Return a JSON array of new characters only (do not include existing characters)."""
+
+        existing_names = [char.name for char in existing_characters]
+        existing_names_str = ", ".join(existing_names) if existing_names else "none"
+
+        user_prompt = f"""Analyze this {content_type} content and identify any NEW characters that weren't part of the original character generation.
+
+ORIGINAL STORY IDEA:
+{story_idea.one_sentence}
+{story_idea.expanded}
+
+EXISTING CHARACTERS (do not include these):
+{existing_names_str}
+
+{content_type.upper()} CONTENT TO ANALYZE:
+{content}
+
+Identify characters that emerged naturally during writing. For each new character, provide:
+- name: Character's name
+- role: "protagonist", "antagonist", "mentor", "ally", "foil", or "supporting"
+- bio: Brief background and personality description
+- goal: What this character wants
+- flaw: Character's primary flaw or weakness
+
+Return ONLY a JSON array of new characters. If no new characters are found, return an empty array []."""
+
+        return system_prompt, user_prompt
+
+    def _parse_response(self, response: str) -> list[Character]:
+        """Parse the AI response into Character objects."""
+        try:
+            import json
+
+            # Clean the response
+            response = response.strip()
+            if response.startswith("```json"):
+                response = response[7:]
+            if response.endswith("```"):
+                response = response[:-3]
+            response = response.strip()
+
+            # Parse JSON
+            characters_data = json.loads(response)
+
+            if not isinstance(characters_data, list):
+                raise ValueError("Expected JSON array of characters")
+
+            characters = []
+            for char_data in characters_data:
+                # Map role to the correct enum values
+                role_mapping = {
+                    "protagonist": "protagonist",
+                    "antagonist": "antagonist",
+                    "mentor": "mentor",
+                    "ally": "ally",
+                    "foil": "foil",
+                    "supporting": "supporting",
+                    "minor": "supporting",  # Default minor characters to supporting
+                }
+
+                character = Character(
+                    name=char_data.get("name", "Unknown"),
+                    role=role_mapping.get(char_data.get("role", "supporting"), "supporting"),  # type: ignore
+                    bio=char_data.get("bio", ""),
+                    goal=char_data.get("goal", ""),
+                    flaw=char_data.get("flaw", ""),
+                    arc=None,  # Will be determined later if needed
+                )
+                characters.append(character)
+
+            return characters
+
+        except (json.JSONDecodeError, KeyError, ValueError) as e:
+            raise CharacterGenerationError(f"Failed to parse character discovery response: {e}")
+
+    def generate(
+        self,
+        content: str,
+        content_type: str,
+        existing_characters: list[Character],
+        story_idea: StoryIdea,
+    ) -> tuple[list[Character], dict[str, Any]]:
+        """
+        Discover new characters from story content.
+
+        Args:
+            content: The story content to analyze
+            content_type: "outline" or "prose"
+            existing_characters: Characters already in the story
+            story_idea: The original story concept
+
+        Returns:
+            Tuple of (characters, usage_info)
+        """
+        system_prompt, user_prompt = self._build_prompt(
+            content, content_type, existing_characters, story_idea
+        )
+        return self._generate_with_retry(system_prompt, user_prompt, self._parse_response)
+
+
 class CharacterGenerator(BaseGenerator[list[Character]]):
     """Generates characters using AI with retry logic."""
 

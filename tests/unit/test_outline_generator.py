@@ -34,12 +34,13 @@ class TestOutlineGeneratorInitialization:
         assert generator.max_retries == 5
         assert generator.timeout == 120
 
-    def test_initialization_invalid_structure(self):
-        """Test initialization with invalid structure type."""
-        from storygen.iterative.exceptions import ConfigError
+    def test_initialization_all_structure_types(self):
+        """Test initialization with all available structure types."""
+        from storygen.iterative.outline_templates import list_available_structures
 
-        with pytest.raises(ConfigError, match="Unknown structure type"):
-            OutlineGenerator(structure_type="invalid-structure")
+        for structure_type in list_available_structures():
+            generator = OutlineGenerator(structure_type=structure_type)
+            assert generator.structure_type == structure_type
 
 
 class TestOutlineGeneratorPromptBuilding:
@@ -100,6 +101,59 @@ class TestOutlineGeneratorPromptBuilding:
 
         # Check template structure is included
         assert "Setup" in user_prompt or "Act 1" in user_prompt
+
+    def test_build_prompt_different_structures(self):
+        """Test that build_prompt works with different structure types."""
+        idea = StoryIdea(
+            raw_idea="A detective story",
+            one_sentence="A detective solves a murder.",
+            expanded="A brilliant detective investigates a complex murder case.",
+            genres=["mystery", "thriller"],
+            tone="dark and suspenseful",
+            themes=["justice", "truth"],
+            setting="Test setting",
+        )
+
+        characters = [
+            Character(
+                name="Detective Jane",
+                role="protagonist",
+                bio="A brilliant detective with a troubled past",
+                goal="Solve the case",
+                flaw="Too obsessive",
+            )
+        ]
+
+        locations = [
+            Location(
+                name="Crime Scene",
+                description="A dark alley",
+                significance="Where the murder occurred",
+                atmosphere="Tense and ominous",
+            )
+        ]
+
+        # Test different structure types
+        test_structures = ["short-story", "save-the-cat", "epiphany", "freytag"]
+
+        for structure_type in test_structures:
+            generator = OutlineGenerator(structure_type=structure_type)
+            template = get_template(structure_type)
+
+            system_prompt, user_prompt = generator._build_prompt(
+                idea, characters, locations, template
+            )
+
+            # Verify structure-specific content is included
+            assert (
+                structure_type in system_prompt.lower()
+                or structure_type.replace("-", " ") in system_prompt.lower()
+            )
+
+            # Verify story context is included
+            assert "detective solves a murder" in user_prompt
+            assert "Detective Jane" in user_prompt
+            assert "Crime Scene" in user_prompt
 
 
 class TestOutlineGeneratorResponseParsing:
@@ -314,11 +368,7 @@ class TestOutlineGeneratorGeneration:
         mock_choice.message = mock_message
         mock_response.choices = [mock_choice]
         # Add usage information to mock response
-        mock_response.usage = {
-            "prompt_tokens": 250,
-            "completion_tokens": 350,
-            "total_tokens": 600
-        }
+        mock_response.usage = {"prompt_tokens": 250, "completion_tokens": 350, "total_tokens": 600}
 
         with patch("litellm.completion", return_value=mock_response):
             outline, usage_info = generator.generate(idea, characters, locations)
@@ -375,11 +425,7 @@ class TestOutlineGeneratorGeneration:
         mock_choice.message = mock_message
         mock_success.choices = [mock_choice]
         # Add usage information to mock response
-        mock_success.usage = {
-            "prompt_tokens": 250,
-            "completion_tokens": 350,
-            "total_tokens": 600
-        }
+        mock_success.usage = {"prompt_tokens": 250, "completion_tokens": 350, "total_tokens": 600}
 
         with patch("litellm.completion", side_effect=[TimeoutError(), mock_success]):
             with patch("time.sleep"):  # Skip actual sleep
@@ -430,11 +476,7 @@ class TestOutlineGeneratorGeneration:
         mock_good_choice.message = mock_good_message
         mock_good.choices = [mock_good_choice]
         # Add usage information to mock response
-        mock_good.usage = {
-            "prompt_tokens": 250,
-            "completion_tokens": 350,
-            "total_tokens": 600
-        }
+        mock_good.usage = {"prompt_tokens": 250, "completion_tokens": 350, "total_tokens": 600}
 
         with patch("litellm.completion", side_effect=[mock_bad, mock_good]):
             with patch("time.sleep"):
@@ -471,3 +513,85 @@ class TestOutlineGeneratorGeneration:
 
         # Should have exponential backoff: 1, 2
         assert sleep_times == [1, 2]
+
+    def test_generate_different_structure_types(self):
+        """Test outline generation with different structure types."""
+        idea = StoryIdea(
+            raw_idea="Test",
+            one_sentence="A test story",
+            expanded="A detailed test story",
+            genres=["test"],
+            tone="test",
+            themes=["testing"],
+            setting="Test setting",
+        )
+
+        characters = [
+            Character(
+                name="Hero",
+                role="protagonist",
+                bio="The hero",
+                goal="Win",
+                flaw="Stubborn",
+            )
+        ]
+
+        locations = [
+            Location(
+                name="Test Place",
+                description="A test location",
+                significance="Important",
+                atmosphere="Tense",
+            )
+        ]
+
+        # Test different structure types
+        test_structures = ["short-story", "freytag", "five-point"]
+
+        for structure_type in test_structures:
+            generator = OutlineGenerator(model="gpt-4", structure_type=structure_type)
+
+            # Get the expected number of acts for this structure
+            template = get_template(structure_type)
+            expected_act_count = len(template)
+
+            # Mock successful response with correct number of acts
+            mock_response = Mock()
+            mock_choice = Mock()
+            mock_message = Mock()
+
+            # Create mock acts based on the template
+            mock_acts = []
+            for i, template_act in enumerate(template):
+                mock_acts.append(
+                    {
+                        "title": template_act.title,
+                        "description": template_act.description,
+                        "story_application": f"Test application for {template_act.title}",
+                        "percentage": template_act.percentage,
+                        "order": i,
+                        "sub_acts": [],  # Simplify for test
+                        "scenes": [],
+                    }
+                )
+
+            mock_message.content = json.dumps(mock_acts)
+            mock_choice.message = mock_message
+            mock_response.choices = [mock_choice]
+            mock_response.usage = {
+                "prompt_tokens": 250,
+                "completion_tokens": 350,
+                "total_tokens": 600,
+            }
+
+            with patch("litellm.completion", return_value=mock_response):
+                outline, usage_info = generator.generate(idea, characters, locations)
+
+            assert isinstance(outline, Outline)
+            assert outline.structure_type == structure_type
+            assert len(outline.acts) == expected_act_count
+
+            # Verify each act has the expected title and story application
+            for i, act in enumerate(outline.acts):
+                assert act.title == template[i].title
+                assert "Test application for" in act.story_application

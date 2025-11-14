@@ -65,7 +65,7 @@ class ModelManager:
 
     def __init__(self, config: dict[str, Any]):
         self.config = config
-        self.current_model = config.get("default_model", "ollama/qwen3:30b")
+        self.current_model = config.get("default_model", "xai/grok-4-fast-reasoning")
         self.cost_tracker = CostTracker()
         self.logger = logging.getLogger(__name__)
 
@@ -74,9 +74,39 @@ class ModelManager:
             "ollama/qwen3:30b": 60,  # Local model, high limit
             "openai/gpt-4o": 10,
             "openai/gpt-4o-mini": 30,
-            "xai/grok-4-fast-non-reasoning": 30,  # xAI rate limit
+            "xai/grok-4-fast-reasoning": 30,  # xAI rate limit
         }
         self.last_request_time: dict[str, float] = {}
+
+        # Validate API keys are available for configured models
+        self._validate_api_keys()
+
+    def _validate_api_keys(self):
+        """Validate that required API keys are available."""
+        import os
+
+        if self.current_model.startswith("xai/"):
+            api_key = os.environ.get("XAI_API_KEY")
+            if not api_key:
+                raise ValueError("XAI_API_KEY environment variable is required for xAI models")
+            if not api_key.startswith("xai-"):
+                raise ValueError("XAI_API_KEY appears to be invalid (should start with 'xai-')")
+
+        elif self.current_model.startswith("openai/"):
+            api_key = os.environ.get("OPENAI_API_KEY")
+            if not api_key:
+                raise ValueError(
+                    "OPENAI_API_KEY environment variable is required for OpenAI models"
+                )
+            if not api_key.startswith("sk-"):
+                raise ValueError("OPENAI_API_KEY appears to be invalid (should start with 'sk-')")
+
+        # Ollama doesn't require API keys
+        elif self.current_model.startswith("ollama/"):
+            pass
+
+        else:
+            self.logger.warning(f"No API key validation available for model: {self.current_model}")
 
     async def call_model(
         self,
@@ -191,5 +221,4 @@ class ModelManager:
             return response.choices[0].message.content
         except Exception as e:
             self.logger.error(f"xAI API call failed: {e}")
-            # Fallback to mock response
-            return f"Mock response from {model} for prompt: {prompt[:100]}..."
+            raise ModelError(f"xAI API call failed: {e}") from e

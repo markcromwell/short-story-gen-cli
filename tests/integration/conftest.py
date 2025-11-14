@@ -1,6 +1,10 @@
 """Pytest configuration for integration tests."""
 
 import pytest
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 
 def pytest_addoption(parser):
@@ -9,7 +13,12 @@ def pytest_addoption(parser):
         "--integration",
         action="store_true",
         default=False,
-        help="Run integration tests (requires Ollama running locally)",
+        help="Run integration tests (requires API keys and external services)",
+    )
+    parser.addoption(
+        "--model",
+        default=None,
+        help="Override the integration test model (e.g., 'ollama/qwen2.5:14b')",
     )
 
 

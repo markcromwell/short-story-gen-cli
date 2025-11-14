@@ -1,0 +1,18 @@
+enabled: true
+job_storage_dir: "./data/editorial/jobs"
+max_concurrent_jobs: 5
+cost_control:
+  enabled: true
+  default_budget: 5.00
+  alert_threshold: 0.80
+editors:
+  idea:
+    enabled: true
+    default_model: "xai/grok-4-fast-reasoning"
+    max_retries: 3
+    timeout_seconds: 300
+  content:
+    enabled: true
+    default_model: "xai/grok-4-fast-reasoning"
+    batch_size: 5
+    max_concurrent_batches: 3

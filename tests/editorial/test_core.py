@@ -1,6 +1,5 @@
 """Unit tests for editorial workflow core components."""
 
-import tempfile
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -13,7 +12,6 @@ from storygen.editorial.base import (
     StoryContext,
 )
 from storygen.editorial.core.config import ConfigManager
-from storygen.editorial.core.job_manager import JobManager, JobStatus
 from storygen.editorial.core.model_manager import CostTracker, ModelManager
 
 
@@ -131,55 +129,6 @@ class TestModelManager:
         entry = model_manager.cost_tracker.usage_log[0]
         assert entry["model"] == "test_model"
         assert entry["duration_seconds"] == 1.0
-
-
-class TestJobManager:
-    """Test the job manager."""
-
-    @pytest.fixture
-    def temp_dir(self):
-        """Create a temporary directory for testing."""
-        with tempfile.TemporaryDirectory() as tmpdir:
-            yield Path(tmpdir)
-
-    @pytest.fixture
-    def job_manager(self, temp_dir):
-        """Create a job manager for testing."""
-        return JobManager(temp_dir / "jobs", max_concurrent_jobs=2)
-
-    @pytest.mark.asyncio
-    async def test_start_job(self, job_manager):
-        """Test starting a job."""
-        context = StoryContext()
-        config = {"model": "test_model"}
-
-        job_id = await job_manager.start_job("test_editor", context, config)
-
-        assert job_id is not None
-        assert len(job_id) > 0
-
-        # Check job was created
-        metadata = await job_manager.get_job_status(job_id)
-        assert metadata is not None
-        assert metadata.editor_type == "test_editor"
-        assert metadata.status == JobStatus.PENDING
-
-    @pytest.mark.asyncio
-    async def test_list_jobs(self, job_manager):
-        """Test listing jobs."""
-        # Start a job
-        context = StoryContext()
-        config = {"model": "test_model"}
-        job_id = await job_manager.start_job("test_editor", context, config)
-
-        # List jobs
-        jobs = await job_manager.list_jobs()
-        assert len(jobs) >= 1
-
-        # Find our job
-        job = next((j for j in jobs if j.job_id == job_id), None)
-        assert job is not None
-        assert job.editor_type == "test_editor"
 
 
 class TestConfigManager:

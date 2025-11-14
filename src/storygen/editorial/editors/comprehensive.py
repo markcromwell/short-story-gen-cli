@@ -36,7 +36,7 @@ class ComprehensiveEditor(BaseEditor):
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Handle any exceptions
-        feedbacks = []
+        feedbacks: list[EditorialFeedback] = []
         for i, result in enumerate(results):
             editor_names = ["structural", "continuity", "style"]
             if isinstance(result, Exception):
@@ -65,7 +65,8 @@ class ComprehensiveEditor(BaseEditor):
                 )
                 feedbacks.append(error_feedback)
             else:
-                feedbacks.append(result)
+                # Type is guaranteed to be EditorialFeedback here
+                feedbacks.append(result)  # type: ignore
 
         # Combine results from all editors
         return self._combine_feedbacks(feedbacks)

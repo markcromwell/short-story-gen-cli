@@ -1,22 +1,23 @@
-"""CLI commands for editorial workflow."""
+"""Simplified editorial CLI commands - direct analysis without job system."""
 
 import asyncio
 import json
-import uuid
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 import click
+from dotenv import load_dotenv
 
-from ..base import EditorialFeedback, EditorialIssue, StoryContext
+from ..base import StoryContext
 from ..core.config import load_editorial_config
-from ..core.job_manager import JobManager, JobStatus
 from ..core.model_manager import ModelManager
 from ..editors.comprehensive import ComprehensiveEditor
 from ..editors.continuity import ContinuityEditor
 from ..editors.structural import StructuralEditor
 from ..editors.style import StyleEditor
+
+# Load environment variables (for API keys)
+load_dotenv()
 
 
 @click.group()
@@ -26,20 +27,68 @@ def edit():
 
 
 @edit.command()
+@click.argument("prose_file", type=click.Path(exists=True))
 @click.option(
-    "--idea",
-    "idea_file",
-    type=click.Path(exists=True),
-    required=True,
-    help="Path to story idea JSON file",
+    "--output", "-o", type=click.Path(), help="Output file for feedback (default: auto-generated)"
 )
-@click.option("--output", "-o", type=click.Path(), required=True, help="Output file for feedback")
 @click.option("--model", default=None, help="AI model to use (default: configured default)")
 @click.option("--max-cost", type=float, help="Maximum cost in USD for this analysis")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
-def idea(idea_file: str, output: str, model: str | None, max_cost: float | None, verbose: bool):
-    """Analyze story idea for conceptual strength."""
-    asyncio.run(_run_idea_editor(idea_file, output, model, max_cost, verbose))
+def analyze(
+    prose_file: str, output: str | None, model: str | None, max_cost: float | None, verbose: bool
+):
+    """Analyze prose for editorial issues."""
+    asyncio.run(_run_analysis(prose_file, "comprehensive", output, model, max_cost, verbose))
+
+
+@edit.command()
+@click.argument("prose_file", type=click.Path(exists=True))
+@click.option(
+    "--focus",
+    type=click.Choice(["structural", "continuity", "style", "comprehensive"]),
+    default="comprehensive",
+    help="Analysis focus area",
+)
+@click.option(
+    "--output", "-o", type=click.Path(), help="Output file for feedback (default: auto-generated)"
+)
+@click.option("--model", default=None, help="AI model to use (default: configured default)")
+@click.option("--max-cost", type=float, help="Maximum cost in USD for this analysis")
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
+def focus(
+    prose_file: str,
+    focus: str,
+    output: str | None,
+    model: str | None,
+    max_cost: float | None,
+    verbose: bool,
+):
+    """Analyze prose with specific focus."""
+    asyncio.run(_run_analysis(prose_file, focus, output, model, max_cost, verbose))
+
+
+@edit.command()
+@click.argument("prose_file", type=click.Path(exists=True))
+@click.argument("feedback_file", type=click.Path(exists=True))
+@click.option(
+    "--output",
+    "-o",
+    type=click.Path(),
+    help="Output file for revised story (default: auto-generated)",
+)
+@click.option("--model", default=None, help="AI model to use (default: configured default)")
+@click.option("--max-cost", type=float, help="Maximum cost in USD for revisions")
+@click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
+def revise(
+    prose_file: str,
+    feedback_file: str,
+    output: str | None,
+    model: str | None,
+    max_cost: float | None,
+    verbose: bool,
+):
+    """Apply editorial revisions to prose."""
+    asyncio.run(_run_revisions(prose_file, feedback_file, output, model, max_cost, verbose))
 
 
 @edit.command()
@@ -61,7 +110,7 @@ def idea(idea_file: str, output: str, model: str | None, max_cost: float | None,
 @click.option("--max-cost", type=float, help="Maximum total cost in USD for the entire workflow")
 @click.option("--verbose", "-v", is_flag=True, help="Enable verbose output")
 @click.option("--interactive", "-i", is_flag=True, help="Ask for user approval between iterations")
-def all(
+def workflow(
     prompt: str,
     output: str | None,
     iterations: int,
@@ -79,105 +128,15 @@ def all(
     )
 
 
-@click.group()
-def job():
-    """Job management commands."""
-    pass
-
-
-@job.command()
-@click.argument("job_id")
-def status(job_id: str):
-    """Check job status."""
-    asyncio.run(_show_job_status(job_id))
-
-
-@job.command()
-@click.option(
-    "--idea",
-    "idea_file",
-    type=click.Path(exists=True),
-    help="Path to story idea JSON file",
-)
-@click.option(
-    "--prose",
-    "prose_file",
-    type=click.Path(exists=True),
-    help="Path to prose JSON file",
-)
-@click.option(
-    "--focus",
-    type=click.Choice(["structural", "continuity", "style", "comprehensive"]),
-    default="comprehensive",
-    help="Analysis focus area (for prose analysis)",
-)
-@click.option("--output", "-o", type=click.Path(), required=True, help="Output file for feedback")
-@click.option("--model", default=None, help="AI model to use (default: configured default)")
-@click.option("--max-cost", type=float, help="Maximum cost in USD for this analysis")
-@click.option("--batch-size", type=int, default=5, help="Scenes per batch for analysis")
-def start(
-    idea_file: str | None,
-    prose_file: str | None,
+async def _run_analysis(
+    prose_file: str,
     focus: str,
-    output: str,
+    output: str | None,
     model: str | None,
     max_cost: float | None,
-    batch_size: int,
+    verbose: bool,
 ):
-    """Start a new editorial analysis job."""
-    if not idea_file and not prose_file:
-        raise click.UsageError("Must specify either --idea or --prose file")
-    if idea_file and prose_file:
-        raise click.UsageError("Cannot specify both --idea and --prose files")
-
-    if idea_file:
-        job_id = asyncio.run(_start_idea_job(idea_file, output, model, max_cost))
-    else:
-        # prose_file is guaranteed to be not None here due to the earlier check
-        assert prose_file is not None
-        job_id = asyncio.run(
-            _start_content_job(prose_file, focus, output, model, max_cost, batch_size)
-        )
-
-    click.echo(f"Started job: {job_id}")
-
-
-@job.command()
-@click.argument("job_id")
-def pause(job_id: str):
-    """Pause a running job."""
-    asyncio.run(_pause_job(job_id))
-
-
-@job.command()
-@click.argument("job_id")
-def resume(job_id: str):
-    """Resume a paused job."""
-    asyncio.run(_resume_job(job_id))
-
-
-@job.command()
-@click.argument("job_id")
-def cancel(job_id: str):
-    """Cancel a job."""
-    asyncio.run(_cancel_job(job_id))
-
-
-@job.command()
-@click.option(
-    "--status",
-    type=click.Choice(["pending", "running", "paused", "completed", "failed", "cancelled"]),
-)
-def list_jobs(status: str | None):
-    """List jobs."""
-    status_filter = JobStatus(status) if status else None
-    asyncio.run(_list_jobs(status_filter))
-
-
-async def _run_idea_editor(
-    idea_file: str, output: str, model: str | None, max_cost: float | None, verbose: bool
-):
-    """Run idea editor analysis."""
+    """Run editorial analysis directly."""
     try:
         # Load configuration
         config = load_editorial_config()
@@ -188,10 +147,19 @@ async def _run_idea_editor(
             model_manager.current_model = model
 
         # Load input data
-        context = await _load_story_context_from_idea_file(idea_file)
+        context = await _load_story_context_from_prose_file(prose_file)
 
-        # Create mock editor for Stage 1
-        editor = await _create_mock_editor("idea", model_manager, config)
+        # Create appropriate editor
+        if focus == "structural":
+            editor = StructuralEditor(model_manager, config)
+        elif focus == "continuity":
+            editor = ContinuityEditor(model_manager, config)
+        elif focus == "style":
+            editor = StyleEditor(model_manager, config)
+        elif focus == "comprehensive":
+            editor = ComprehensiveEditor(model_manager, config)
+        else:
+            raise ValueError(f"Unknown focus: {focus}")
 
         # Validate input
         validation_errors = editor.validate_input(context)
@@ -203,9 +171,14 @@ async def _run_idea_editor(
 
         # Run analysis
         if verbose:
-            click.echo("Running idea analysis...")
+            click.echo(f"Running {focus} analysis...")
 
         feedback = await editor.analyze(context)
+
+        # Generate output filename if not provided
+        if not output:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output = f"editorial_feedback_{focus}_{timestamp}.json"
 
         # Save results
         await _save_feedback(feedback, output)
@@ -214,6 +187,67 @@ async def _run_idea_editor(
         click.echo(f"Analysis complete. {len(feedback.issues)} issues found.")
         if feedback.metadata.get("cost_usd"):
             click.echo(f"Cost: ${feedback.metadata['cost_usd']:.4f}")
+        click.echo(f"Results saved to: {output}")
+
+    except Exception as e:
+        click.echo(f"Error: {e}", err=True)
+        raise click.Abort()
+
+
+async def _run_revisions(
+    prose_file: str,
+    feedback_file: str,
+    output: str | None,
+    model: str | None,
+    max_cost: float | None,
+    verbose: bool,
+):
+    """Apply editorial revisions directly."""
+    try:
+        # Load configuration
+        config = load_editorial_config()
+
+        # Initialize components
+        model_manager = ModelManager(config)
+        if model:
+            model_manager.current_model = model
+
+        # Load input data
+        with open(prose_file, encoding="utf-8") as f:
+            story_data = json.load(f)
+
+        with open(feedback_file, encoding="utf-8") as f:
+            feedback_data = json.load(f)
+
+        # Extract revisions from feedback
+        revisions = feedback_data.get("suggested_revisions", [])
+        if not revisions:
+            click.echo("No revisions found in feedback file")
+            return
+
+        # Apply revisions
+        if verbose:
+            click.echo(f"Applying {len(revisions)} revisions...")
+
+        revised_story = await _apply_revisions_with_ai(
+            story_data, revisions, model_manager, max_cost, verbose
+        )
+
+        # Generate output filename if not provided
+        if not output:
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            output = f"revised_story_{timestamp}.json"
+
+        # Save results
+        output_path = Path(output)
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_path, "w") as f:
+            json.dump(revised_story, f, indent=2)
+
+        # Display summary
+        click.echo(f"Revisions applied. Story saved to: {output}")
+        if revised_story.get("metadata", {}).get("cost_usd"):
+            click.echo(f"Cost: ${revised_story['metadata']['cost_usd']:.4f}")
 
     except Exception as e:
         click.echo(f"Error: {e}", err=True)
@@ -381,15 +415,28 @@ async def _apply_revisions_with_ai(
 
         revision_instruction = revision["instruction"]
 
-        # Create AI prompt for this revision
-        prompt = f"""Apply this revision to the story:
+        # Create AI prompt for this revision - ask for targeted changes only
+        prompt = f"""Apply this specific revision to the story:
 
 REVISION REQUEST: {revision_instruction}
 
-ORIGINAL STORY:
-{json.dumps(current_story, indent=2)}
+ORIGINAL STORY SCENES (JSON format):
+{json.dumps(current_story["scene_sequels"], indent=2)}
 
-Return the complete revised story in the same JSON format. Only modify the parts specified in the revision request. Keep all other content unchanged."""
+IMPORTANT: Return ONLY a JSON array of the modified scenes. Do not return the entire story structure. Only include scenes that need changes, with their complete updated content.
+
+Example response format:
+[
+  {{
+    "id": "scene_id",
+    "type": "scene",
+    "content": "updated content here...",
+    "summary": "updated summary if needed...",
+    // ... other fields as needed
+  }}
+]
+
+Return ONLY the JSON array, no additional text or explanation."""
 
         response = await model_manager.call_model(
             prompt=prompt,
@@ -398,343 +445,48 @@ Return the complete revised story in the same JSON format. Only modify the parts
         )
 
         try:
-            # Parse the AI response as JSON
-            revised_data = json.loads(response)
-            current_story = revised_data
-        except json.JSONDecodeError:
-            if verbose:
-                click.echo(
-                    f"Warning: Could not parse AI response for revision: {revision['reason'][:30]}..."
-                )
+            # Parse the AI response as JSON - should be an array of modified scenes
+            modified_scenes = json.loads(response)
+
+            if not isinstance(modified_scenes, list):
+                raise ValueError("Expected JSON array of modified scenes")
+
+            # Update the current story with modified scenes
+            scene_dict = {scene["id"]: scene for scene in current_story["scene_sequels"]}
+
+            for modified_scene in modified_scenes:
+                if "id" not in modified_scene:
+                    raise ValueError("Modified scene missing 'id' field")
+                scene_id = modified_scene["id"]
+                if scene_id in scene_dict:
+                    scene_dict[scene_id] = modified_scene
+                else:
+                    # New scene, add it
+                    current_story["scene_sequels"].append(modified_scene)
+
+            # Rebuild the scene_sequels array in original order
+            current_story["scene_sequels"] = [
+                scene_dict[sid]
+                for sid in [s["id"] for s in current_story["scene_sequels"]]
+                if sid in scene_dict
+            ]
+
+        except json.JSONDecodeError as e:
+            error_msg = (
+                f"Could not parse AI response for revision '{revision['reason'][:30]}...': {e}"
+            )
+            click.echo(f"Warning: {error_msg} - skipping this revision", err=True)
+            # Continue with next revision instead of failing
+            continue
+        except ValueError as e:
+            error_msg = (
+                f"Invalid AI response format for revision '{revision['reason'][:30]}...': {e}"
+            )
+            click.echo(f"Warning: {error_msg} - skipping this revision", err=True)
+            # Continue with next revision instead of failing
             continue
 
     return current_story
-
-
-async def _start_idea_job(
-    idea_file: str, output: str, model: str | None, max_cost: float | None
-) -> str:
-    """Start an idea analysis job."""
-    config = load_editorial_config()
-
-    # Initialize components
-    model_manager = ModelManager(config)
-    if model:
-        model_manager.current_model = model
-
-    job_manager = JobManager(Path(config.get("job_storage_dir", "./jobs")))
-
-    # Load input data
-    context = await _load_story_context_from_idea_file(idea_file)
-
-    # Create job config
-    job_config = {
-        "model": model_manager.current_model,
-        "max_cost_usd": max_cost,
-        "output_file": output,
-        "batch_size": 1,  # Not used for idea analysis
-        "max_concurrent_batches": 1,
-    }
-
-    # Start the job
-    job_id = await job_manager.start_job("idea", context, job_config)
-    return job_id
-
-
-async def _start_content_job(
-    prose_file: str,
-    focus: str,
-    output: str,
-    model: str | None,
-    max_cost: float | None,
-    batch_size: int,
-) -> str:
-    """Start a content analysis job."""
-    config = load_editorial_config()
-
-    # Initialize components
-    model_manager = ModelManager(config)
-    if model:
-        model_manager.current_model = model
-
-    job_manager = JobManager(Path(config.get("job_storage_dir", "./jobs")))
-
-    # Load input data
-    context = await _load_story_context_from_prose_file(prose_file)
-
-    # Create job config
-    job_config = {
-        "model": model_manager.current_model,
-        "max_cost_usd": max_cost,
-        "output_file": output,
-        "focus": focus,
-        "batch_size": batch_size,
-        "max_concurrent_batches": 3,
-    }
-
-    # For now, run synchronously instead of as background job
-    # TODO: Implement true background job processing
-    job_id = str(uuid.uuid4())
-
-    # Create job metadata
-    from datetime import datetime
-
-    from ..core.job_manager import JobMetadata, JobStatus
-
-    metadata = JobMetadata(
-        job_id=job_id,
-        editor_type=f"content-{focus}",
-        model_used=model_manager.current_model,
-        batch_size=batch_size,
-        max_concurrent_batches=3,
-    )
-
-    # Save initial metadata
-    await job_manager._save_job_metadata(metadata)
-
-    try:
-        # Run the analysis synchronously
-        metadata.status = JobStatus.RUNNING
-        metadata.started_at = datetime.now()
-        await job_manager._save_job_metadata(metadata)
-
-        # Create editor
-        editor = await job_manager._create_editor(f"content-{focus}", job_config)
-
-        # Run analysis
-        feedback = await editor.analyze(context)
-
-        # Save results
-        await job_manager._save_job_result(job_id, feedback)
-        if output:
-            await job_manager._save_user_result(output, feedback)
-
-        # Update metadata
-        metadata.status = JobStatus.COMPLETED
-        metadata.completed_at = datetime.now()
-        metadata.progress = 1.0
-        metadata.duration_seconds = (metadata.completed_at - metadata.started_at).total_seconds()
-        await job_manager._save_job_metadata(metadata)
-
-        click.echo(f"Job {job_id} completed successfully")
-
-    except Exception as e:
-        metadata.status = JobStatus.FAILED
-        metadata.error_message = str(e)
-        metadata.completed_at = datetime.now()
-        await job_manager._save_job_metadata(metadata)
-        click.echo(f"Job {job_id} failed: {e}", err=True)
-        raise
-
-    return job_id
-
-
-async def _show_job_status(job_id: str):
-    """Show detailed job status."""
-    try:
-        config = load_editorial_config()
-        job_manager = JobManager(Path(config.get("job_storage_dir", "./jobs")))
-
-        metadata = await job_manager.get_job_status(job_id)
-        if not metadata:
-            click.echo(f"Job {job_id} not found", err=True)
-            return
-
-        click.echo(f"Job ID: {metadata.job_id}")
-        click.echo(f"Status: {metadata.status.value}")
-        click.echo(f"Editor: {metadata.editor_type}")
-        click.echo(f"Model: {metadata.model_used}")
-        click.echo(f"Progress: {metadata.progress:.1%}")
-        click.echo(f"Stage: {metadata.current_stage}")
-        click.echo(f"Created: {metadata.created_at}")
-        if metadata.started_at:
-            click.echo(f"Started: {metadata.started_at}")
-        if metadata.completed_at:
-            click.echo(f"Completed: {metadata.completed_at}")
-        if metadata.duration_seconds > 0:
-            click.echo(f"Duration: {metadata.duration_seconds:.1f}s")
-        if metadata.total_cost_usd > 0:
-            click.echo(f"Cost: ${metadata.total_cost_usd:.4f}")
-        if metadata.error_message:
-            click.echo(f"Error: {metadata.error_message}")
-
-    except Exception as e:
-        click.echo(f"Error: {e}", err=True)
-
-
-async def _pause_job(job_id: str):
-    """Pause a job."""
-    try:
-        config = load_editorial_config()
-        job_manager = JobManager(Path(config.get("job_storage_dir", "./jobs")))
-
-        success = await job_manager.pause_job(job_id)
-        if success:
-            click.echo(f"Job {job_id} paused")
-        else:
-            click.echo(f"Failed to pause job {job_id}", err=True)
-
-    except Exception as e:
-        click.echo(f"Error: {e}", err=True)
-
-
-async def _resume_job(job_id: str):
-    """Resume a job."""
-    try:
-        config = load_editorial_config()
-        job_manager = JobManager(Path(config.get("job_storage_dir", "./jobs")))
-
-        success = await job_manager.resume_job(job_id)
-        if success:
-            click.echo(f"Job {job_id} resumed")
-        else:
-            click.echo(f"Failed to resume job {job_id}", err=True)
-
-    except Exception as e:
-        click.echo(f"Error: {e}", err=True)
-
-
-async def _cancel_job(job_id: str):
-    """Cancel a job."""
-    try:
-        config = load_editorial_config()
-        job_manager = JobManager(Path(config.get("job_storage_dir", "./jobs")))
-
-        success = await job_manager.cancel_job(job_id)
-        if success:
-            click.echo(f"Job {job_id} cancelled")
-        else:
-            click.echo(f"Failed to cancel job {job_id}", err=True)
-
-    except Exception as e:
-        click.echo(f"Error: {e}", err=True)
-
-
-async def _list_jobs(status_filter: JobStatus | None):
-    """List jobs."""
-    try:
-        config = load_editorial_config()
-        job_manager = JobManager(Path(config.get("job_storage_dir", "./jobs")))
-
-        jobs = await job_manager.list_jobs(status_filter)
-        assert jobs is not None  # list_jobs should never return None
-
-        if not jobs:
-            click.echo("No jobs found")
-            return
-
-        click.echo(f"{'Job ID':<36} {'Status':<10} {'Editor':<12} {'Progress':<10} {'Created':<19}")
-        click.echo("-" * 90)
-
-        for job in jobs:
-            progress = f"{job.progress:.0%}"
-            created = job.created_at.strftime("%Y-%m-%d %H:%M:%S")
-            click.echo(
-                f"{job.job_id:<36} {job.status.value:<10} {job.editor_type:<12} {progress:<10} {created:<19}"
-            )
-
-    except Exception as e:
-        click.echo(f"Error: {e}", err=True)
-
-
-async def _create_mock_editor(
-    editor_type: str, model_manager: ModelManager, config: dict[str, Any]
-):
-    """Create appropriate editor based on type."""
-
-    if editor_type == "structural":
-        # Use StructuralEditor for scene and structure analysis
-        return StructuralEditor(model_manager, config)
-    elif editor_type == "continuity":
-        # Use ContinuityEditor for character and plot consistency
-        return ContinuityEditor(model_manager, config)
-    elif editor_type == "style":
-        # Use StyleEditor for POV, voice, and prose analysis
-        return StyleEditor(model_manager, config)
-    elif editor_type == "comprehensive":
-        # Use ComprehensiveEditor for combined analysis
-        return ComprehensiveEditor(model_manager, config)
-    else:
-        # Use mock editor for idea analysis (for now)
-        class MockEditor:
-            def __init__(self, editor_type, model_manager, config):
-                self.editor_type = editor_type
-                self.model_manager = model_manager
-                self.config = config
-
-            async def analyze(self, context):
-                # Perform actual AI analysis
-                if context.story_idea:
-                    prompt = f"""Analyze this story idea for conceptual strength and provide editorial feedback. Focus on:
-
-1. Plot structure and pacing
-2. Character development potential
-3. Thematic depth
-4. Originality and marketability
-5. Areas for improvement
-
-Story Idea:
-{json.dumps(context.story_idea, indent=2)}
-
-Provide a comprehensive editorial assessment with specific strengths and actionable suggestions."""
-                else:
-                    prompt = f"Analyze this content for {self.editor_type}"
-
-                response = await self.model_manager.call_model(
-                    prompt=prompt,
-                    temperature=0.3,
-                    max_tokens=1000,
-                )
-
-                # Create feedback from AI response
-                feedback = EditorialFeedback(
-                    editor_type=self.editor_type,
-                    overall_assessment=response[:500] + "..." if len(response) > 500 else response,
-                    issues=[
-                        EditorialIssue(
-                            severity="info",
-                            category="conceptual",
-                            description="AI analysis completed - see overall assessment",
-                            suggestion="Review the detailed feedback above",
-                            confidence_score=0.9,
-                        )
-                    ],
-                    suggested_revisions=[],
-                    strengths=["AI-powered analysis performed", "Detailed feedback provided"],
-                    metadata={
-                        "timestamp": datetime.now().isoformat(),
-                        "model_used": self.model_manager.current_model,
-                        "cost_usd": 0.01,  # Will be calculated properly later
-                        "ai_response": response,
-                        "analysis_type": "idea_editorial_review",
-                    },
-                )
-                return feedback
-
-            def validate_input(self, context):
-                # Basic validation
-                errors = []
-                if not context.story_idea and self.editor_type.startswith("idea"):
-                    errors.append("Story idea required for idea editor")
-                if not context.prose and self.editor_type.startswith("content"):
-                    errors.append("Prose required for content editor")
-                return errors
-
-        return MockEditor(editor_type, model_manager, config)
-
-
-async def _load_story_context_from_idea_file(idea_file: str) -> StoryContext:
-    """Load story context from idea file."""
-    try:
-        with open(idea_file, encoding="utf-8") as f:
-            idea_data = json.load(f)
-
-        # Create context with the idea data
-        context = StoryContext()
-        context.story_idea = idea_data  # Store the raw idea data
-        return context
-    except Exception as e:
-        raise click.ClickException(f"Failed to load idea file {idea_file}: {e}")
 
 
 async def _load_story_context_from_prose_file(prose_file: str) -> StoryContext:

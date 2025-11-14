@@ -12,13 +12,12 @@ from storygen.generator import StoryGenerator
 
 # Import editorial commands
 try:
-    from .editorial.cli.commands import edit, job
+    from .editorial.cli.commands import edit
 
     EDITORIAL_AVAILABLE = True
 except ImportError:
     EDITORIAL_AVAILABLE = False
     edit: click.Group | None = None
-    job: click.Group | None = None
 
 # Load environment variables (for API keys)
 load_dotenv()
@@ -203,7 +202,6 @@ def generate(
 # Add editorial commands if available
 if EDITORIAL_AVAILABLE:
     main.add_command(edit)
-    main.add_command(job)
 
 
 if __name__ == "__main__":
