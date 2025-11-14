@@ -139,7 +139,7 @@ class TestConfigManager:
         """Create a config manager for testing."""
         # Use the actual project config directory
         project_root = Path(__file__).parent.parent.parent
-        config_dir = project_root / "config"
+        config_dir = project_root / "src" / "config"
         return ConfigManager(config_dir)
 
     def test_default_config(self, config_manager):
@@ -148,7 +148,7 @@ class TestConfigManager:
 
         assert "models" in config
         assert "editorial" in config
-        assert config["models"]["default"] == "ollama/qwen3:30b"
+        assert config["models"]["default"] == "xai/grok-4-fast-reasoning"
 
     def test_editorial_config(self, config_manager):
         """Test loading editorial configuration."""

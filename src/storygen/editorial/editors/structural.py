@@ -1,7 +1,7 @@
 """Structural editor for analyzing story prose content."""
 
 import asyncio
-from typing import Any
+from typing import Any, cast
 
 from ..base import BaseEditor, EditorialFeedback, EditorialIssue, StoryContext
 from ..core.model_manager import ModelManager
@@ -268,7 +268,7 @@ Provide specific feedback on strengths and areas for improvement."""
 
         # Try different ways to extract scenes
         if hasattr(context.prose, "scenes") and context.prose.scenes:
-            return context.prose.scenes
+            return cast(list[dict[str, Any]], context.prose.scenes)
         elif hasattr(context.prose, "content"):
             # Split content into scenes by common delimiters
             content = str(context.prose.content)
@@ -292,7 +292,7 @@ Provide specific feedback on strengths and areas for improvement."""
                 # Fallback: treat entire content as one scene
                 scenes = [{"title": "Main Scene", "content": content}]
 
-            return scenes
+            return cast(list[dict[str, Any]], scenes)
 
         return []
 
@@ -302,7 +302,7 @@ Provide specific feedback on strengths and areas for improvement."""
             return ""
 
         if hasattr(context.prose, "to_text"):
-            return context.prose.to_text()
+            return cast(str, context.prose.to_text())
         elif hasattr(context.prose, "content"):
             return str(context.prose.content)
         else:

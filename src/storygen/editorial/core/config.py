@@ -119,7 +119,7 @@ class ConfigManager:
             # Use print instead of logger to avoid logging issues during config loading
             print("Warning: Editorial config file not found, using defaults")
 
-        return main_config.get("editorial", self._get_default_config()["editorial"])
+        return main_config.get("editorial", self._get_default_config()["editorial"])  # type: ignore[no-any-return]
 
     def get_model_config(self, model_name: str | None = None) -> dict[str, Any]:
         """Get model configuration."""
@@ -132,20 +132,20 @@ class ConfigManager:
                 if provider == "default":
                     continue
                 if model_name in provider_config.get("supported_models", []):
-                    return {"provider": provider, "model": model_name, **provider_config}
+                    return {"provider": provider, "model": model_name, **provider_config}  # type: ignore[no-any-return]
             # Model not found, return default
             return {
                 "provider": "ollama",
                 "model": models_config.get("default", "ollama/qwen3:30b"),
                 **models_config.get("ollama", {}),
-            }
+            }  # type: ignore[no-any-return]
 
-        return models_config
+        return models_config  # type: ignore[no-any-return]
 
     def get_logging_config(self) -> dict[str, Any]:
         """Get logging configuration."""
         config = self.load_main_config()
-        return config.get("logging", {"level": "INFO", "file": "logs/editorial.log"})
+        return config.get("logging", {"level": "INFO", "file": "logs/editorial.log"})  # type: ignore[no-any-return]
 
 
 # Global config manager instance

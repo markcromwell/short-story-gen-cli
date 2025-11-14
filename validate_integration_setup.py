@@ -9,6 +9,7 @@ without running expensive full pipeline tests.
 import os
 import sys
 from pathlib import Path
+from typing import cast
 
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent / "src"))
@@ -24,7 +25,7 @@ def test_api_connectivity():
         try:
             import litellm
 
-            response = litellm.completion(
+            litellm.completion(
                 model="xai/grok-4-fast-reasoning",
                 messages=[{"role": "user", "content": "Hello"}],
                 max_tokens=10,
@@ -63,7 +64,7 @@ def test_test_infrastructure():
 
         # Show pitch summary
         for pitch in pitches:
-            genres = len(pitch["expected_genres"])
+            genres = len(cast(list, pitch["expected_genres"]))
             print(f"      • {pitch['name']}: {pitch['word_count']:,} words, {genres} genres")
 
     except Exception as e:

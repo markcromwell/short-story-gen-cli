@@ -17,7 +17,7 @@ try:
     EDITORIAL_AVAILABLE = True
 except ImportError:
     EDITORIAL_AVAILABLE = False
-    edit: click.Group | None = None
+    edit_command: click.Group | None = None
 
 # Load environment variables (for API keys)
 load_dotenv()

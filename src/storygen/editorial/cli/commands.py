@@ -151,13 +151,13 @@ async def _run_analysis(
 
         # Create appropriate editor
         if focus == "structural":
-            editor = StructuralEditor(model_manager, config)
+            editor = StructuralEditor(model_manager, config)  # type: ignore[assignment]
         elif focus == "continuity":
-            editor = ContinuityEditor(model_manager, config)
+            editor = ContinuityEditor(model_manager, config)  # type: ignore[assignment]
         elif focus == "style":
-            editor = StyleEditor(model_manager, config)
+            editor = StyleEditor(model_manager, config)  # type: ignore[assignment]
         elif focus == "comprehensive":
-            editor = ComprehensiveEditor(model_manager, config)
+            editor = ComprehensiveEditor(model_manager, config)  # type: ignore[assignment]
         else:
             raise ValueError(f"Unknown focus: {focus}")
 
@@ -584,7 +584,7 @@ Return the story in this JSON format:
         if "metadata" not in story_data:
             story_data["metadata"] = {}
         story_data["metadata"]["cost_usd"] = 0.05  # Approximate cost
-        return story_data
+        return story_data  # type: ignore[no-any-return]
     except json.JSONDecodeError:
         # Fallback: create basic structure from text response
         return {
@@ -602,7 +602,7 @@ Return the story in this JSON format:
                 "genre": "fiction",
                 "cost_usd": 0.05,
             },
-        }
+        }  # type: ignore[return-value]
 
 
 async def _analyze_story_quality(
@@ -656,7 +656,7 @@ Provide your analysis in this JSON format:
 
     try:
         feedback_data = json.loads(response)
-        return feedback_data
+        return feedback_data  # type: ignore[no-any-return]
     except json.JSONDecodeError:
         # Fallback feedback structure
         return {
@@ -673,7 +673,7 @@ Provide your analysis in this JSON format:
             "suggested_revisions": [],
             "strengths": ["AI-powered analysis performed"],
             "metadata": {"cost_usd": 0.02},
-        }
+        }  # type: ignore[return-value]
 
 
 async def _revise_story(
@@ -726,7 +726,7 @@ Return the complete revised story in the same JSON format. Only modify the parts
         current_story["metadata"] = {}
     current_story["metadata"]["cost_usd"] = 0.04  # Approximate revision cost
 
-    return current_story
+    return current_story  # type: ignore[return-value]
 
 
 def _extract_quality_score(feedback_data: dict) -> float:

@@ -427,8 +427,18 @@ class TestBreakdownGeneratorBuildPrompt:
             characters=characters,
             locations=locations,
             act_word_count=1000,
+            scene_guidelines={
+                "total_scene_units": 5,
+                "min_scenes": 3,
+                "max_scenes": 4,
+                "min_sequels": 1,
+                "max_sequels": 2,
+                "min_words_per_unit": 600,
+                "max_words_per_unit": 1800,
+            },
             current_time=0.0,
             starting_id=1,
+            target_words=5000,
         )
 
         # Check system prompt
@@ -500,8 +510,18 @@ class TestBreakdownGeneratorBuildPrompt:
             characters=characters,
             locations=locations,
             act_word_count=500,
+            scene_guidelines={
+                "total_scene_units": 5,
+                "min_scenes": 3,
+                "max_scenes": 4,
+                "min_sequels": 1,
+                "max_sequels": 2,
+                "min_words_per_unit": 600,
+                "max_words_per_unit": 1800,
+            },
             current_time=0.0,
             starting_id=1,
+            target_words=5000,
         )
 
         assert "Hero" in user_prompt
@@ -561,8 +581,18 @@ class TestBreakdownGeneratorBuildPrompt:
             characters=characters,
             locations=locations,
             act_word_count=500,
+            scene_guidelines={
+                "total_scene_units": 5,
+                "min_scenes": 3,
+                "max_scenes": 4,
+                "min_sequels": 1,
+                "max_sequels": 2,
+                "min_words_per_unit": 600,
+                "max_words_per_unit": 1800,
+            },
             current_time=0.0,
             starting_id=1,
+            target_words=5000,
         )
 
         assert "Castle" in user_prompt

@@ -1,6 +1,6 @@
 """Continuity editor for analyzing character and plot consistency."""
 
-from typing import Any
+from typing import Any, cast
 
 from ..base import BaseEditor, EditorialFeedback, EditorialIssue, RevisionSuggestion, StoryContext
 from ..core.model_manager import ModelManager
@@ -487,12 +487,12 @@ Provide specific feedback on any world-building continuity issues found."""
 
         if hasattr(context.prose, "scenes") and context.prose.scenes:
             scenes = context.prose.scenes
-            return list(scenes) if scenes else []
+            return cast(list[dict[str, Any]], list(scenes) if scenes else [])
         elif hasattr(context.prose, "content"):
             content = str(context.prose.content)
             # Simple scene splitting - in practice this could be more sophisticated
             scenes = [{"title": "Main Content", "content": content}]
-            return scenes
+            return cast(list[dict[str, Any]], scenes)
 
         return []
 

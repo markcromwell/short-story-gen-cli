@@ -44,7 +44,7 @@ class CostTracker:
         if since:
             events = [e for e in events if datetime.fromisoformat(e["timestamp"]) > since]
 
-        return sum(e["cost_usd"] for e in events)
+        return sum(e["cost_usd"] for e in events)  # type: ignore[no-any-return]
 
     def _calculate_cost(self, model: str, input_tokens: int, output_tokens: int) -> float:
         """Calculate cost for a usage event."""
@@ -218,7 +218,7 @@ class ModelManager:
                 temperature=temperature,
                 max_tokens=max_tokens,
             )
-            return response.choices[0].message.content
+            return response.choices[0].message.content  # type: ignore[no-any-return]
         except Exception as e:
             self.logger.error(f"xAI API call failed: {e}")
             raise ModelError(f"xAI API call failed: {e}") from e

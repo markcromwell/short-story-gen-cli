@@ -24,6 +24,7 @@ For overnight runs with Ollama:
 
 import os
 from datetime import datetime
+from typing import cast
 
 import pytest
 
@@ -150,9 +151,9 @@ class TestFullPipeline:
         # Run the full pipeline
         await generate_all_async(
             name=project_name,
-            pitch=test_case["pitch"],
-            words=test_case["word_count"],
-            story_type=test_case["story_type"],
+            pitch=cast(str, test_case["pitch"]),
+            words=cast(int, test_case["word_count"]),
+            story_type=cast(str, test_case["story_type"]),
             model=test_model,
             timeout=600,  # 10 minutes per step
             retries=2,
@@ -205,9 +206,9 @@ class TestFullPipeline:
         # Run with strict cost limit
         await generate_all_async(
             name=project_name,
-            pitch=test_case["pitch"],
-            words=test_case["word_count"],
-            story_type=test_case["story_type"],
+            pitch=cast(str, test_case["pitch"]),
+            words=cast(int, test_case["word_count"]),
+            story_type=cast(str, test_case["story_type"]),
             model=test_model,
             timeout=300,  # Shorter timeout for cost control
             retries=1,  # Fewer retries
@@ -241,9 +242,9 @@ class TestFullPipeline:
 
         await generate_all_async(
             name=project_name,
-            pitch=test_case["pitch"],
-            words=test_case["word_count"],
-            story_type=test_case["story_type"],
+            pitch=cast(str, test_case["pitch"]),
+            words=cast(int, test_case["word_count"]),
+            story_type=cast(str, test_case["story_type"]),
             model=test_model,
             timeout=900,  # 15 minutes for longer works
             retries=2,
@@ -277,9 +278,9 @@ class TestFullPipeline:
         # This should succeed
         await generate_all_async(
             name=project_name,
-            pitch=test_case["pitch"],
-            words=test_case["word_count"],
-            story_type=test_case["story_type"],
+            pitch=cast(str, test_case["pitch"]),
+            words=cast(int, test_case["word_count"]),
+            story_type=cast(str, test_case["story_type"]),
             model=test_model,
             timeout=600,
             retries=2,
@@ -314,7 +315,7 @@ class TestFullPipeline:
         try:
             await generate_all_async(
                 name=project_name_xai,
-                pitch=test_case["pitch"],
+                pitch=cast(str, test_case["pitch"]),
                 words=3000,  # Shorter for speed
                 story_type="short-story",
                 model="xai/grok-4-fast-reasoning",
@@ -336,7 +337,7 @@ class TestFullPipeline:
         try:
             await generate_all_async(
                 name=project_name_ollama,
-                pitch=test_case["pitch"],
+                pitch=cast(str, test_case["pitch"]),
                 words=3000,  # Shorter for speed
                 story_type="short-story",
                 model="ollama/qwen2.5:7b",
