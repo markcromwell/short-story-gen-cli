@@ -277,6 +277,7 @@ async def _run_iterative_workflow(
         total_cost = 0.0
         current_story = None
         feedback_data = None
+        quality_score = None
         iteration = 0
 
         # Generate output filename if not provided
@@ -361,11 +362,12 @@ async def _run_iterative_workflow(
             click.echo()
 
         # Save final result
+        final_quality_score = quality_score if quality_score is not None else 0.0
         final_data = {
             "story": current_story,
             "workflow_metadata": {
                 "iterations_completed": iteration,
-                "final_quality_score": quality_score,
+                "final_quality_score": final_quality_score,
                 "total_cost_usd": total_cost,
                 "timestamp": datetime.now().isoformat(),
                 "model_used": model_manager.current_model,
@@ -380,7 +382,7 @@ async def _run_iterative_workflow(
             json.dump(final_data, f, indent=2)
 
         click.echo("\n🎉 Workflow complete!")
-        click.echo(f"Final quality score: {quality_score}/10")
+        click.echo(f"Final quality score: {final_quality_score}/10")
         click.echo(f"Iterations completed: {iteration}")
         click.echo(f"Total cost: ${total_cost:.4f}")
         click.echo(f"Result saved to: {output}")
@@ -463,6 +465,7 @@ Return ONLY the JSON array, no additional text or explanation."""
                 else:
                     # New scene, add it
                     current_story["scene_sequels"].append(modified_scene)
+                    scene_dict[scene_id] = modified_scene
 
             # Rebuild the scene_sequels array in original order
             current_story["scene_sequels"] = [

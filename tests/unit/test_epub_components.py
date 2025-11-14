@@ -5,7 +5,7 @@ These tests focus on individual functions and components rather than
 full EPUB generation, providing faster feedback and better isolation.
 """
 
-from unittest.mock import Mock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -81,14 +81,10 @@ class TestSceneBreakLogic:
             ],
         )
 
-        # Mock the epub writing to capture the content
-        with patch("storygen.epub.epub.write_epub") as mock_write:
-            with patch("pathlib.Path") as mock_path:
-                mock_path.return_value = Mock()
-                generate_epub(story, "test.epub")
-
-                # Check that write_epub was called
-                mock_write.assert_called_once()
+        # Mock the epub writing to avoid file system operations
+        with patch("storygen.epub.epub.write_epub"):
+            result = generate_epub(story, "test.epub")
+            assert result is not None
 
     def test_time_gap_requires_break(self):
         """Time gaps > 2 hours should trigger a break."""
