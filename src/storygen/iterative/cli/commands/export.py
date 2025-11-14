@@ -24,6 +24,57 @@ logger = logging.getLogger(__name__)
     help="Author name for EPUB metadata (default: AI Generated)",
 )
 @click.option(
+    "--publisher",
+    help="Publisher name for EPUB metadata",
+)
+@click.option(
+    "--rights",
+    help="Copyright/rights text for EPUB metadata",
+)
+@click.option(
+    "--series",
+    help="Series name for collection metadata",
+)
+@click.option(
+    "--series-number",
+    type=int,
+    help="Position in series (requires --series)",
+)
+@click.option(
+    "--include-copyright",
+    is_flag=True,
+    help="Generate copyright page",
+)
+@click.option(
+    "--isbn",
+    help="ISBN for copyright page",
+)
+@click.option(
+    "--edition",
+    help="Edition info for copyright page",
+)
+@click.option(
+    "--nav-in-spine/--no-nav-in-spine",
+    default=True,
+    help="Include nav.xhtml in reading order (default: yes)",
+)
+@click.option(
+    "--style-nav",
+    is_flag=True,
+    help="Apply CSS styling to navigation",
+)
+@click.option(
+    "--accessible",
+    is_flag=True,
+    help="Include accessibility metadata",
+)
+@click.option(
+    "--retail-mode",
+    type=click.Choice(["none", "kindle", "apple", "kobo"]),
+    default="none",
+    help="Optimize for specific retailer",
+)
+@click.option(
     "--title",
     help="Override story title (AI-generated from content if not provided)",
 )
@@ -70,6 +121,17 @@ def epub(
     model: str,
     verbose: bool,
     projects_dir: str,
+    publisher: str | None,
+    rights: str | None,
+    series: str | None,
+    series_number: int | None,
+    include_copyright: bool,
+    isbn: str | None,
+    edition: str | None,
+    nav_in_spine: bool,
+    style_nav: bool,
+    accessible: bool,
+    retail_mode: str,
 ):
     """Generate EPUB for a project with intelligent chapter breaks.
 
@@ -153,6 +215,17 @@ def epub(
             target_chapter_length=chapter_length,
             model=model,
             verbose=verbose,
+            publisher=publisher,
+            rights=rights,
+            series=series,
+            series_number=series_number,
+            include_copyright=include_copyright,
+            isbn=isbn,
+            edition=edition,
+            nav_in_spine=nav_in_spine,
+            style_nav=style_nav,
+            include_accessibility=accessible,
+            retail_mode=retail_mode,  # type: ignore
         )
 
         epub_path = formatter.format(

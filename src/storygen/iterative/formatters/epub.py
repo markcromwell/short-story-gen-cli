@@ -281,8 +281,18 @@ class EpubFormatter:
         publisher: str | None = None,
         rights: str | None = None,
         contributor: str | None = None,
+        # Series metadata
+        series: str | None = None,
+        series_number: int | None = None,
+        # Copyright page options
+        include_copyright: bool = False,
+        isbn: str | None = None,
+        edition: str | None = None,
         # Scene break styling
         scene_break_style: Literal["asterism", "ornament", "blank", "glyph"] = "asterism",
+        # Navigation and spine options
+        nav_in_spine: bool = True,
+        style_nav: bool = False,
         # Accessibility and retail options
         include_accessibility: bool = False,
         retail_mode: Literal["none", "kindle", "apple", "kobo"] = "none",
@@ -299,7 +309,14 @@ class EpubFormatter:
             publisher: Publisher name for metadata
             rights: Rights/copyright information
             contributor: Additional contributor (e.g., AI model)
+            series: Series name for collection metadata
+            series_number: Position in series
+            include_copyright: Generate copyright page
+            isbn: ISBN for copyright page
+            edition: Edition info for copyright page
             scene_break_style: Style for scene breaks
+            nav_in_spine: Include nav.xhtml in reading order
+            style_nav: Apply CSS styling to navigation
             include_accessibility: Include accessibility metadata
             retail_mode: Optimize for specific retailer
         """
@@ -311,7 +328,14 @@ class EpubFormatter:
         self.publisher = publisher
         self.rights = rights
         self.contributor = contributor
+        self.series = series
+        self.series_number = series_number
+        self.include_copyright = include_copyright
+        self.isbn = isbn
+        self.edition = edition
         self.scene_break_style = scene_break_style
+        self.nav_in_spine = nav_in_spine
+        self.style_nav = style_nav
         self.include_accessibility = include_accessibility
         self.retail_mode = retail_mode
 
@@ -432,6 +456,15 @@ class EpubFormatter:
         if self.contributor:
             book.add_metadata("DC", "contributor", self.contributor)
 
+        # Series metadata (EPUB 3)
+        if self.series:
+            book.add_metadata(None, "meta", self.series, {"property": "belongs-to-collection"})
+            book.add_metadata(None, "meta", "series", {"property": "collection-type"})
+            if self.series_number:
+                book.add_metadata(
+                    None, "meta", str(self.series_number), {"property": "group-position"}
+                )
+
         # Rendition properties for better compatibility
         book.add_metadata(None, "meta", "reflowable", {"property": "rendition:layout"})
         book.add_metadata(None, "meta", "auto", {"property": "rendition:orientation"})
@@ -465,6 +498,12 @@ class EpubFormatter:
         title_page = self._create_title_page(book, title, story_idea, style_item)
         book.add_item(title_page)
 
+        # Copyright page (optional)
+        copyright_page = None
+        if self.include_copyright:
+            copyright_page = self._create_copyright_page(book, style_item)
+            book.add_item(copyright_page)
+
         # Group scene-sequels by chapter
         chapter_groups = self._group_by_chapters(scene_sequels, chapter_breaks)
 
@@ -485,6 +524,8 @@ class EpubFormatter:
 
         # Table of Contents
         toc_items = [epub.Link("title.xhtml", "Title Page", "title")]
+        if copyright_page:
+            toc_items.append(epub.Link("copyright.xhtml", "Copyright", "copyright"))
         for i, chapter_item in enumerate(chapter_items, 1):
             chapter_break = chapter_breaks[i - 1]
             label = (
@@ -504,13 +545,29 @@ class EpubFormatter:
         book.toc = tuple(toc_items)  # type: ignore
 
         # Navigation
+        nav_item = epub.EpubNav()
+        if self.style_nav:
+            nav_item.add_item(style_item)
         book.add_item(epub.EpubNcx())
-        book.add_item(epub.EpubNav())
+        book.add_item(nav_item)
 
-        # Spine
-        spine: list[epub.EpubItem] = ["nav", title_page] + chapter_items
+        # Spine - handle nav inclusion based on settings and retail mode
+        include_nav_in_spine = self.nav_in_spine
+        if self.retail_mode in ["apple", "kobo"]:
+            include_nav_in_spine = False  # Retailers prefer nav not in spine
+
+        spine_items = [title_page]
+        if copyright_page:
+            spine_items.append(copyright_page)
+        spine_items.extend(chapter_items)
         if dramatis_personae:
-            spine.append(dramatis_personae)
+            spine_items.append(dramatis_personae)
+
+        if include_nav_in_spine:
+            spine = [nav_item] + spine_items
+        else:
+            spine = spine_items
+
         book.spine = spine
 
         # Validate spine and navigation consistency
@@ -569,7 +626,7 @@ class EpubFormatter:
         if not epub_path.exists():
             return {"valid": False, "error": "EPUB file does not exist"}
 
-        report = {
+        report: dict[str, Any] = {
             "valid": True,
             "issues": [],
             "structure": {},
@@ -701,6 +758,45 @@ class EpubFormatter:
 """
         title_page.add_item(style_item)
         return title_page
+
+    def _create_copyright_page(
+        self,
+        book: epub.EpubBook,
+        style_item: epub.EpubItem,
+    ) -> epub.EpubHtml:
+        """Create copyright page."""
+        copyright = epub.EpubHtml(
+            title="Copyright",
+            file_name="copyright.xhtml",
+            lang="en",
+        )
+
+        parts = ['<div class="copyright-page">']
+        parts.append('<h2 class="section-title">Copyright</h2>')
+
+        # Publisher
+        if self.publisher:
+            parts.append(f"<p><strong>Publisher:</strong> {html.escape(self.publisher)}</p>")
+
+        # Rights
+        if self.rights:
+            parts.append(f"<p>{html.escape(self.rights)}</p>")
+        else:
+            parts.append("<p>Copyright © 2024. All rights reserved.</p>")
+
+        # Edition
+        if self.edition:
+            parts.append(f"<p><strong>Edition:</strong> {html.escape(self.edition)}</p>")
+
+        # ISBN
+        if self.isbn:
+            parts.append(f"<p><strong>ISBN:</strong> {html.escape(self.isbn)}</p>")
+
+        parts.append("</div>")
+
+        copyright.content = "\n".join(parts)
+        copyright.add_item(style_item)
+        return copyright
 
     def _create_chapter(
         self,
@@ -842,7 +938,7 @@ class EpubFormatter:
         self,
         book: epub.EpubBook,
         toc_items: list[epub.Link],
-        spine: list,
+        spine: list[epub.EpubItem],
     ) -> None:
         """Validate that spine and navigation are consistent."""
         # Extract file names from spine (skip 'nav' which is auto-generated)
