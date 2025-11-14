@@ -43,8 +43,8 @@ storygen-iter generate prose
 # New editorial commands
 storygen-iter edit idea --idea idea.json -o feedback.json
 storygen-iter edit content --prose prose.json -o structural_feedback.json
-storygen-iter job start --editor content --input manuscript.json --background
-storygen-iter job status abc123-def456-ghi789
+storygen-iter edit analyze --prose prose.json --focus comprehensive -o analysis.json
+storygen-iter edit revise --prose prose.json --feedback analysis.json -o revised.json
 ```
 
 ### Configuration Integration
@@ -141,7 +141,6 @@ src/editorial/
 ├── core/
 │   ├── __init__.py
 │   ├── model_manager.py # ModelManager
-│   ├── job_manager.py   # JobManager
 │   ├── cost_tracker.py  # CostTracker
 │   └── context.py       # ContextManager
 ├── cli/
@@ -159,7 +158,6 @@ tests/
 └── editorial/           # Editorial test suite
     ├── __init__.py
     ├── test_editors.py
-    ├── test_job_manager.py
     └── test_integration.py
 
 docs/

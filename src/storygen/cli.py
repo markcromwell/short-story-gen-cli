@@ -1,5 +1,5 @@
 """
-Command-line interface for story generation
+Command-line interface for story generation and editorial workflow
 """
 
 from pathlib import Path
@@ -10,11 +10,27 @@ from dotenv import load_dotenv
 from storygen.epub import generate_epub
 from storygen.generator import StoryGenerator
 
+# Import editorial commands
+try:
+    from .editorial.cli.commands import edit
+
+    EDITORIAL_AVAILABLE = True
+except ImportError:
+    EDITORIAL_AVAILABLE = False
+    edit_command: click.Group | None = None
+
 # Load environment variables (for API keys)
 load_dotenv()
 
 
-@click.command()
+@click.group()
+@click.version_option()
+def main():
+    """AI-powered story generation and editorial workflow tool."""
+    pass
+
+
+@main.command()
 @click.argument("prompt")
 @click.option(
     "--provider",
@@ -96,7 +112,7 @@ load_dotenv()
     is_flag=True,
     help="Show detailed debug information (prompts, responses, token usage)",
 )
-def main(
+def generate(
     prompt: str,
     provider: str,
     max_tokens: int,
@@ -113,18 +129,18 @@ def main(
     Generate a short story from a PROMPT using AI.
 
     Examples:
-        storygen "A robot learns to paint"
-        storygen --provider xai/grok-2-1212 "A space adventure"
-        storygen --structured "A mystery story"
-        storygen --structured --format json "A time travel tale" > story.json
-        storygen --epub my_story.epub "A magical adventure"
-        storygen --epub story.epub --author "John Doe" "A sci-fi tale"
-        storygen --structured --min-words 2000 "A detailed fantasy epic"
-        storygen --structured --pov first_person "A detective's case"
-        storygen --epub story.epub --pov multiple_pov "A thriller with shifting perspectives"
-        storygen --epub heist.epub --structure fichtean "A bank heist gone wrong"
-        storygen --structure heros_journey --min-words 3000 "A reluctant hero's quest"
-        storygen --structure ai_choice "A mysterious disappearance" (AI picks best structure)
+        storygen generate "A robot learns to paint"
+        storygen generate --provider xai/grok-2-1212 "A space adventure"
+        storygen generate --structured "A mystery story"
+        storygen generate --structured --format json "A time travel tale" > story.json
+        storygen generate --epub my_story.epub "A magical adventure"
+        storygen generate --epub story.epub --author "John Doe" "A sci-fi tale"
+        storygen generate --structured --min-words 2000 "A detailed fantasy epic"
+        storygen generate --structured --pov first_person "A detective's case"
+        storygen generate --epub story.epub --pov multiple_pov "A thriller with shifting perspectives"
+        storygen generate --epub heist.epub --structure fichtean "A bank heist gone wrong"
+        storygen generate --structure heros_journey --min-words 3000 "A reluctant hero's quest"
+        storygen generate --structure ai_choice "A mysterious disappearance" (AI picks best structure)
     """
     try:
         # EPUB implies structured
@@ -164,7 +180,7 @@ def main(
                 epub_path = generate_epub(story_obj, str(epub_path_obj), author=author)
                 click.echo(f"📚 EPUB generated: {epub_path}", err=True)
 
-            # Print story content only if user didn’t explicitly request EPUB-only
+            # Print story content only if user didn't explicitly request EPUB-only
             if not epub:
                 if format == "json":
                     click.echo(story_obj.to_json())
@@ -181,6 +197,11 @@ def main(
     except Exception as e:
         click.echo(f"❌ Error: {e}", err=True)
         raise click.Abort()
+
+
+# Add editorial commands if available
+if EDITORIAL_AVAILABLE:
+    main.add_command(edit)
 
 
 if __name__ == "__main__":

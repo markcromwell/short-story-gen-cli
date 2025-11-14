@@ -1,7 +1,4 @@
-"""
-Pipeline command for running full story generation in one go.
-"""
-
+import asyncio
 import logging
 from pathlib import Path
 from typing import Any
@@ -14,46 +11,7 @@ from storygen.iterative.project import ProjectManager
 logger = logging.getLogger(__name__)
 
 
-@click.command()
-@click.argument("name")
-@click.option("--pitch", required=True, help="Story pitch/concept")
-@click.option(
-    "--words",
-    type=int,
-    default=5000,
-    help="Target word count (default: 5000)",
-)
-@click.option(
-    "--type",
-    "story_type",
-    type=click.Choice(["flash-fiction", "short-story", "novelette", "novella", "novel"]),
-    default="short-story",
-    help="Story length category (default: short-story)",
-)
-@click.option(
-    "--model",
-    default=DEFAULT_MODEL,
-    help=f"AI model to use (default: {DEFAULT_MODEL})",
-)
-@click.option(
-    "--timeout",
-    type=int,
-    default=DEFAULT_TIMEOUT_SECONDS,
-    help=f"Timeout in seconds per generation step (default: {DEFAULT_TIMEOUT_SECONDS}s)",
-)
-@click.option(
-    "--retries",
-    type=int,
-    default=DEFAULT_MAX_RETRIES,
-    help=f"Maximum retry attempts (default: {DEFAULT_MAX_RETRIES})",
-)
-@click.option(
-    "--max-cost",
-    type=float,
-    default=None,
-    help="Maximum cost in USD to allow before stopping (default: no limit)",
-)
-def generate_all(
+async def generate_all_async(
     name: str,
     pitch: str,
     words: int,
@@ -63,6 +21,9 @@ def generate_all(
     retries: int,
     projects_dir: str = "projects",
     max_cost: float | None = None,
+    edit: bool = False,
+    edit_iterations: int = 1,
+    edit_quality_threshold: float = 7.0,
 ):
     """
     Generate a complete story from pitch to EPUB in one command.
@@ -95,7 +56,16 @@ def generate_all(
         click.echo(f"⏱️  Timeout: {timeout}s per step")
         if max_cost is not None:
             click.echo(f"💰 Max cost: ${max_cost:.2f}")
+        if edit:
+            click.echo("📝 Editorial workflow: ENABLED")
+            click.echo(f"🔄 Editorial iterations: {edit_iterations}")
+            click.echo(f"🎯 Quality threshold: {edit_quality_threshold}/10")
         click.echo()
+
+        # Calculate total steps
+        base_steps = 8  # Basic pipeline steps
+        editorial_steps = 7 if edit else 0  # Editorial workflow steps
+        total_steps = base_steps + editorial_steps
 
         def check_cost_limit(current_cost: float, step_name: str) -> None:
             """Check if current cost exceeds the maximum allowed cost."""
@@ -120,7 +90,7 @@ def generate_all(
 
         # Step 1: Create project
         click.echo("=" * 70)
-        click.echo("Step 1/8: Creating project...")
+        click.echo(f"Step 1/{total_steps}: Creating project...")
         click.echo("=" * 70)
         ctx = click.get_current_context()
         ctx.invoke(
@@ -134,7 +104,7 @@ def generate_all(
 
         # Step 2: Generate idea
         click.echo("\n" + "=" * 70)
-        click.echo("Step 2/8: Generating story idea...")
+        click.echo(f"Step 2/{total_steps}: Generating story idea...")
         click.echo("=" * 70)
         import json
 
@@ -168,7 +138,7 @@ def generate_all(
 
         # Step 3: Generate characters
         click.echo("\n" + "=" * 70)
-        click.echo("Step 3/8: Generating characters...")
+        click.echo(f"Step 3/{total_steps}: Generating characters...")
         click.echo("=" * 70)
         import json
 
@@ -207,7 +177,7 @@ def generate_all(
 
         # Step 4: Generate locations
         click.echo("\n" + "=" * 70)
-        click.echo("Step 4/8: Generating locations...")
+        click.echo(f"Step 4/{total_steps}: Generating locations...")
         click.echo("=" * 70)
         import json
 
@@ -244,7 +214,7 @@ def generate_all(
 
         # Step 5: Generate outline
         click.echo("\n" + "=" * 70)
-        click.echo("Step 5/8: Generating outline...")
+        click.echo(f"Step 5/{total_steps}: Generating outline...")
         click.echo("=" * 70)
         import json
 
@@ -264,14 +234,25 @@ def generate_all(
             locs_data = json.load(f)
         locations_list = [Location.from_dict(loc) for loc in locs_data]
 
+        # Choose appropriate structure type based on story length
+        structure_type = "three-act"  # default
+        if story_type == "short-story":
+            structure_type = "short-story"
+        elif story_type == "flash-fiction":
+            structure_type = "short-story"  # Use short-story template for flash fiction too
+
         outline_generator = OutlineGenerator(
-            model=model, max_retries=retries, timeout=timeout, verbose=False
+            model=model,
+            structure_type=structure_type,
+            max_retries=retries,
+            timeout=timeout,
+            verbose=False,
         )
-        click.echo(f"🤖 Calling AI with {model}...", err=True)
+        click.echo(f"🤖 Calling AI with {model} for {structure_type} structure...", err=True)
         story_outline, usage_info = outline_generator.generate(
             story_idea, characters_list, locations_list
         )
-        click.echo("✅ Generated three-act outline!", err=True)
+        click.echo(f"✅ Generated {structure_type} outline!", err=True)
 
         # Save outline
         outline_dict = story_outline.to_dict()
@@ -291,7 +272,7 @@ def generate_all(
 
         # Step 6: Generate breakdown
         click.echo("\n" + "=" * 70)
-        click.echo("Step 6/8: Generating scene-sequel breakdown...")
+        click.echo(f"Step 6/{total_steps}: Generating scene-sequel breakdown...")
         click.echo("=" * 70)
         import json
 
@@ -325,6 +306,7 @@ def generate_all(
             locations=locations_list,
             outline=story_outline,
             target_words=words,
+            story_type=story_type,
         )
         click.echo("✅ Scene-sequel breakdown generated!", err=True)
 
@@ -349,7 +331,7 @@ def generate_all(
 
         # Step 7: Generate prose
         click.echo("\n" + "=" * 70)
-        click.echo("Step 7/8: Generating prose (this may take a while)...")
+        click.echo(f"Step 7/{total_steps}: Generating prose (this may take a while)...")
         click.echo("=" * 70)
         import json
 
@@ -412,7 +394,7 @@ def generate_all(
 
         # Step 8: Generate EPUB
         click.echo("\n" + "=" * 70)
-        click.echo("Step 8/8: Generating EPUB...")
+        click.echo(f"Step 8/{total_steps}: Generating EPUB...")
         click.echo("=" * 70)
         click.echo("📚 Formatting and generating EPUB file...", err=True)
         ctx.invoke(
@@ -428,6 +410,76 @@ def generate_all(
             projects_dir=projects_dir,
         )
         click.echo("✅ EPUB generated!", err=True)
+
+        # Editorial Workflow (if enabled)
+        if edit:
+            # Step 9: Idea Editorial Analysis
+            click.echo("\n" + "=" * 70)
+            click.echo(f"Step 9/{total_steps}: Analyzing story idea...")
+            click.echo("=" * 70)
+            click.echo("📝 Editorial analysis of story concept...", err=True)
+            # TODO: Implement idea editor
+            click.echo("ℹ️  Idea editorial analysis not yet implemented - skipping", err=True)
+
+            # Step 10: Outline Editorial Analysis
+            click.echo("\n" + "=" * 70)
+            click.echo(f"Step 10/{total_steps}: Analyzing outline structure...")
+            click.echo("=" * 70)
+            click.echo("📋 Editorial analysis of story outline...", err=True)
+            # TODO: Implement outline editor
+            click.echo("ℹ️  Outline editorial analysis not yet implemented - skipping", err=True)
+
+            # Step 11: Content Editorial Analysis
+            click.echo("\n" + "=" * 70)
+            click.echo(f"Step 11/{total_steps}: Analyzing prose content...")
+            click.echo("=" * 70)
+            click.echo("📖 Editorial analysis of story content...", err=True)
+            # TODO: Implement content editor
+            click.echo("ℹ️  Content editorial analysis not yet implemented - skipping", err=True)
+
+            # Step 12: Line Editing
+            click.echo("\n" + "=" * 70)
+            click.echo(f"Step 12/{total_steps}: Line editing prose...")
+            click.echo("=" * 70)
+            click.echo("✏️  Line editing for style and voice...", err=True)
+            # TODO: Implement line editor
+            click.echo("ℹ️  Line editing not yet implemented - skipping", err=True)
+
+            # Step 13: Copyediting
+            click.echo("\n" + "=" * 70)
+            click.echo(f"Step 13/{total_steps}: Copyediting...")
+            click.echo("=" * 70)
+            click.echo("🔍 Copyediting for grammar and consistency...", err=True)
+            # TODO: Implement copyeditor
+            click.echo("ℹ️  Copyediting not yet implemented - skipping", err=True)
+
+            # Step 14: Proofreading
+            click.echo("\n" + "=" * 70)
+            click.echo(f"Step 14/{total_steps}: Proofreading...")
+            click.echo("=" * 70)
+            click.echo("📑 Final proofreading pass...", err=True)
+            # TODO: Implement proofreader
+            click.echo("ℹ️  Proofreading not yet implemented - skipping", err=True)
+
+            # Step 15: Final EPUB Export
+            click.echo("\n" + "=" * 70)
+            click.echo(f"Step 15/{total_steps}: Generating final EPUB...")
+            click.echo("=" * 70)
+            click.echo("📚 Generating final polished EPUB...", err=True)
+            # Re-export EPUB with any editorial changes
+            ctx.invoke(
+                export.epub,
+                project=name,
+                author="AI Generated (Edited)",
+                title=None,
+                chapters="act",
+                chapter_length=2000,
+                force_breaks=None,
+                model=model,
+                verbose=False,
+                projects_dir=projects_dir,
+            )
+            click.echo("✅ Final EPUB generated!", err=True)
 
         # Success!
         click.echo("\n" + "=" * 70)
@@ -476,3 +528,120 @@ def generate_all(
         click.echo("\n💡 You can resume with individual commands:", err=True)
         click.echo(f"   storygen-iter status {name}", err=True)
         raise click.Abort()
+
+
+@click.command()
+@click.argument("name")
+@click.option("--pitch", required=True, help="Story pitch/concept")
+@click.option(
+    "--words",
+    type=int,
+    default=5000,
+    help="Target word count (default: 5000)",
+)
+@click.option(
+    "--type",
+    "story_type",
+    type=click.Choice(["flash-fiction", "short-story", "novelette", "novella", "novel"]),
+    default="short-story",
+    help="Story length category (default: short-story)",
+)
+@click.option(
+    "--model",
+    default=DEFAULT_MODEL,
+    help=f"AI model to use (default: {DEFAULT_MODEL})",
+)
+@click.option(
+    "--timeout",
+    type=int,
+    default=DEFAULT_TIMEOUT_SECONDS,
+    help=f"Timeout in seconds per generation step (default: {DEFAULT_TIMEOUT_SECONDS}s)",
+)
+@click.option(
+    "--retries",
+    type=int,
+    default=DEFAULT_MAX_RETRIES,
+    help=f"Maximum retry attempts (default: {DEFAULT_MAX_RETRIES})",
+)
+@click.option(
+    "--edit",
+    is_flag=True,
+    help="Enable editorial workflow for quality improvement",
+)
+@click.option(
+    "--edit-iterations",
+    type=int,
+    default=1,
+    help="Number of editorial revision iterations (default: 1)",
+)
+@click.option(
+    "--edit-quality-threshold",
+    type=float,
+    default=7.0,
+    help="Quality threshold for editorial revisions (1-10, default: 7.0)",
+)
+@click.option(
+    "--max-cost",
+    type=float,
+    default=None,
+    help="Maximum cost in USD to allow before stopping (default: no limit)",
+)
+def generate_all(
+    name: str,
+    pitch: str,
+    words: int,
+    story_type: str,
+    model: str,
+    timeout: int,
+    retries: int,
+    projects_dir: str = "projects",
+    max_cost: float | None = None,
+    edit: bool = False,
+    edit_iterations: int = 1,
+    edit_quality_threshold: float = 7.0,
+):
+    """
+    Generate a complete story from pitch to EPUB in one command.
+
+    Runs the entire pipeline automatically:
+    1. Create project
+    2. Generate idea
+    3. Generate characters
+    4. Generate locations
+    5. Generate outline
+    6. Generate scene-sequel breakdown
+    7. Generate prose
+    8. Export to polished EPUB
+
+    With --edit enabled, adds editorial workflow:
+    9. Idea editorial analysis
+    10. Outline editorial analysis
+    11. Content editorial analysis
+    12. Line editing
+    13. Copyediting
+    14. Proofreading
+    15. Final EPUB export
+
+    Cost tracking: Shows real-time costs and stops if --max-cost limit is exceeded.
+
+    Examples:
+        storygen-iter all bank-heist --pitch "A sophisticated bank robbery" --words 10000 --model ollama/qwen3:30b
+        storygen-iter all fantasy-quest --pitch "A quest for the lost crown" --words 8000 --max-cost 2.50
+        storygen-iter all mystery-novel --pitch "A detective investigates..." --edit --edit-iterations 2 --edit-quality-threshold 8.0
+    """
+    asyncio.run(
+        generate_all_async(
+            name=name,
+            pitch=pitch,
+            words=words,
+            story_type=story_type,
+            model=model,
+            timeout=timeout,
+            retries=retries,
+            projects_dir=projects_dir,
+            max_cost=max_cost,
+            edit=edit,
+            edit_iterations=edit_iterations,
+            edit_quality_threshold=edit_quality_threshold,
+        )
+    )

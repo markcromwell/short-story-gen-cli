@@ -355,6 +355,14 @@ Your prose content here as continuous markdown...
 - etc. (provide 3-5 key points)
 [/KEY_POINTS]
 
+CRITICAL RULES FOR [PROSE] SECTION:
+- Write ONLY the story content - no metadata, instructions, or system messages
+- No parenthetical notes like "(Word count: 123)"
+- No formatting instructions or reminders
+- No references to word counts or targets
+- Just pure narrative prose with dialogue and descriptions
+- Use markdown formatting (*italics*, **bold**) as needed for the story
+
 OUTPUT: Return the complete formatted response with all three sections."""
 
         # Build user prompt
@@ -446,7 +454,9 @@ TARGET WORD COUNT: {scene_sequel.target_word_count} words (±20% acceptable)
 3. Advance toward upcoming scene-sequels
 4. Use the specified writing style consistently
 5. Hit the target word count
-6. Provide prose, summary, and key points in the required format"""
+6. Provide prose, summary, and key points in the required format
+
+CRITICAL: DO NOT include any metadata, word counts, instructions, or system messages in the [PROSE] section. The [PROSE] section should contain ONLY the story content - no parenthetical notes, no formatting instructions, no word count references."""
 
         return system_prompt, user_prompt
 
@@ -588,6 +598,9 @@ Apply these techniques:
             raise ProseGenerationError("No [PROSE] section found in response")
         content = prose_match.group(1).strip()
 
+        # Clean up content - remove any metadata that might have slipped through
+        content = self._clean_prose_content(content)
+
         # Extract summary section
         summary_match = re.search(r"\[SUMMARY\](.*?)\[/SUMMARY\]", response, re.DOTALL)
         summary = summary_match.group(1).strip() if summary_match else ""
@@ -608,6 +621,47 @@ Apply these techniques:
             raise ProseGenerationError("Empty prose content")
 
         return content, summary, key_points
+
+    def _clean_prose_content(self, content: str) -> str:
+        """
+        Clean prose content by removing any metadata or system messages that might have slipped through.
+
+        Args:
+            content: Raw prose content
+
+        Returns:
+            Cleaned prose content
+        """
+        import re
+
+        # Remove parenthetical metadata like "(Word count: 1023)"
+        content = re.sub(r"\(\s*Word count:\s*\d+\s*\)", "", content, flags=re.IGNORECASE)
+
+        # Remove other common metadata patterns
+        content = re.sub(r"\(\s*Target words?:\s*\d+\s*\)", "", content, flags=re.IGNORECASE)
+        content = re.sub(
+            r"\(\s*Approximately\s*\d+\s*words?\s*\)", "", content, flags=re.IGNORECASE
+        )
+
+        # Remove any lines that look like instructions
+        lines = content.split("\n")
+        cleaned_lines = []
+        for line in lines:
+            line = line.strip()
+            # Skip lines that look like metadata or instructions
+            if re.match(
+                r"^(Word count|Target|Approximately|Instructions?|Note:)", line, re.IGNORECASE
+            ):
+                continue
+            if (
+                line.startswith("(")
+                and ("word" in line.lower() or "count" in line.lower())
+                and line.endswith(")")
+            ):
+                continue
+            cleaned_lines.append(line)
+
+        return "\n".join(cleaned_lines).strip()
 
     def _validate_prose(
         self, scene_sequel: SceneSequel, content: str, word_count: int

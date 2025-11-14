@@ -12,6 +12,144 @@ class LocationGenerationError(GenerationError):
     pass
 
 
+class LocationDiscoveryGenerator(BaseGenerator[list[Location]]):
+    """
+    Analyzes story content (outline or prose) to discover new locations that emerged during writing.
+
+    This generator takes existing story content and identifies locations that weren't part of the
+    original location generation, adding them to the world-building.
+    """
+
+    def __init__(
+        self, model: str = "gpt-4", max_retries: int = 3, timeout: int = 600, verbose: bool = False
+    ):
+        """
+        Initialize the location discovery generator.
+
+        Args:
+            model: LiteLLM model string (e.g., "gpt-4", "ollama/qwen3:30b")
+            max_retries: Maximum number of retry attempts on failure
+            timeout: Timeout in seconds for each API call (default: 600 = 10 minutes)
+            verbose: Enable verbose logging of prompts and responses (default: False)
+        """
+        super().__init__(model=model, max_retries=max_retries, timeout=timeout, verbose=verbose)
+
+    def _build_prompt(
+        self,
+        content: str,
+        content_type: str,
+        existing_locations: list[Location],
+        story_idea: StoryIdea,
+    ) -> tuple[str, str]:
+        """
+        Build prompts for location discovery.
+
+        Args:
+            content: The story content to analyze (outline or prose)
+            content_type: "outline" or "prose"
+            existing_locations: Locations already generated
+            story_idea: The original story concept
+
+        Returns:
+            Tuple of (system_prompt, user_prompt)
+        """
+        system_prompt = """You are an expert world-building analyst specializing in location identification and development.
+Your task is to analyze story content and identify locations that emerged during the writing process.
+
+Focus on:
+- Named locations (cities, buildings, rooms, landmarks)
+- Geographic features (mountains, rivers, forests)
+- Man-made structures (houses, offices, vehicles)
+- Settings that contribute to atmosphere or plot
+
+Return a JSON array of new locations only (do not include existing locations)."""
+
+        existing_names = [loc.name for loc in existing_locations]
+        existing_names_str = ", ".join(existing_names) if existing_names else "none"
+
+        user_prompt = f"""Analyze this {content_type} content and identify any NEW locations that weren't part of the original location generation.
+
+ORIGINAL STORY IDEA:
+{story_idea.one_sentence}
+{story_idea.expanded}
+
+EXISTING LOCATIONS (do not include these):
+{existing_names_str}
+
+{content_type.upper()} CONTENT TO ANALYZE:
+{content}
+
+Identify locations that emerged naturally during writing. For each new location, provide:
+- name: Location's name
+- description: Brief description of the location
+- significance: Why this location matters to the story
+- atmosphere: The mood/feel of this location
+
+Return ONLY a JSON array of new locations. If no new locations are found, return an empty array []."""
+
+        return system_prompt, user_prompt
+
+    def _parse_response(self, response: str) -> list[Location]:
+        """Parse the AI response into Location objects."""
+        try:
+            import json
+
+            # Clean the response
+            response = response.strip()
+            if response.startswith("```json"):
+                response = response[7:]
+            if response.startswith("```"):
+                response = response[3:]
+            if response.endswith("```"):
+                response = response[:-3]
+            response = response.strip()
+
+            # Parse JSON
+            locations_data = json.loads(response)
+
+            if not isinstance(locations_data, list):
+                raise ValueError("Expected JSON array of locations")
+
+            locations = []
+            for loc_data in locations_data:
+                location = Location(
+                    name=loc_data.get("name", "Unknown Location"),
+                    description=loc_data.get("description", ""),
+                    significance=loc_data.get("significance", ""),
+                    atmosphere=loc_data.get("atmosphere", ""),
+                )
+                locations.append(location)
+
+            return locations
+
+        except (json.JSONDecodeError, KeyError, ValueError) as e:
+            raise LocationGenerationError(f"Failed to parse location discovery response: {e}")
+
+    def generate(
+        self,
+        content: str,
+        content_type: str,
+        existing_locations: list[Location],
+        story_idea: StoryIdea,
+    ) -> tuple[list[Location], dict[str, Any]]:
+        """
+        Discover new locations from story content.
+
+        Args:
+            content: The story content to analyze
+            content_type: "outline" or "prose"
+            existing_locations: Locations already in the story
+            story_idea: The original story concept
+
+        Returns:
+            Tuple of (locations, usage_info)
+        """
+        system_prompt, user_prompt = self._build_prompt(
+            content, content_type, existing_locations, story_idea
+        )
+        return self._generate_with_retry(system_prompt, user_prompt, self._parse_response)
+
+
 class LocationGenerator(BaseGenerator[list[Location]]):
     """
     Generate locations for a story using AI.

@@ -1,0 +1,20 @@
+{
+  "job_id": "86dc4ba5-8cca-48b2-97f8-e131a5efdbbe",
+  "status": "completed",
+  "created_at": "2025-11-13T12:25:54.188006",
+  "started_at": "2025-11-13T12:25:54.188450",
+  "completed_at": "2025-11-13T12:26:01.352337",
+  "progress": 1.0,
+  "estimated_completion": null,
+  "current_stage": "",
+  "error_message": null,
+  "retry_count": 0,
+  "max_retries": 3,
+  "total_cost_usd": 0.0,
+  "tokens_used": 0,
+  "duration_seconds": 7.163887,
+  "editor_type": "content-comprehensive",
+  "model_used": "ollama/qwen3:30b",
+  "batch_size": 5,
+  "max_concurrent_batches": 3
+}

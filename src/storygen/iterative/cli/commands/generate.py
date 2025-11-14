@@ -488,7 +488,7 @@ def _print_outline_tree(outline):
     "--structure",
     "-s",
     default="three-act",
-    help="Outline structure type: three-act, hero-journey, fichtean (default: three-act)",
+    help="Outline structure type: three-act, hero-journey, fichtean, save-the-cat, seven-point, short-story, freytag, five-point, epiphany, snowflake (default: three-act)",
 )
 @click.option(
     "--model",
@@ -534,6 +534,13 @@ def outline(
     - three-act: Traditional 3-act structure with 7 beats
     - hero-journey: Hero's Journey with 12 stages
     - fichtean: Fichtean Curve with 6 crisis-driven beats
+    - save-the-cat: 15-beat structure for commercial fiction
+    - seven-point: Syd Field's 7-point plot structure
+    - short-story: Condensed structure for short fiction
+    - freytag: 5-act pyramid structure (exposition, rising action, climax, falling action, denouement)
+    - five-point: Simple 5-point plot structure
+    - epiphany: Character-driven revelation structure
+    - snowflake: Organic expansion method with 10 acts
 
     The AI fills in story_application for each act based on your specific story.
 

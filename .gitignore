@@ -195,6 +195,9 @@ projects/
 # Debug scripts (temporary development tools)
 debug_scripts/
 
+# Test temp files (temporary test outputs)
+test_temp_files/
+
 # Visual Studio Code
 #  Visual Studio Code specific template is maintained in a separate VisualStudioCode.gitignore
 #  that can be found at https://github.com/github/gitignore/blob/main/Global/VisualStudioCode.gitignore

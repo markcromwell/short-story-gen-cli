@@ -52,6 +52,7 @@ class BreakdownGenerator(BaseGenerator[list[SceneSequel]]):
         locations: list[Location],
         outline: Outline,
         target_words: int = 2000,
+        story_type: str = "short-story",
     ) -> tuple[list[SceneSequel], dict[str, Any]]:
         """
         Generate scene-sequel breakdown from outline.
@@ -62,6 +63,7 @@ class BreakdownGenerator(BaseGenerator[list[SceneSequel]]):
             locations: List of major locations (AI can add more)
             outline: Story outline with hierarchical acts
             target_words: Target word count for entire story
+            story_type: Type of story (flash-fiction, short-story, novelette, novella, novel)
 
         Returns:
             Tuple of (list of SceneSequel objects, usage_info dict)
@@ -75,6 +77,18 @@ class BreakdownGenerator(BaseGenerator[list[SceneSequel]]):
         if self.verbose:
             print(f"\n📝 Expanding {len(leaf_acts)} leaf-level acts into scene-sequels...")
             print(f"🎯 Target word count: {target_words}")
+
+        # Calculate scene count guidelines based on target word count
+        scene_guidelines = self._calculate_scene_guidelines(target_words, story_type)
+        if self.verbose:
+            print(f"📊 Scene guidelines: {scene_guidelines['total_scene_units']} total units")
+            print(f"   Scenes: {scene_guidelines['min_scenes']}-{scene_guidelines['max_scenes']}")
+            print(
+                f"   Sequels: {scene_guidelines['min_sequels']}-{scene_guidelines['max_sequels']}"
+            )
+            print(
+                f"📏 Words per unit: {scene_guidelines['min_words_per_unit']}-{scene_guidelines['max_words_per_unit']} words"
+            )
 
         scene_sequels: list[SceneSequel] = []
         current_time = 0.0  # Track story time
@@ -105,8 +119,10 @@ class BreakdownGenerator(BaseGenerator[list[SceneSequel]]):
                 characters=characters,
                 locations=locations,
                 act_word_count=act_word_count,
+                scene_guidelines=scene_guidelines,
                 current_time=current_time,
                 starting_id=ss_counter,
+                target_words=target_words,
             )
 
             # Accumulate usage
@@ -141,6 +157,88 @@ class BreakdownGenerator(BaseGenerator[list[SceneSequel]]):
 
         return scene_sequels, usage_accumulator
 
+    def _calculate_scene_guidelines(self, target_words: int, story_type: str) -> dict[str, int]:
+        """
+        Calculate appropriate scene count and word count guidelines based on target word count and story type.
+
+        FICTION_LENGTH_RULESET:
+        - All fiction built from SCENES (800-1800 words) and SEQUELS (200-800 words)
+        - Scene Density Rule: Shorter works use FEWER, LONGER scenes; longer works use MORE, SHORTER scenes
+        - Formula: total_scenes = WORD_COUNT / 1,500 (rounded)
+        - Distribution: 70-85% scenes, 15-30% sequels
+        - Minimum viable units by form
+
+        Args:
+            target_words: Target word count for the entire story
+            story_type: Type of story (flash-fiction, short-story, novelette, novella, novel)
+
+        Returns:
+            Dict with scene count guidelines and word count ranges
+        """
+        # Base formula: total scene units = word_count / 1500 (rounded)
+        total_scene_units = round(target_words / 1500)
+
+        # Minimum viable units by form (overrides formula for very short works)
+        min_units_by_type = {
+            "flash-fiction": 1,  # under 1,500 words
+            "short-story": 2,  # 1,500–7,500 words
+            "novelette": 6,  # 7,500–17,000 words
+            "novella": 12,  # 17,000–40,000 words
+            "novel": 25,  # 40,000–120,000+ words
+        }
+
+        # Ensure minimum viable units
+        total_scene_units = max(total_scene_units, min_units_by_type.get(story_type, 1))
+
+        # Distribution: 70-85% scenes, 15-30% sequels
+        # Handle small unit counts specially
+        if total_scene_units == 1:
+            # Flash fiction: usually 1 scene
+            min_scenes = 1
+            max_scenes = 1
+            min_sequels = 0
+            max_sequels = 0
+        elif total_scene_units == 2:
+            # Very short works: 1-2 scenes, 0-1 sequels
+            min_scenes = 1
+            max_scenes = 2
+            min_sequels = 0
+            max_sequels = 1
+        else:
+            # Normal distribution for longer works
+            min_scenes = max(1, int(total_scene_units * 0.70))
+            max_scenes = int(total_scene_units * 0.85)
+            min_sequels = total_scene_units - max_scenes
+            max_sequels = total_scene_units - min_scenes
+
+        # Word count ranges based on scene density rule
+        # Shorter works: fewer, longer scenes; longer works: more, shorter scenes
+        if target_words < 1500:  # Flash fiction
+            min_words_per_unit = 800  # Longer units for short works
+            max_words_per_unit = 1500
+        elif target_words < 7500:  # Short story
+            min_words_per_unit = 600
+            max_words_per_unit = 1800
+        elif target_words < 17000:  # Novelette
+            min_words_per_unit = 500
+            max_words_per_unit = 1500
+        elif target_words < 40000:  # Novella
+            min_words_per_unit = 400
+            max_words_per_unit = 1200
+        else:  # Novel
+            min_words_per_unit = 300  # Shorter units for long works
+            max_words_per_unit = 1000
+
+        return {
+            "total_scene_units": total_scene_units,
+            "min_scenes": min_scenes,
+            "max_scenes": max_scenes,
+            "min_sequels": min_sequels,
+            "max_sequels": max_sequels,
+            "min_words_per_unit": min_words_per_unit,
+            "max_words_per_unit": max_words_per_unit,
+        }
+
     def _get_leaf_acts(self, acts: list[Act]) -> list[Act]:
         """
         Recursively extract leaf-level acts (acts without sub-acts).
@@ -168,8 +266,10 @@ class BreakdownGenerator(BaseGenerator[list[SceneSequel]]):
         characters: list[Character],
         locations: list[Location],
         act_word_count: int,
+        scene_guidelines: dict[str, int],
         current_time: float,
         starting_id: int,
+        target_words: int,
     ) -> tuple[list[SceneSequel], dict[str, Any]]:
         """
         Generate scene-sequel pairs for a single act.
@@ -195,8 +295,10 @@ class BreakdownGenerator(BaseGenerator[list[SceneSequel]]):
             characters=characters,
             locations=locations,
             act_word_count=act_word_count,
+            scene_guidelines=scene_guidelines,
             current_time=current_time,
             starting_id=starting_id,
+            target_words=target_words,
         )
 
         # Parser that converts response text to list of SceneSequels
@@ -237,8 +339,10 @@ class BreakdownGenerator(BaseGenerator[list[SceneSequel]]):
         characters: list[Character],
         locations: list[Location],
         act_word_count: int,
+        scene_guidelines: dict[str, int],
         current_time: float,
         starting_id: int,
+        target_words: int,
     ) -> tuple[str, str]:
         """
         Build prompts for AI to generate scene-sequel breakdown.
@@ -301,6 +405,16 @@ Story Application: {act.story_application}
 Word Count Budget: {act_word_count} words
 Current Story Time: {current_time:.1f} hours
 
+OVERALL STORY GUIDELINES:
+- Total target word count: {target_words} words
+- Scene units: {scene_guidelines['total_scene_units']} total ({scene_guidelines['min_scenes']}-{scene_guidelines['max_scenes']} scenes, {scene_guidelines['min_sequels']}-{scene_guidelines['max_sequels']} sequels)
+- Words per unit: {scene_guidelines['min_words_per_unit']}-{scene_guidelines['max_words_per_unit']} words
+
+FICTION STRUCTURE RULES:
+- SCENES (70-85% of units): 800-1,800 words, external action with goal/conflict/disaster
+- SEQUELS (15-30% of units): 200-800 words, internal processing with reaction/dilemma/decision
+- Combined units: 1,000-2,500 words
+
 STORY CONTEXT:
 {story_idea.one_sentence}
 
@@ -311,10 +425,11 @@ LOCATIONS (use these OR create new specific ones):
 {loc_list}
 
 INSTRUCTIONS:
-Generate 1-3 scene-sequel pairs for this act. Consider:
-- How many scenes does this act need? (1 simple act vs 2-3 complex act)
-- Should you include sequels for emotional processing? (action scenes may skip, but character moments need them)
-- Balance word count across scene-sequels
+Generate 1-3 scene-sequel units for this act. Consider:
+- Balance between scenes (action) and sequels (reflection) per distribution rules
+- Shorter works use fewer, longer units; longer works use more, shorter units
+- Each unit should fit the word count ranges above
+- Ensure total units across ALL acts stay within overall guidelines
 
 Each scene-sequel must include:
 - id: Sequential ID starting from "ss_{starting_id:03d}"
@@ -327,7 +442,7 @@ Each scene-sequel must include:
 - target_word_count: Portion of {act_word_count} words
 
 For scenes: goal, conflict, disaster
-For sequels (optional): reaction, dilemma, decision
+For sequels: reaction, dilemma, decision
 
 OUTPUT FORMAT:
 [

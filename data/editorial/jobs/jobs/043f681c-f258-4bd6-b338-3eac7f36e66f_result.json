@@ -1,0 +1,266 @@
+{
+  "job_id": "043f681c-f258-4bd6-b338-3eac7f36e66f",
+  "feedback": {
+    "editor_type": "comprehensive",
+    "overall_assessment": "Comprehensive editorial analysis completed. Story shows significant concerns with 7 major issues, 5 minor issues, and 0 informational notes across structural, continuity, and style dimensions. Issues span 5 different categories.",
+    "issues": [
+      {
+        "severity": "major",
+        "category": "plot",
+        "description": "Timeline gap or inconsistency",
+        "suggestion": "Fill timeline gaps and ensure chronological consistency",
+        "scene_ids": null,
+        "line_numbers": null,
+        "confidence_score": 0.8
+      },
+      {
+        "severity": "major",
+        "category": "plot",
+        "description": "Illogical cause-effect relationship",
+        "suggestion": "Ensure plot events have logical cause-effect connections",
+        "scene_ids": null,
+        "line_numbers": null,
+        "confidence_score": 0.8
+      },
+      {
+        "severity": "major",
+        "category": "world",
+        "description": "World-building inconsistency",
+        "suggestion": "Maintain consistent world rules and setting details",
+        "scene_ids": null,
+        "line_numbers": null,
+        "confidence_score": 0.8
+      },
+      {
+        "severity": "major",
+        "category": "world",
+        "description": "Magic/technology system inconsistency",
+        "suggestion": "Maintain consistent rules for supernatural/technological elements",
+        "scene_ids": null,
+        "line_numbers": null,
+        "confidence_score": 0.8
+      },
+      {
+        "severity": "major",
+        "category": "pov",
+        "description": "Head-hopping detected",
+        "suggestion": "Maintain consistent POV throughout scenes and avoid switching between characters' perspectives inappropriately",
+        "scene_ids": null,
+        "line_numbers": null,
+        "confidence_score": 0.9
+      },
+      {
+        "severity": "major",
+        "category": "voice",
+        "description": "Inconsistent narrative voice",
+        "suggestion": "Maintain consistent authorial voice and tone throughout the story",
+        "scene_ids": null,
+        "line_numbers": null,
+        "confidence_score": 0.8
+      },
+      {
+        "severity": "major",
+        "category": "language",
+        "description": "Age-inappropriate language",
+        "suggestion": "Ensure language is appropriate for the target age group",
+        "scene_ids": null,
+        "line_numbers": null,
+        "confidence_score": 0.8
+      },
+      {
+        "severity": "minor",
+        "category": "plot",
+        "description": "Unresolved foreshadowing",
+        "suggestion": "Ensure foreshadowed elements are properly resolved",
+        "scene_ids": null,
+        "line_numbers": null,
+        "confidence_score": 0.7
+      },
+      {
+        "severity": "minor",
+        "category": "world",
+        "description": "Location description inconsistency",
+        "suggestion": "Ensure location details remain consistent throughout",
+        "scene_ids": null,
+        "line_numbers": null,
+        "confidence_score": 0.7
+      },
+      {
+        "severity": "minor",
+        "category": "pov",
+        "description": "POV distance inconsistency",
+        "suggestion": "Be consistent with how much access readers have to characters' thoughts and feelings",
+        "scene_ids": null,
+        "line_numbers": null,
+        "confidence_score": 0.7
+      },
+      {
+        "severity": "minor",
+        "category": "voice",
+        "description": "Tone inconsistency",
+        "suggestion": "Ensure the story's tone remains consistent with the established voice",
+        "scene_ids": null,
+        "line_numbers": null,
+        "confidence_score": 0.7
+      },
+      {
+        "severity": "minor",
+        "category": "prose",
+        "description": "Monotonous sentence structure",
+        "suggestion": "Vary sentence lengths and structures to improve prose rhythm",
+        "scene_ids": null,
+        "line_numbers": null,
+        "confidence_score": 0.7
+      }
+    ],
+    "suggested_revisions": [
+      {
+        "revision_type": "rewrite",
+        "priority": "high",
+        "reason": "Plot continuity issue: Timeline gap or inconsistency",
+        "instruction": "Fix plot continuity: Fill timeline gaps and ensure chronological consistency",
+        "scene_id": null,
+        "target_word_count": null,
+        "insert_after": null,
+        "estimated_tokens": 400
+      },
+      {
+        "revision_type": "rewrite",
+        "priority": "high",
+        "reason": "Plot continuity issue: Illogical cause-effect relationship",
+        "instruction": "Fix plot continuity: Ensure plot events have logical cause-effect connections",
+        "scene_id": null,
+        "target_word_count": null,
+        "insert_after": null,
+        "estimated_tokens": 400
+      },
+      {
+        "revision_type": "rewrite",
+        "priority": "high",
+        "reason": "POV consistency issue: Head-hopping detected",
+        "instruction": "Fix POV consistency: Maintain consistent POV throughout scenes and avoid switching between characters' perspectives inappropriately",
+        "scene_id": null,
+        "target_word_count": null,
+        "insert_after": null,
+        "estimated_tokens": 400
+      },
+      {
+        "revision_type": "rewrite",
+        "priority": "high",
+        "reason": "Voice consistency issue: Inconsistent narrative voice",
+        "instruction": "Fix voice consistency: Maintain consistent authorial voice and tone throughout the story",
+        "scene_id": null,
+        "target_word_count": null,
+        "insert_after": null,
+        "estimated_tokens": 350
+      },
+      {
+        "revision_type": "rewrite",
+        "priority": "medium",
+        "reason": "Plot continuity issue: Unresolved foreshadowing",
+        "instruction": "Fix plot continuity: Ensure foreshadowed elements are properly resolved",
+        "scene_id": null,
+        "target_word_count": null,
+        "insert_after": null,
+        "estimated_tokens": 400
+      },
+      {
+        "revision_type": "rewrite",
+        "priority": "medium",
+        "reason": "World-building continuity issue: World-building inconsistency",
+        "instruction": "Fix world consistency: Maintain consistent world rules and setting details",
+        "scene_id": null,
+        "target_word_count": null,
+        "insert_after": null,
+        "estimated_tokens": 250
+      },
+      {
+        "revision_type": "rewrite",
+        "priority": "medium",
+        "reason": "World-building continuity issue: Location description inconsistency",
+        "instruction": "Fix world consistency: Ensure location details remain consistent throughout",
+        "scene_id": null,
+        "target_word_count": null,
+        "insert_after": null,
+        "estimated_tokens": 250
+      },
+      {
+        "revision_type": "rewrite",
+        "priority": "medium",
+        "reason": "World-building continuity issue: Magic/technology system inconsistency",
+        "instruction": "Fix world consistency: Maintain consistent rules for supernatural/technological elements",
+        "scene_id": null,
+        "target_word_count": null,
+        "insert_after": null,
+        "estimated_tokens": 250
+      },
+      {
+        "revision_type": "rewrite",
+        "priority": "medium",
+        "reason": "POV consistency issue: POV distance inconsistency",
+        "instruction": "Fix POV consistency: Be consistent with how much access readers have to characters' thoughts and feelings",
+        "scene_id": null,
+        "target_word_count": null,
+        "insert_after": null,
+        "estimated_tokens": 400
+      },
+      {
+        "revision_type": "rewrite",
+        "priority": "medium",
+        "reason": "Voice consistency issue: Tone inconsistency",
+        "instruction": "Fix voice consistency: Ensure the story's tone remains consistent with the established voice",
+        "scene_id": null,
+        "target_word_count": null,
+        "insert_after": null,
+        "estimated_tokens": 350
+      },
+      {
+        "revision_type": "rewrite",
+        "priority": "medium",
+        "reason": "Language level issue: Age-inappropriate language",
+        "instruction": "Fix language appropriateness: Ensure language is appropriate for the target age group",
+        "scene_id": null,
+        "target_word_count": null,
+        "insert_after": null,
+        "estimated_tokens": 250
+      },
+      {
+        "revision_type": "rewrite",
+        "priority": "low",
+        "reason": "Prose rhythm issue: Monotonous sentence structure",
+        "instruction": "Improve prose rhythm: Vary sentence lengths and structures to improve prose rhythm",
+        "scene_id": null,
+        "target_word_count": null,
+        "insert_after": null,
+        "estimated_tokens": 200
+      }
+    ],
+    "strengths": [
+      "Clear narrative timeline",
+      "Strong character consistency throughout the story",
+      "Effective scene transitions",
+      "Clear narrative progression",
+      "Well-developed multi-scene structure",
+      "Well-established character relationships",
+      "Clear and engaging writing style",
+      "Consistent scene quality throughout the story",
+      "Appropriate tone for the story genre"
+    ],
+    "metadata": {
+      "timestamp": "2025-11-13T14:16:37.195261",
+      "editor_version": "1.0.0",
+      "model_used": "xai/grok-4-fast-reasoning",
+      "analysis_types": [
+        "structural",
+        "continuity",
+        "style"
+      ],
+      "total_cost_usd": 0.0,
+      "analysis_type": "comprehensive",
+      "editors_combined": 3,
+      "total_issues": 12,
+      "total_revisions": 12,
+      "total_strengths": 9
+    }
+  }
+}

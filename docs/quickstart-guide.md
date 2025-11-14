@@ -2,125 +2,124 @@
 
 ## Basic Workflow
 
-### Option 1: Full Pipeline (One Command)
+### Generate a Story
 
 ```bash
-# Create project and generate everything
-storygen-iter new my-story --pitch "A detective who can see ghosts"
-storygen-iter generate my-story --model ollama/qwen3:30b --words 4000 -v
+# Generate a structured story with AI
+storygen generate "A detective who can see ghosts" --structured --epub ghost-detective.epub
+
+# Or generate and save as JSON for further processing
+storygen generate "A space adventure" --structured --format json > space-adventure.json
 ```
 
-That's it! This will:
-1. Generate story idea from pitch
-2. Create 1-3 core characters (genre-appropriate names)
-3. Generate 3-7 locations
-4. Create story outline
-5. Break down into scene-sequels
-6. Generate prose (with incremental save/resume)
-7. Create EPUB with AI-generated title
-
-### Option 2: Step-by-Step
+### Editorial Analysis & Improvement
 
 ```bash
-# Create project
-storygen-iter new necromancer-duel --pitch "Two necromancers duel over shared love"
+# Analyze a story idea
+storygen edit idea --idea idea.json --output feedback.json
 
-# Check status
-storygen-iter status necromancer-duel
+# Apply AI-driven revisions based on editorial feedback
+storygen edit revise --feedback feedback.json --input story.json --output improved-story.json
 
-# Run each stage manually
-storygen-iter idea necromancer-duel --model ollama/qwen3:30b
-storygen-iter characters necromancer-duel --model ollama/qwen3:30b
-storygen-iter locations necromancer-duel --model ollama/qwen3:30b --timeout 300
-storygen-iter outline necromancer-duel --model ollama/qwen3:30b
-storygen-iter breakdown necromancer-duel --words 4000 --model ollama/qwen3:30b
-storygen-iter prose necromancer-duel --model ollama/qwen3:30b --writing-style "Clark Ashton Smith: baroque, ornate"
-storygen-iter epub necromancer-duel --author "Your Name"
+# Start background editorial analysis
+storygen job start --prose story.json --output analysis.json
+storygen job status <job-id>
 ```
 
-### Option 3: Smart Regeneration
+## Complete Workflow Example
 
-If you edit source files (like modifying a character), regenerate dependencies:
+### Option 1: Automated Iterative Workflow (Recommended)
 
 ```bash
-# Edit characters.json manually
-# Then regenerate everything that depends on it
-storygen-iter generate necromancer-duel --check-deps -v
+# Run the complete editorial workflow automatically
+storygen edit all "A cyberpunk hacker discovers a conspiracy" --iterations 3 --quality-threshold 8.0 --verbose
+
+# This will:
+# 1. Generate initial story
+# 2. Analyze quality and provide feedback
+# 3. Apply AI-driven revisions
+# 4. Repeat until quality threshold met or max iterations reached
+# 5. Save final result to iterative_story_YYYYMMDD_HHMMSS.json
 ```
 
-This will:
-- Detect that characters.json changed
-- Backup affected files (outline.json.backup-20251112-143500, etc.)
-- Regenerate only what needs updating
-
-### Resume from Stage
-
-If generation fails midway (timeout, crash), resume:
+### Option 2: Manual Step-by-Step
 
 ```bash
-# Resume from breakdown stage
-storygen-iter generate my-story --from-stage breakdown --model ollama/qwen3:30b
+# Generate initial story
+storygen generate "A cyberpunk hacker discovers a conspiracy" --structured --format json > hacker-story.json
+
+# Analyze the story structure
+storygen job start --prose hacker-story.json --output structural-feedback.json
+
+# Check job progress
+storygen job status <job-id>
+
+# Apply AI improvements (when feedback is ready)
+storygen edit revise --feedback structural-feedback.json --input hacker-story.json --output improved-hacker-story.json
+
+# Generate final EPUB
+storygen generate "A cyberpunk hacker discovers a conspiracy" --structured --epub hacker-story.epub
 ```
 
-Prose generation automatically resumes from last completed scene if interrupted.
+## Command Reference
 
-## Project Management
-
+### Story Generation
 ```bash
-# List all projects
-storygen-iter projects
+storygen generate [PROMPT] [OPTIONS]
 
-# Check specific project
-storygen-iter status necromancer-duel
-
-# View all files
-ls projects/necromancer-duel/
+Options:
+  --provider MODEL      AI provider (gpt-4, claude-3-sonnet, ollama/llama2)
+  --structured          Generate with title, scenes, metadata
+  --format json|text    Output format for structured stories
+  --epub FILENAME       Generate EPUB file
+  --min-words COUNT     Minimum word count
+  --pov POV             Point of view (first_person, third_person_deep, etc.)
+  --structure TYPE      Story structure (three_act, hero_journey, etc.)
+  --verbose             Show detailed progress
 ```
 
-## Common Options
+### Editorial Commands
+```bash
+# Automated iterative workflow (recommended)
+storygen edit all "Your story prompt" --iterations 3 --quality-threshold 8.0
 
-- `--model ollama/qwen3:30b` - Use local Ollama model
-- `--words 4000` - Target word count (default: 2000)
-- `--structure hero-journey` - Use different outline template
-- `--writing-style "Description"` - Override auto-detected style
-- `--timeout 300` - Increase timeout for slow models (default: 60s)
-- `-v` - Verbose output to see what's happening
-- `--check-deps` - Regenerate files if sources changed
-- `--backup` - Create backups before overwriting (default: on)
+# Manual step-by-step
+storygen edit idea --idea file.json --output feedback.json
+storygen edit revise --feedback feedback.json --input story.json --output revised.json
+```
+
+### Job Management
+```bash
+# Start analysis job
+storygen job start --prose story.json --output feedback.json
+
+# Monitor progress
+storygen job status <job-id>
+storygen job list
+
+# Control jobs
+storygen job pause <job-id>
+storygen job resume <job-id>
+storygen job cancel <job-id>
+```
 
 ## Tips
 
-1. **Character Names**: The system now generates genre-appropriate names:
-   - Clark Ashton Smith style: "Malygris", "Namirrha" (not "Elara")
-   - Contemporary: "Maya Chen", "Dr. Aris Thorne"
-   - Historical: Period-appropriate names
+1. **Start Simple**: Begin with basic generation, then add editorial analysis
+2. **Use Local Models**: Ollama models are free and work offline
+3. **Iterative Improvement**: Use the revise command to let AI improve its own work
+4. **Background Processing**: Long analyses can run in background with job commands
+5. **Cost Control**: Use `--max-cost` to limit API spending
 
-2. **Incremental Save**: Prose generation saves after each scene. If it crashes, just run again:
-   ```bash
-   storygen-iter prose necromancer-duel --model ollama/qwen3:30b
-   # Crashes after 10 scenes
-   # Run again - resumes from scene 11
-   storygen-iter prose necromancer-duel --model ollama/qwen3:30b
-   ```
+## Model Recommendations
 
-3. **Timeouts**: Local models need more time:
-   - Locations: `--timeout 300`
-   - Breakdown: `--timeout 600`
-   - Prose: `--timeout 300` (per scene)
+- **Free/Local**: `ollama/llama2`, `ollama/mistral`
+- **Fast/Cheap**: `xai/grok-2-1212`
+- **High Quality**: `gpt-4`, `claude-3-opus`
 
-4. **Backup Files**: Check `projects/your-story/` for `.backup-*` files if you need to revert changes
+## Troubleshooting
 
-5. **AI Title Generation**: EPUB command analyzes your complete story to generate a resonant title, not just the pitch
-
-## Example Full Command
-
-```bash
-storygen-iter generate necromancer-duel \
-  --model ollama/qwen3:30b \
-  --words 8000 \
-  --structure three-act \
-  --writing-style "Clark Ashton Smith: baroque, ornate, archaic language with cosmic horror undertones" \
-  --author "Mark Cromwell" \
-  --check-deps \
-  -v
-```
+- **Model Not Found**: Install Ollama and run `ollama pull llama2`
+- **API Errors**: Check your API keys in `.env` file
+- **Long Wait Times**: Use `--verbose` to see progress
+- **Job Stuck**: Use `job cancel` then restart
