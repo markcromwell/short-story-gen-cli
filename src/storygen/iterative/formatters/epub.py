@@ -11,10 +11,12 @@ Handles:
 
 import html
 import re
+import zipfile
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
+from xml.etree import ElementTree as ET
 
 from ebooklib import epub  # type: ignore
 
@@ -275,6 +277,25 @@ class EpubFormatter:
         target_chapter_length: int = 3000,
         model: str = "gpt-4",
         verbose: bool = False,
+        # Enhanced metadata options
+        publisher: str | None = None,
+        rights: str | None = None,
+        contributor: str | None = None,
+        # Series metadata
+        series: str | None = None,
+        series_number: int | None = None,
+        # Copyright page options
+        include_copyright: bool = False,
+        isbn: str | None = None,
+        edition: str | None = None,
+        # Scene break styling
+        scene_break_style: Literal["asterism", "ornament", "blank", "glyph"] = "asterism",
+        # Navigation and spine options
+        nav_in_spine: bool = True,
+        style_nav: bool = False,
+        # Accessibility and retail options
+        include_accessibility: bool = False,
+        retail_mode: Literal["none", "kindle", "apple", "kobo"] = "none",
     ):
         """
         Initialize EPUB formatter.
@@ -285,12 +306,38 @@ class EpubFormatter:
             target_chapter_length: Target words per chapter
             model: AI model for title generation
             verbose: Print detailed progress
+            publisher: Publisher name for metadata
+            rights: Rights/copyright information
+            contributor: Additional contributor (e.g., AI model)
+            series: Series name for collection metadata
+            series_number: Position in series
+            include_copyright: Generate copyright page
+            isbn: ISBN for copyright page
+            edition: Edition info for copyright page
+            scene_break_style: Style for scene breaks
+            nav_in_spine: Include nav.xhtml in reading order
+            style_nav: Apply CSS styling to navigation
+            include_accessibility: Include accessibility metadata
+            retail_mode: Optimize for specific retailer
         """
         self.author = author
         self.chapter_style = chapter_style
         self.target_chapter_length = target_chapter_length
         self.model = model
         self.verbose = verbose
+        self.publisher = publisher
+        self.rights = rights
+        self.contributor = contributor
+        self.series = series
+        self.series_number = series_number
+        self.include_copyright = include_copyright
+        self.isbn = isbn
+        self.edition = edition
+        self.scene_break_style = scene_break_style
+        self.nav_in_spine = nav_in_spine
+        self.style_nav = style_nav
+        self.include_accessibility = include_accessibility
+        self.retail_mode = retail_mode
 
         self.chapter_decider = ChapterDecider(target_chapter_length=target_chapter_length)
         self.markdown_converter = MarkdownConverter()
@@ -401,6 +448,37 @@ class EpubFormatter:
         book.set_language("en")
         book.add_author(self.author)
 
+        # Extended metadata
+        if self.publisher:
+            book.add_metadata("DC", "publisher", self.publisher)
+        if self.rights:
+            book.add_metadata("DC", "rights", self.rights)
+        if self.contributor:
+            book.add_metadata("DC", "contributor", self.contributor)
+
+        # Series metadata (EPUB 3)
+        if self.series:
+            book.add_metadata(None, "meta", self.series, {"property": "belongs-to-collection"})
+            book.add_metadata(None, "meta", "series", {"property": "collection-type"})
+            if self.series_number:
+                book.add_metadata(
+                    None, "meta", str(self.series_number), {"property": "group-position"}
+                )
+
+        # Rendition properties for better compatibility
+        book.add_metadata(None, "meta", "reflowable", {"property": "rendition:layout"})
+        book.add_metadata(None, "meta", "auto", {"property": "rendition:orientation"})
+        book.add_metadata(None, "meta", "auto", {"property": "rendition:spread"})
+
+        # Accessibility metadata
+        if self.include_accessibility:
+            book.add_metadata(None, "meta", "textual", {"property": "schema:accessMode"})
+            book.add_metadata(None, "meta", "textual", {"property": "schema:accessModeSufficient"})
+            book.add_metadata(
+                None, "meta", "tableOfContents", {"property": "schema:accessibilityFeature"}
+            )
+            book.add_metadata(None, "meta", "none", {"property": "schema:accessibilityHazard"})
+
         for genre in story_idea.genres:
             book.add_metadata("DC", "subject", genre)
         if story_idea.expanded:
@@ -419,6 +497,12 @@ class EpubFormatter:
         # Title page
         title_page = self._create_title_page(book, title, story_idea, style_item)
         book.add_item(title_page)
+
+        # Copyright page (optional)
+        copyright_page = None
+        if self.include_copyright:
+            copyright_page = self._create_copyright_page(book, style_item)
+            book.add_item(copyright_page)
 
         # Group scene-sequels by chapter
         chapter_groups = self._group_by_chapters(scene_sequels, chapter_breaks)
@@ -440,6 +524,8 @@ class EpubFormatter:
 
         # Table of Contents
         toc_items = [epub.Link("title.xhtml", "Title Page", "title")]
+        if copyright_page:
+            toc_items.append(epub.Link("copyright.xhtml", "Copyright", "copyright"))
         for i, chapter_item in enumerate(chapter_items, 1):
             chapter_break = chapter_breaks[i - 1]
             label = (
@@ -459,14 +545,33 @@ class EpubFormatter:
         book.toc = tuple(toc_items)  # type: ignore
 
         # Navigation
+        nav_item = epub.EpubNav()
+        if self.style_nav:
+            nav_item.add_item(style_item)
         book.add_item(epub.EpubNcx())
-        book.add_item(epub.EpubNav())
+        book.add_item(nav_item)
 
-        # Spine
-        spine: list = ["nav", title_page] + chapter_items
+        # Spine - handle nav inclusion based on settings and retail mode
+        include_nav_in_spine = self.nav_in_spine
+        if self.retail_mode in ["apple", "kobo"]:
+            include_nav_in_spine = False  # Retailers prefer nav not in spine
+
+        spine_items = [title_page]
+        if copyright_page:
+            spine_items.append(copyright_page)
+        spine_items.extend(chapter_items)
         if dramatis_personae:
-            spine.append(dramatis_personae)
+            spine_items.append(dramatis_personae)
+
+        if include_nav_in_spine:
+            spine = [nav_item] + spine_items
+        else:
+            spine = spine_items
+
         book.spine = spine
+
+        # Validate spine and navigation consistency
+        self._validate_spine_nav_consistency(book, toc_items, spine)  # type: ignore
 
         # Write file - use title in filename if available
         output_path_obj = Path(output_path)
@@ -505,6 +610,103 @@ class EpubFormatter:
                     print(f"⚠️  Could not save EPUB filename: {e}")
 
         return output_file
+
+    @staticmethod
+    def validate_epub(epub_path: str | Path) -> dict[str, Any]:
+        """
+        Validate EPUB file structure and return detailed report.
+
+        Args:
+            epub_path: Path to EPUB file
+
+        Returns:
+            Dict with validation results and any issues found
+        """
+        epub_path = Path(epub_path)
+        if not epub_path.exists():
+            return {"valid": False, "error": "EPUB file does not exist"}
+
+        report: dict[str, Any] = {
+            "valid": True,
+            "issues": [],
+            "structure": {},
+            "metadata": {},
+        }
+
+        try:
+            with zipfile.ZipFile(epub_path, "r") as epub_zip:
+                file_list = [f.filename for f in epub_zip.filelist]
+
+                # Check mimetype
+                if "mimetype" not in file_list:
+                    report["issues"].append("Missing mimetype file")
+                    report["valid"] = False
+                else:
+                    mimetype_content = epub_zip.read("mimetype").decode()
+                    if mimetype_content != "application/epub+zip":
+                        report["issues"].append(f"Invalid mimetype content: {mimetype_content}")
+                        report["valid"] = False
+
+                # Check required files
+                required_files = [
+                    "META-INF/container.xml",
+                    "EPUB/content.opf",
+                    "EPUB/toc.ncx",
+                    "EPUB/nav.xhtml",
+                ]
+                for req_file in required_files:
+                    if req_file not in file_list:
+                        report["issues"].append(f"Missing required file: {req_file}")
+                        report["valid"] = False
+
+                # Check OPF metadata
+                if "EPUB/content.opf" in file_list:
+                    try:
+                        opf_content = epub_zip.read("EPUB/content.opf").decode()
+                        root = ET.fromstring(opf_content)
+                        metadata = root.find(".//{http://www.idpf.org/2007/opf}metadata")
+
+                        if metadata is not None:
+                            dc_ns = "{http://purl.org/dc/elements/1.1/}"
+                            required_fields = ["title", "creator", "language", "identifier"]
+                            for field in required_fields:
+                                elements = metadata.findall(f".//{dc_ns}{field}")
+                                if not elements:
+                                    report["issues"].append(
+                                        f"Missing required metadata field: {field}"
+                                    )
+                                    report["valid"] = False
+                    except Exception as e:
+                        report["issues"].append(f"Error parsing OPF: {e}")
+                        report["valid"] = False
+
+                # Check XHTML validity
+                xhtml_files = [f for f in file_list if f.endswith(".xhtml")]
+                for xhtml_file in xhtml_files:
+                    try:
+                        content = epub_zip.read(xhtml_file).decode()
+                        if not content.startswith("<?xml"):
+                            report["issues"].append(f"Missing XML declaration in {xhtml_file}")
+                        if "<!DOCTYPE html>" not in content:
+                            report["issues"].append(f"Missing DOCTYPE in {xhtml_file}")
+                    except Exception as e:
+                        report["issues"].append(f"Error reading {xhtml_file}: {e}")
+
+                # Structure summary
+                report["structure"] = {
+                    "total_files": len(file_list),
+                    "xhtml_files": len(xhtml_files),
+                    "css_files": len([f for f in file_list if f.endswith(".css")]),
+                    "image_files": len(
+                        [f for f in file_list if f.endswith((".jpg", ".png", ".svg"))]
+                    ),
+                }
+
+        except Exception as e:
+            report["valid"] = False
+            report["error"] = str(e)
+
+        return report
 
     def _group_by_chapters(
         self,
@@ -557,6 +759,45 @@ class EpubFormatter:
         title_page.add_item(style_item)
         return title_page
 
+    def _create_copyright_page(
+        self,
+        book: epub.EpubBook,
+        style_item: epub.EpubItem,
+    ) -> epub.EpubHtml:
+        """Create copyright page."""
+        copyright = epub.EpubHtml(
+            title="Copyright",
+            file_name="copyright.xhtml",
+            lang="en",
+        )
+
+        parts = ['<div class="copyright-page">']
+        parts.append('<h2 class="section-title">Copyright</h2>')
+
+        # Publisher
+        if self.publisher:
+            parts.append(f"<p><strong>Publisher:</strong> {html.escape(self.publisher)}</p>")
+
+        # Rights
+        if self.rights:
+            parts.append(f"<p>{html.escape(self.rights)}</p>")
+        else:
+            parts.append("<p>Copyright © 2024. All rights reserved.</p>")
+
+        # Edition
+        if self.edition:
+            parts.append(f"<p><strong>Edition:</strong> {html.escape(self.edition)}</p>")
+
+        # ISBN
+        if self.isbn:
+            parts.append(f"<p><strong>ISBN:</strong> {html.escape(self.isbn)}</p>")
+
+        parts.append("</div>")
+
+        copyright.content = "\n".join(parts)
+        copyright.add_item(style_item)
+        return copyright
+
     def _create_chapter(
         self,
         book: epub.EpubBook,
@@ -588,7 +829,8 @@ class EpubFormatter:
                 needs_break = self._needs_scene_break(ss, prev_ss)
 
                 if needs_break == "major":
-                    parts.append('<p class="scene-break">— • —</p>')
+                    break_symbol = self._get_scene_break_symbol()
+                    parts.append(f'<p class="scene-break">{break_symbol}</p>')
                     at_chapter_start = True
                 elif needs_break == "minor":
                     parts.append('<p class="scene-break">&#160;</p>')
@@ -677,6 +919,57 @@ class EpubFormatter:
 """
         dramatis.add_item(style_item)
         return dramatis
+
+    def _get_scene_break_symbol(self) -> str:
+        """Get scene break symbol based on configured style."""
+        match self.scene_break_style:
+            case "asterism":
+                return "⁂"  # Asterism (three asterisks)
+            case "ornament":
+                return "❧"  # Fleuron
+            case "blank":
+                return "&#160;"  # Non-breaking space
+            case "glyph":
+                return "✦"  # Star
+            case _:
+                return "— • —"  # Default fallback
+
+    def _validate_spine_nav_consistency(
+        self,
+        book: epub.EpubBook,
+        toc_items: list[epub.Link],
+        spine: list[epub.EpubItem],
+    ) -> None:
+        """Validate that spine and navigation are consistent."""
+        # Extract file names from spine (skip 'nav' which is auto-generated)
+        spine_files = {item.file_name for item in spine if hasattr(item, "file_name")}
+
+        # Extract file names from TOC
+        toc_files = {link.href.split("#")[0] for link in toc_items}
+
+        # Check that all spine items are in TOC
+        spine_not_in_toc = spine_files - toc_files
+        if spine_not_in_toc:
+            if self.verbose:
+                print(f"⚠️  Warning: Spine items not in TOC: {spine_not_in_toc}")
+
+        # Check that all TOC items are in spine
+        toc_not_in_spine = toc_files - spine_files
+        if toc_not_in_spine:
+            if self.verbose:
+                print(f"⚠️  Warning: TOC items not in spine: {toc_not_in_spine}")
+
+        # Check order consistency (simplified check)
+        spine_order = list(spine_files)
+        toc_order = [link.href.split("#")[0] for link in toc_items]
+
+        # Filter out items not in both
+        common_items = [f for f in spine_order if f in toc_order]
+        toc_common = [f for f in toc_order if f in common_items]
+
+        if common_items != toc_common:
+            if self.verbose:
+                print("⚠️  Warning: Spine and TOC order may not match")
 
     def _get_css(self) -> str:
         """Get CSS stylesheet."""
