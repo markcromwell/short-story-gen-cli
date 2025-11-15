@@ -128,48 +128,58 @@ class TestComprehensiveEditorIntegration:
         1. The UnboundLocalError in _combine_feedbacks
         2. Mock implementations in ModelManager
         """
-        # Create realistic test story data
-        story_data = {
-            "title": "The Detective's Dilemma",
-            "genre": "Mystery",
-            "summary": "A detective investigates a murder but discovers the victim is still alive.",
-            "characters": ["Detective Maya Reeves", "Victim Alex Chen", "Suspect Jordan Blake"],
-            "scenes": [
-                {
-                    "number": 1,
-                    "title": "The Crime Scene",
-                    "pov_character": "Detective Maya Reeves",
-                    "location": "Abandoned Warehouse",
-                    "time_hours": 0.0,
-                    "content": "Detective Maya Reeves arrived at the warehouse, her flashlight cutting through the darkness. The body lay still, a single gunshot wound to the chest. But something felt wrong about this case.",
-                },
-                {
-                    "number": 2,
-                    "title": "The Interrogation",
-                    "pov_character": "Detective Maya Reeves",
-                    "location": "Police Precinct",
-                    "time_hours": 2.0,
-                    "content": "Maya questioned Jordan Blake in the interrogation room. 'I didn't do it,' he insisted. But his eyes told a different story. Maya activated her telepathy, diving into his mind.",
-                },
-                {
-                    "number": 3,
-                    "title": "The Revelation",
-                    "pov_character": "Detective Maya Reeves",
-                    "location": "Hospital Room",
-                    "time_hours": 4.0,
-                    "content": "Maya burst into the hospital room where Alex Chen waited. 'You're alive!' she exclaimed. The 'victim' smiled weakly. 'It was the only way to catch the real killer.'",
-                },
-            ],
-        }
 
-        context = StoryContext(story_data=story_data)
+        # Create realistic test story data
+        class MockProse:
+            def __init__(self):
+                self.title = "The Detective's Dilemma"
+                self.genre = "Mystery"
+                self.summary = (
+                    "A detective investigates a murder but discovers the victim is still alive."
+                )
+                self.characters = [
+                    "Detective Maya Reeves",
+                    "Victim Alex Chen",
+                    "Suspect Jordan Blake",
+                ]
+                self.scenes = [
+                    {
+                        "number": 1,
+                        "title": "The Crime Scene",
+                        "pov_character": "Detective Maya Reeves",
+                        "location": "Abandoned Warehouse",
+                        "time_hours": 0.0,
+                        "content": "Detective Maya Reeves arrived at the warehouse, her flashlight cutting through the darkness. The body lay still, a single gunshot wound to the chest. But something felt wrong about this case.",
+                    },
+                    {
+                        "number": 2,
+                        "title": "The Interrogation",
+                        "pov_character": "Detective Maya Reeves",
+                        "location": "Police Precinct",
+                        "time_hours": 2.0,
+                        "content": "Maya questioned Jordan Blake in the interrogation room. 'I didn't do it,' he insisted. But his eyes told a different story. Maya activated her telepathy, diving into his mind.",
+                    },
+                    {
+                        "number": 3,
+                        "title": "The Revelation",
+                        "pov_character": "Detective Maya Reeves",
+                        "location": "Hospital Room",
+                        "time_hours": 4.0,
+                        "content": "Maya burst into the hospital room where Alex Chen waited. 'You're alive!' she exclaimed. The 'victim' smiled weakly. 'It was the only way to catch the real killer.'",
+                    },
+                ]
+
+            def to_text(self):
+                return "\n\n".join([str(scene["content"]) for scene in self.scenes])
+
+        context = StoryContext(prose=MockProse())
 
         # This would have failed with UnboundLocalError before the fix
         # And would have returned mock responses before the ModelManager fix
         feedback = await comprehensive_editor.analyze(context)
 
         # Verify real analysis was performed (not mock responses)
-        assert feedback.editor_type == "ComprehensiveEditor"
+        assert feedback.editor_type == "comprehensive"
         assert "Mock response" not in feedback.overall_assessment
         assert "Mock response" not in feedback.human_report
 
