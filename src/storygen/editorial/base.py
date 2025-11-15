@@ -33,6 +33,7 @@ class EditorialFeedback:
     suggested_revisions: list["RevisionSuggestion"] = field(default_factory=list)
     strengths: list[str] = field(default_factory=list)
     metadata: dict[str, Any] = field(default_factory=dict)
+    human_report: str = ""  # Human-readable summary of what the editor did
 
 
 @dataclass
