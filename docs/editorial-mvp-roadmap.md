@@ -77,7 +77,27 @@ This document outlines the staged implementation plan for the AI-powered editori
 
 **Business Value**: Significantly improves editorial quality and user satisfaction with specialized analysis capabilities
 
-### Stage 5: User Experience & Workflow Enhancements (2-3 weeks)
+### Stage 5: Data Architecture & Quality Validation (2-4 weeks) 🎯 **NEXT**
+**Goal**: Improve data management and validate AI editing effectiveness
+
+**Deliverables**:
+- 🎯 **Data Abstraction Layer**: Replace file-based approach with proper storage abstraction
+  - Evaluate options: SQLite, SQL database, one big JSON, current data structure
+  - Create pluggable storage backends for better data integrity
+  - Benefits: Multi-user support preparation, easier testing, better performance
+- 🎯 **Editing Process Action Report**: Track and validate AI edit effectiveness
+  - Create reports showing meaningful vs superficial changes
+  - Add before/after diff analysis for each revision cycle
+  - Track edit significance scores and quality improvement correlation
+  - Benefits: Ensure AI edits are actually improving quality, prevent over-editing
+
+**Success Criteria**:
+- Data abstraction layer supports multiple backends with clean API
+- Edit reports clearly show meaningful improvements vs cosmetic changes
+- Performance impact < 10% for data operations
+- Edit quality validation prevents unnecessary revisions
+
+### Stage 6: User Experience & Workflow Enhancements (2-3 weeks)
 **Goal**: Improve usability and workflow efficiency
 
 **Deliverables**:
@@ -167,14 +187,14 @@ This document outlines the staged implementation plan for the AI-powered editori
 - ✅ **Workflow Maturity**: Full iterative generation + analysis + revision
 - ✅ **User Experience**: Comprehensive CLI with detailed feedback
 
-### Next Phase Metrics (Stage 4):
-- Quality score precision: ±0.2 accuracy improvement
-- Analysis time: < 3 minutes for 5k-10k word manuscripts
-- Continuity detection: > 95% accuracy for timeline/plot inconsistencies
-- Style analysis: > 90% accuracy for POV/voice consistency
-- User satisfaction: > 95% for enhanced analysis features
+### Next Phase Metrics (Stage 5):
+- Data layer performance: < 10% overhead vs file-based approach
+- Edit significance accuracy: > 90% meaningful edit detection
+- Storage backend flexibility: Support for SQLite, JSON, and file backends
+- Migration success rate: > 99% data preservation during transition
+- Edit quality correlation: Clear metrics showing AI improvement effectiveness
 
-### Long-term Goals (Stages 5-6):
+### Long-term Goals (Stages 6-7):
 - Analysis completion rate > 98%
 - User adoption rate > 80% of active users
 - API response time < 1 second
@@ -182,47 +202,56 @@ This document outlines the staged implementation plan for the AI-powered editori
 
 ## Timeline and Milestones
 
-### Completed: MVP Implementation ✅ **DONE**
+### Completed: Enhanced Editorial System ✅ **DONE**
 ```
-Actual Timeline: 2-3 weeks (faster than planned)
-- Week 1: Core infrastructure and basic editors
-- Week 2: Iterative workflow and quality analysis
-- Week 3: Job management, cost tracking, and EPUB output
+Actual Timeline: 4-5 weeks (completed all planned phases)
+- Week 1-2: Core editorial workflow and basic analysis
+- Week 3: Enhanced analysis editors (ContinuityEditor, StyleEditor)
+- Week 4: EPUB enhancements and comprehensive testing
+- Week 5: Data architecture planning and quality validation preparation
 
-Key Achievement: Built complete iterative system vs. planned basic analysis
+Key Achievement: Built complete editorial system with professional output capabilities
 ```
 
-### Current Phase: Stage 5 - User Experience & Workflow Enhancements ⏳ **NEXT**
+### Current Phase: Stage 5 - Data Architecture & Quality Validation 🎯 **CURRENT**
 ```
-Week 1-2: Interactive editing mode and progress visualization
-Week 3: Revision strategy optimization and batch processing
-Week 4: Custom quality profiles and performance testing
+Week 1-2: Data abstraction layer design and backend evaluation
+Week 3: Editing process action report implementation
+Week 4: Integration testing and performance validation
 
-Goal: Improve usability and workflow efficiency with enhanced user experience
+Goal: Improve data management and validate AI editing effectiveness
 ```
 
 ### Future Phases:
 ```
-Stage 5 (Week 5-7): User Experience & Workflow Enhancements
-Stage 6 (Week 8-11): Advanced Features & Production Readiness
+Stage 5 (Week 1-4): Data Architecture & Quality Validation 🎯 CURRENT
+Stage 6 (Week 5-7): User Experience & Workflow Enhancements
+Stage 7 (Week 8-11): Advanced Features & Production Readiness
 
 Total to Production: ~2-3 months from current state
 ```
 
 ## Current Status Summary
 
-### ✅ **Completed MVP Features**
+### ✅ **Completed Features**
 - Iterative editorial workflow with AI generation, analysis, and revision
 - 1-10 quality scoring across 6 dimensions
 - Cost tracking with budget limits ($0.07 demonstrated)
 - Job management (start/pause/resume/cancel/status)
 - Professional EPUB output generation
-- Comprehensive CLI with detailed feedback
+- Enhanced analysis editors (ContinuityEditor, StyleEditor)
+- Comprehensive EPUB enhancements and formatting fixes
 
-### 🎯 **Next MVP: Stage 4 - Enhanced Analysis Editors**
-**Priority**: High - Will significantly improve editorial quality
-**Timeline**: 2-3 weeks
-**Business Value**: Enhanced analysis capabilities for better story quality
+### 🎯 **Next MVP: Stage 5 - Data Architecture & Quality Validation**
+**Priority**: High - Foundation for scalability and quality assurance
+**Timeline**: 2-4 weeks
+**Business Value**: Better data integrity, multi-user preparation, validated AI editing
+
+**Deliverables**:
+- **Data Abstraction Layer**: Evaluate and implement storage backend (SQLite/SQL/JSON/file)
+- **Editing Process Reports**: Track meaningful vs superficial AI edits
+- **Quality Validation**: Ensure AI revisions actually improve content
+- **Performance Testing**: Validate data layer performance impact
 
 ## Resource Requirements
 
@@ -252,25 +281,30 @@ Total to Production: ~2-3 months from current state
 **Timeline**: 2-3 weeks to implementation
 
 ### Future Decision Points:
-**After Stage 4**: Assess user feedback on enhanced analysis features
-**After Stage 5**: Evaluate production readiness and scaling requirements
-**After Stage 6**: Full production deployment decision
+**After Stage 5**: Assess data layer performance and edit quality validation effectiveness
+**After Stage 6**: Evaluate production readiness and scaling requirements
+**After Stage 7**: Full production deployment decision
 
 ---
 
-## **NEXT MVP: Stage 5 - User Experience & Workflow Enhancements**
+## **NEXT MVP: Stage 5 - Data Architecture & Quality Validation**
 
-**What**: Improve usability with interactive editing, progress visualization, and batch processing
-**Why**: Current system works well, but user experience can be significantly enhanced
-**When**: Start immediately - 2-3 weeks to completion
-**Impact**: Better user satisfaction, faster workflows, more intuitive experience
+**What**: Implement data abstraction layer and validate AI editing effectiveness
+**Why**: Current file-based approach limits scalability; need to ensure AI edits are meaningful
+**When**: Start immediately - 2-4 weeks to completion
+**Impact**: Foundation for multi-user support, better data integrity, validated AI improvements
 
 **Deliverables**:
-- Interactive editing mode with real-time feedback
-- Progress visualization and status reporting
-- Batch processing for multiple stories
-- Custom quality profiles and revision strategies
-- Performance optimizations
+- **Data Abstraction Layer**: Evaluate SQLite/SQL/JSON/file backends, implement clean storage API
+- **Editing Process Reports**: Before/after diff analysis, edit significance scoring, quality correlation
+- **Performance Validation**: Ensure data layer doesn't impact workflow speed
+- **Migration Strategy**: Seamless transition from current file-based approach
 
-This roadmap has been updated to reflect the actual implementation status. Stage 4 (Enhanced Analysis Editors) has been completed with ContinuityEditor and StyleEditor implementations.</content>
+**Technical Approach**:
+- Create storage interface with pluggable backends
+- Implement edit diff analysis and significance scoring
+- Add comprehensive logging for edit tracking
+- Maintain backward compatibility during transition
+
+This roadmap has been updated to reflect the actual implementation status. Stage 4 (Enhanced Analysis Editors) has been completed, and we're now focusing on data architecture improvements and AI edit quality validation.</content>
 <parameter name="filePath">c:\Users\markc\Projects\short-story-gen-cli\docs\editorial-mvp-roadmap.md

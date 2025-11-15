@@ -33,6 +33,29 @@
   - Structure: models/story.py, models/characters.py, models/locations.py, models/structure.py, models/feedback.py, models/project.py
   - Benefits: Better organization, easier navigation
 
+- [x] **Phase 5: Publisher-Grade EPUB Enhancements** (8-10 hours) ✅ COMPLETED
+  - Add series metadata, copyright pages, navigation options, accessibility
+  - Implement intelligent chapter break logic (act boundaries, POV changes, time gaps)
+  - Add CLI options: --publisher, --series, --copyright, --isbn, --edition, --accessible
+  - Create comprehensive unit tests (17 test methods for ChapterDecider)
+  - Benefits: Professional EPUB output, retail platform optimization, 224/224 tests passing
+
+### Next Priority Items (2-4 weeks)
+
+- [ ] **Data Abstraction Layer** (6-8 hours) 🎯 **NEXT**
+  - Replace current file-based approach with proper data abstraction
+  - Evaluate options: SQLite, SQL database, one big JSON, current data structure
+  - Create storage interface with pluggable backends
+  - Benefits: Better data integrity, easier testing, multi-user support preparation
+  - Decision: Need to evaluate performance, complexity, and migration effort
+
+- [ ] **Editing Process Action Report** (4-6 hours) 🎯 **NEXT**
+  - Create report showing what the editing process actually changed
+  - Track meaningful vs superficial edits (word count changes, structural improvements)
+  - Add before/after diff analysis for each revision cycle
+  - Benefits: Validate that AI edits are actually improving quality, prevent over-editing
+  - Metrics: Edit significance score, structural changes, quality improvement correlation
+
 ## Medium Priority
 
 - [x] **Minimal EPUB Unit Tests** - Add granular unit tests for EPUB generation components ✅ COMPLETED
@@ -129,8 +152,11 @@
 2. Do Phase 1 (CLI split) - biggest maintainability win ✅ DONE
 3. Do Phase 2 (BaseGenerator) - biggest code reduction win ✅ DONE
 4. Do Phase 4 (Models split) - organizational cleanup ✅ DONE
-5. Consider web service when ready for SaaS/multi-user
+5. Complete Phase 5 (EPUB Enhancements) - publication-ready output ✅ DONE
+6. **Data Abstraction Layer** - foundation for future scalability 🎯 NEXT
+7. **Editing Process Action Report** - quality validation for AI edits 🎯 NEXT
+8. Consider web service when ready for SaaS/multi-user
 
 ---
 
-*Last Updated: December 2024 - All major refactoring phases completed!*
+*Last Updated: November 2025 - EPUB enhancements completed, focusing on data architecture and edit quality validation*

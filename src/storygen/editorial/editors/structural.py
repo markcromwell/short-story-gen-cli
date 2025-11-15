@@ -54,6 +54,9 @@ class StructuralEditor(BaseEditor):
                 }
             )
 
+            # Generate human-readable report
+            feedback.human_report = self._generate_human_report(feedback, scene_analyses)
+
         except Exception as e:
             self.logger.error(f"Structural analysis failed: {e}")
             return self._handle_analysis_error(e, context)
@@ -335,3 +338,106 @@ Provide specific feedback on strengths and areas for improvement."""
         )
 
         return strengths
+
+    def _generate_human_report(
+        self, feedback: EditorialFeedback, scene_analyses: list[dict[str, Any]]
+    ) -> str:
+        """Generate a human-readable report of the structural analysis."""
+        report_parts = []
+
+        # Header
+        report_parts.append("📊 Structural Analysis Report")
+        report_parts.append("=" * 50)
+
+        # Overall assessment
+        if feedback.overall_assessment:
+            report_parts.append("\n📝 Overall Assessment:")
+            report_parts.append(f"   {feedback.overall_assessment}")
+
+        # Scene analysis summary
+        scenes_analyzed = len(scene_analyses)
+        report_parts.append(f"\n🎬 Scenes Analyzed: {scenes_analyzed}")
+
+        if scenes_analyzed > 0:
+            # Count issues by severity
+            major_issues = sum(1 for issue in feedback.issues if issue.severity == "major")
+            minor_issues = sum(1 for issue in feedback.issues if issue.severity == "minor")
+            info_issues = sum(1 for issue in feedback.issues if issue.severity == "info")
+
+            report_parts.append(f"   • Major Issues: {major_issues}")
+            report_parts.append(f"   • Minor Issues: {minor_issues}")
+            report_parts.append(f"   • Info Notes: {info_issues}")
+
+        # Strengths
+        if feedback.strengths:
+            report_parts.append("\n✅ Structural Strengths:")
+            for strength in feedback.strengths:
+                report_parts.append(f"   • {strength}")
+
+        # Issues summary
+        if feedback.issues:
+            report_parts.append("\n⚠️  Key Issues Found:")
+
+            # Group issues by category
+            categories = {}
+            for issue in feedback.issues:
+                if issue.category not in categories:
+                    categories[issue.category] = []
+                categories[issue.category].append(issue)
+
+            for category, issues in categories.items():
+                report_parts.append(f"\n   {category.upper()}:")
+                for issue in issues[:3]:  # Limit to top 3 per category
+                    severity_icon = {"major": "🔴", "minor": "🟡", "info": "ℹ️"}.get(
+                        issue.severity, "❓"
+                    )
+                    report_parts.append(f"     {severity_icon} {issue.description}")
+                    if issue.suggestion:
+                        report_parts.append(f"        💡 {issue.suggestion}")
+
+        # Revision recommendations
+        if feedback.suggested_revisions:
+            report_parts.append(f"\n🔧 Recommended Revisions: {len(feedback.suggested_revisions)}")
+
+            # Group by priority
+            priorities = {"high": [], "medium": [], "low": []}
+            for revision in feedback.suggested_revisions:
+                priorities[revision.priority].append(revision)
+
+            for priority, revisions in priorities.items():
+                if revisions:
+                    priority_icon = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(priority, "❓")
+                    report_parts.append(
+                        f"   {priority_icon} {priority.upper()} Priority: {len(revisions)}"
+                    )
+                    for revision in revisions[:2]:  # Show top 2 per priority
+                        scene_info = f" (Scene {revision.scene_id})" if revision.scene_id else ""
+                        report_parts.append(
+                            f"     • {revision.revision_type.title()}{scene_info}: {revision.reason[:100]}..."
+                        )
+
+        # Scene-by-scene summary
+        if scene_analyses:
+            report_parts.append("\n🎭 Scene Analysis Summary:")
+            for analysis in scene_analyses[:5]:  # Limit to first 5 scenes
+                scene_title = analysis.get(
+                    "scene_title", f"Scene {analysis.get('scene_index', 0) + 1}"
+                )
+                issues_count = len(analysis.get("issues", []))
+                revisions_count = len(analysis.get("revisions", []))
+
+                status = "✅" if issues_count == 0 else "⚠️" if issues_count <= 2 else "🔴"
+                report_parts.append(
+                    f"   {status} {scene_title}: {issues_count} issues, {revisions_count} suggestions"
+                )
+
+            if len(scene_analyses) > 5:
+                report_parts.append(f"   ... and {len(scene_analyses) - 5} more scenes")
+
+        # Footer with metadata
+        report_parts.append("\n" + "=" * 50)
+        report_parts.append("📈 Analysis Complete")
+        report_parts.append(f"   Model: {feedback.metadata.get('model_used', 'Unknown')}")
+        report_parts.append(f"   Timestamp: {feedback.metadata.get('timestamp', 'Unknown')[:19]}")
+
+        return "\n".join(report_parts)

@@ -11,14 +11,120 @@ Idea → Characters → Locations → Outline → Breakdown → Prose (First Dra
   ✅       ✅           ✅          ✅         ✅           ✅
 ```
 
-## Editorial Enhancement Layers (Planned)
+## Editorial Leverage Principle: Early Detection = Exponential Savings
+
+**The earlier you catch a problem, the easier (and cheaper) it is to fix.**
+
+### Cascading Invalidation Effect
+Changes at early stages invalidate everything downstream:
+
+```
+🔴 Change IDEA → Regenerate: Characters + Locations + Outline + Prose (100% invalidation)
+🟡 Change OUTLINE → Regenerate: Prose only (25% invalidation)
+🟢 Change PROSE → Regenerate: Nothing (0% invalidation, surgical fixes)
+```
+
+### Cost Multipliers
+- **Idea-level fix**: 1x cost (just revise the concept)
+- **Outline-level fix**: 5x cost (regenerate prose from outline)
+- **Prose-level fix**: 10x cost (rewrite specific scenes, but AI costs add up)
+
+### Quality Leverage
+Early editors have **higher leverage** for quality improvement:
+- **Idea Editor**: Prevents bad stories from ever being written
+- **Outline Editor**: Catches structural issues before prose investment
+- **Content Editors**: Polish already-written prose (important but less leverage)
+
+## Enhanced Collaborative Workflow (Planned)
+
+The workflow emphasizes **prevention over cure** with robust early-stage validation:
+
+### Phase 1: Idea Development (Interactive)
+**User Input:** Initial story concept/pitch
+**AI Role:** Suggest expansions for missing elements
+**User Control:** Accept/reject/modify AI suggestions
+**Protection:** User-approved content becomes protected
+
+```
+User Pitch → AI Expansion Suggestions → User Review → Protected Idea
+     ↓              ↓                        ↓              ↓
+  "A detective    "Add mystery tone,      Accept tone,    "A hard-boiled
+   solves a case"   short story length,     reject genre    detective solves
+                    noir genre, Fichtean     suggestion     a case in 1940s
+                    structure"                              New York"
+```
+
+### Phase 2: Outline Construction (Manual + AI)
+**User Input:** Manual scene addition or AI generation requests
+**AI Role:** Generate scene suggestions, validate structure
+**User Control:** Override any scene/sequel, rearrange order
+**Protection:** User-created scenes marked as protected
+
+```
+Protected Idea → Scene Addition → AI Validation → Protected Outline
+     ↓                ↓              ↓              ↓
+  "Hard-boiled      User adds "Detective  AI suggests      "Scene 1: Detective
+   detective..."     interrogates suspect"  adding sequel    interrogates suspect
+                     scene                scene          (protected)
+```
+
+### Phase 3: Content Development (Protected Writing)
+**User Input:** Write prose for any scene/sequel
+**AI Role:** Generate suggestions for empty scenes, analyze completed work
+**User Control:** Manual writing takes precedence, AI suggestions advisory
+**Protection:** User-written prose protected from AI overwrites
+
+```
+Protected Outline → Prose Development → AI Analysis → Protected Manuscript
+     ↓                    ↓                  ↓                ↓
+  "Scene 1: Detective   User writes scene   AI suggests      "The rain-slicked
+   interrogates..."      content            improvements      streets of New York
+                        (protected)        but can't         glistened under
+                                           overwrite         the neon signs..."
+```
+
+### Phase 4: Editorial Enhancement (Advisory AI)
+**User Input:** Review AI feedback on protected content
+**AI Role:** Provide editorial suggestions without overwriting
+**User Control:** Accept/reject/modify all suggestions manually
+**Protection:** All user content remains protected
+
+```
+Protected Manuscript → AI Editorial → User Review → Enhanced Manuscript
+     ↓                      ↓              ↓                ↓
+  "The rain-slicked...    AI suggests       User accepts     "The rain-slicked
+   "                      "show don't tell"  some changes,     streets of New York
+                         for description     modifies others   glistened under
+                         (advisory only)                      the harsh neon
+                                                              glare..."
+```
+
+## Current Implementation Status
+
+### ✅ Implemented (Post-Prose Analysis)
+- **Structural Editor**: Analyzes scene-sequel chains and plot logic
+- **Continuity Editor**: Tracks character states, locations, and timeline consistency
+- **Style Editor**: Analyzes POV consistency, filter words, and narrative voice
+- **Comprehensive Editor**: Combines all three specialized editors
+- **Human Language Reports**: All editors generate readable summaries for users
+- **CLI Commands**: Separate editorial CLI available (`storygen-iter edit analyze <file>`)
+
+### ❌ Not Implemented (Pre-Prose Analysis)
+- **Idea Editor**: Concept critique before character generation
+- **Outline Editor**: Structural analysis before prose writing
+
+### 🔄 Partially Implemented
+- **Pipeline Integration**: Editorial placeholders exist in main pipeline but editors not yet integrated
+- **Revision Application**: Basic revision logic exists but not fully integrated with pipeline
+
+## Enhanced Collaborative Workflow (Planned)
 
 | Stage        | Editor Type                | Purpose                         | When to Engage  | Status |
 | ------------ | -------------------------- | ------------------------------- | --------------- | ------ |
 | Idea         | Developmental (consulting) | Test concept & theme            | ✅ Essential     | 📋 Planned |
 | Outline      | Developmental / Structural | Strengthen plot, character arcs | ✅ Ideal time    | 📋 Planned |
 | First Draft  | None (beta readers)        | Finish the book                 | —               | ✅ Done |
-| Second Draft | Developmental / Content    | Diagnose structure & logic      | ✅ Essential     | 📋 Planned |
+| Second Draft | Developmental / Content    | Diagnose structure & logic      | ✅ Essential     | ✅ Implemented |
 | Third Draft  | Line Editor                | Polish voice, rhythm            | ✅               | 📋 Planned |
 | Final Draft  | Copyeditor                 | Correct mechanics               | ✅               | 📋 Planned |
 | Proofs       | Proofreader                | Catch typos before print        | ✅               | 📋 Planned |
@@ -881,69 +987,84 @@ storygen-iter estimate-cost \
 
 ## Implementation Priority
 
-### Phase 1 (Next Sprint) - Core Infrastructure
-**Priority:** HIGH - Essential for MVP
-**Timeline:** 2-3 weeks
-**Focus:** Get basic editorial pipeline working end-to-end
-
-1. **Idea Editor** - ✅ Essential (just added)
-2. **Outline Editor** - High value, catches issues early
-3. Unit tests for Idea and Outline editors
-4. CLI integration for idea and outline editing
-5. Basic error handling and logging
-
-### Phase 2 (Following Sprint) - Content Analysis
-**Priority:** HIGH - Most impactful for story quality
+### Phase 1 (Next Sprint) - Early Detection MVP
+**Priority:** CRITICAL - Maximum leverage for quality improvement
 **Timeline:** 3-4 weeks
-**Focus:** Deep structural and continuity analysis
+**Focus:** Implement pre-prose editors to prevent expensive downstream regeneration
 
-1. **Structural Editor** (scene-sequel logic)
-2. **Continuity Editor** (timeline & details)
-3. Unit tests for content editors
-4. CLI integration for content editing
-5. Performance optimization (batching, caching)
+**Why This MVP?**
+- **Cascading Invalidation Prevention**: Early editors catch problems before they cascade through outline → characters → locations → prose
+- **Cost Efficiency**: 1x cost to fix idea issues vs 10x cost to fix prose issues
+- **Quality Leverage**: Problems caught early are exponentially easier to resolve
+- **User Experience**: Fail fast on bad concepts rather than investing in doomed stories
 
-### Phase 3 (Polish Sprint) - Style & Mechanics
-**Priority:** MEDIUM - Quality of life improvements
+1. **Idea Editor** - CRITICAL: Concept validation and enhancement (prevents bad stories entirely)
+2. **Outline Editor** - HIGH: Structural critique before prose investment
+3. Unit tests for early editors
+4. CLI integration for idea and outline editing
+5. Quality gates in pipeline (optional blocking before character generation)
+
+### Phase 2 (Following Sprint) - Pipeline Integration
+**Priority:** HIGH - Seamless user experience
 **Timeline:** 2-3 weeks
-**Focus:** Voice, grammar, and final polish
+**Focus:** Integrate existing content editors into main pipeline
 
-1. **Style Editor** (POV & voice consistency)
-2. **Line Editor** - Polish prose quality
-3. **Copyeditor** - Mechanical corrections
-4. Unit tests for style and line editors
-5. Integration with EPUB export pipeline
+**Why After Early Editors?**
+- **Foundation First**: Early detection provides the most value
+- **Existing Code**: Content editors already implemented and tested
+- **Immediate ROI**: Users get automated feedback on generated prose
 
-### Phase 4 (Future) - Advanced Features
+1. **Pipeline Integration**: Add editorial analysis after prose generation
+2. **Feedback Storage**: Store editorial feedback with project data
+3. **Revision Workflow**: Allow selective application of suggestions
+4. **User Controls**: Skip analysis, control editors, set budgets
+
+### Phase 3 (Polish Sprint) - Advanced Content Analysis
+**Priority:** MEDIUM - Quality of life improvements
+**Timeline:** 3-4 weeks
+**Focus:** Style, line editing, and comprehensive analysis
+
+1. **Style Editor** (POV & voice consistency) - already implemented
+2. **Line Editor** - Polish prose quality and rhythm
+3. **Enhanced Comprehensive Editor** - Multi-pass analysis
+4. Unit tests and performance optimization
+5. Integration with revision workflows
+
+### Phase 4 (Future) - Final Polish & Proofing
 **Priority:** LOW - Nice-to-have enhancements
 **Timeline:** Ongoing
-**Focus:** Advanced AI capabilities and user experience
+**Focus:** Mechanical corrections and final validation
 
-1. **Proofreader** - Final EPUB pass
-2. Multi-model editing (ensemble feedback)
-3. Batch processing for multiple scenes
-4. Version control and draft comparison
-5. Custom style guides and author voice training
+1. **Copyeditor** - Grammar, spelling, style guide compliance
+2. **Proofreader** - Final EPUB pass for typos and formatting
+3. Multi-model editing (ensemble feedback)
+4. Custom style guides and author voice training
 
 ### Success Metrics by Phase
 
-**Phase 1 Success:**
-- Idea Editor catches 80%+ of weak concepts before outline generation
-- Outline Editor identifies 70%+ of structural issues before prose writing
+**Phase 1 Success (Early Detection):**
+- Idea Editor catches 80%+ of weak concepts before character generation
+- Outline Editor identifies 75%+ of structural issues before prose writing
+- Prevents 60%+ of stories that would require major downstream rewrites
 - CLI commands work reliably with proper error messages
+- Quality gates reduce average story development cost by 30%+
 
-**Phase 2 Success:**
-- Content editors identify 90%+ of major structural/continuity issues
+**Phase 2 Success (Pipeline Integration):**
+- Content editors integrate seamlessly into main workflow
+- Editorial analysis runs automatically after prose generation
+- Users can selectively apply suggestions and regenerate improved content
 - False positive rate <10% (editors don't suggest unnecessary changes)
 - Analysis completes in <2 minutes for typical 5k-word story
 
-**Phase 3 Success:**
+**Phase 3 Success (Advanced Analysis):**
 - Style/Line editors improve prose quality scores by 20%+
-- Copyeditor catches 95%+ of mechanical errors
-- Integration with EPUB export is seamless
+- Comprehensive editor provides holistic feedback
+- Integration with revision workflows is seamless
+- Multi-pass editing shows cumulative quality improvements
 
-**Phase 4 Success:**
-- Proofreader catches remaining 5% of issues
+**Phase 4 Success (Final Polish):**
+- Copyeditor catches 95%+ of mechanical errors
+- Proofreader catches remaining 5% of issues in EPUB exports
 - Multi-model editing improves feedback quality by 15%+
 - Advanced features adopted by 50%+ of users
 
@@ -1192,6 +1313,67 @@ class RevisionSuggestion:
 
 ---
 
+## Next Appropriate MVP: Early Detection Editors
+
+### Current Gap
+**The existing content editors (Structural, Continuity, Style, Comprehensive) are fully implemented and working**, but the **pre-prose editors (Idea and Outline) are not implemented**. These early editors have the highest leverage for quality improvement because they prevent cascading invalidation.
+
+### Why This is the Next MVP
+1. **Maximum Leverage**: Early editors prevent problems from cascading through the entire pipeline
+2. **Cost Prevention**: Fix idea issues at 1x cost vs prose issues at 10x cost
+3. **Quality Assurance**: Better to reject bad concepts than rewrite thousands of words
+4. **User Experience**: Fail fast on fundamentally flawed ideas before heavy investment
+
+### MVP Scope: Early Detection Pipeline
+
+**Goal**: Implement Idea and Outline editors as quality gates before character/location/prose generation.
+
+#### Features to Implement:
+1. **Idea Editor**: Concept validation and enhancement suggestions
+2. **Outline Editor**: Structural critique and plot hole detection
+3. **Pipeline Integration**: Quality gates before downstream generation
+4. **Human Language Reports**: Readable feedback for concept and structural issues
+5. **Revision Workflow**: Allow concept refinement before proceeding
+
+#### Implementation Approach:
+1. **Idea Editor**: Analyze story concepts for strength, originality, and viability
+2. **Outline Editor**: Validate plot structure, character arcs, and thematic coherence
+3. **Quality Gates**: Optional blocking before character generation
+4. **Feedback Integration**: Store early feedback with project data
+
+#### Success Criteria:
+- **Concept Validation**: Idea Editor catches 80%+ of weak concepts
+- **Structural Analysis**: Outline Editor identifies 75%+ of plot issues
+- **Cost Efficiency**: Prevents expensive downstream regeneration
+- **User Acceptance**: 70%+ of suggestions deemed helpful
+- **Performance**: Analysis completes in <1 minute for typical inputs
+
+#### Timeline: 3-4 weeks
+- **Week 1**: Implement Idea Editor with concept analysis and CLI
+- **Week 2**: Implement Outline Editor with structural validation
+- **Week 3**: Integrate quality gates into pipeline, add revision workflow
+- **Week 4**: Testing, performance optimization, and documentation
+
+#### Dependencies:
+- ✅ Project data models (support editorial feedback)
+- ✅ Human language report framework (already implemented)
+- ✅ CLI framework (for new editor commands)
+
+#### Risk Assessment:
+- **Low Risk**: Builds on existing editorial framework and data models
+- **Incremental**: Can be implemented without breaking existing functionality
+- **Fallback Options**: Pipeline can skip early editors if issues occur
+
+### Post-MVP Roadmap
+After early detection is complete:
+1. **Pipeline Integration**: Connect content editors to main workflow
+2. **GUI Integration**: Add early editors to web interface
+3. **Advanced Editors**: Line Editor, Copyeditor, Proofreader
+4. **Multi-Iteration Workflows**: Support multiple editorial passes with learning
+
+---
+
 ## Related Documentation
 - [Iterative Generation](./iterative-generation.md) - Core pipeline architecture
+- [GUI TODO](./GUI_TODO.md) - Web interface development roadmap
 - [Migrations](./migrations.md) - Version compatibility for editorial data models

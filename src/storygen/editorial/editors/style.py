@@ -68,6 +68,9 @@ class StyleEditor(BaseEditor):
                 }
             )
 
+            # Generate human-readable report
+            feedback.human_report = self._generate_human_report(feedback)
+
         except Exception as e:
             self.logger.error(f"Style analysis failed: {e}")
             return self._handle_analysis_error(e, context)
@@ -523,3 +526,85 @@ Provide specific feedback on any language level issues found."""
         """Get the total content length."""
         story_text = self._extract_story_text(context)
         return len(story_text)
+
+    def _generate_human_report(self, feedback: EditorialFeedback) -> str:
+        """Generate a human-readable report of the style analysis."""
+        report_parts = []
+
+        # Header
+        report_parts.append("✍️ Style Analysis Report")
+        report_parts.append("=" * 50)
+
+        # Overall assessment
+        if feedback.overall_assessment:
+            report_parts.append("\n📝 Overall Assessment:")
+            report_parts.append(f"   {feedback.overall_assessment}")
+
+        # Analysis summary
+        style_elements = feedback.metadata.get("style_elements_analyzed", [])
+        report_parts.append(f"\n🎨 Style Elements Analyzed: {', '.join(style_elements)}")
+
+        if feedback.issues:
+            # Count issues by severity and category
+            major_issues = sum(1 for issue in feedback.issues if issue.severity == "major")
+            minor_issues = sum(1 for issue in feedback.issues if issue.severity == "minor")
+            info_issues = sum(1 for issue in feedback.issues if issue.severity == "info")
+
+            report_parts.append(f"   • Major Issues: {major_issues}")
+            report_parts.append(f"   • Minor Issues: {minor_issues}")
+            report_parts.append(f"   • Info Notes: {info_issues}")
+
+        # Strengths
+        if feedback.strengths:
+            report_parts.append("\n✅ Style Strengths:")
+            for strength in feedback.strengths:
+                report_parts.append(f"   • {strength}")
+
+        # Issues summary
+        if feedback.issues:
+            report_parts.append("\n⚠️  Key Issues Found:")
+
+            # Group issues by category
+            categories = {}
+            for issue in feedback.issues:
+                if issue.category not in categories:
+                    categories[issue.category] = []
+                categories[issue.category].append(issue)
+
+            for category, issues in categories.items():
+                report_parts.append(f"\n   {category.upper()}:")
+                for issue in issues[:3]:  # Limit to top 3 per category
+                    severity_icon = {"major": "🔴", "minor": "🟡", "info": "ℹ️"}.get(
+                        issue.severity, "❓"
+                    )
+                    report_parts.append(f"     {severity_icon} {issue.description}")
+                    if issue.suggestion:
+                        report_parts.append(f"        💡 {issue.suggestion}")
+
+        # Revision recommendations
+        if feedback.suggested_revisions:
+            report_parts.append(f"\n🔧 Recommended Revisions: {len(feedback.suggested_revisions)}")
+
+            # Group by priority
+            priorities = {"high": [], "medium": [], "low": []}
+            for revision in feedback.suggested_revisions:
+                priorities[revision.priority].append(revision)
+
+            for priority, revisions in priorities.items():
+                if revisions:
+                    priority_icon = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(priority, "❓")
+                    report_parts.append(
+                        f"   {priority_icon} {priority.upper()} Priority: {len(revisions)}"
+                    )
+                    for revision in revisions[:2]:  # Show top 2 per priority
+                        report_parts.append(
+                            f"     • {revision.revision_type.title()}: {revision.reason[:80]}..."
+                        )
+
+        # Footer with metadata
+        report_parts.append("\n" + "=" * 50)
+        report_parts.append("✍️ Style Analysis Complete")
+        report_parts.append(f"   Model: {feedback.metadata.get('model_used', 'Unknown')}")
+        report_parts.append(f"   Timestamp: {feedback.metadata.get('timestamp', 'Unknown')[:19]}")
+
+        return "\n".join(report_parts)
