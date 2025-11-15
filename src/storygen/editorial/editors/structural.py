@@ -3,7 +3,7 @@
 import asyncio
 from typing import Any, cast
 
-from ..base import BaseEditor, EditorialFeedback, EditorialIssue, StoryContext
+from ..base import BaseEditor, EditorialFeedback, EditorialIssue, RevisionSuggestion, StoryContext
 from ..core.model_manager import ModelManager
 
 
@@ -379,7 +379,7 @@ Provide specific feedback on strengths and areas for improvement."""
             report_parts.append("\n⚠️  Key Issues Found:")
 
             # Group issues by category
-            categories = {}
+            categories: dict[str, list[EditorialIssue]] = {}
             for issue in feedback.issues:
                 if issue.category not in categories:
                     categories[issue.category] = []
@@ -400,7 +400,7 @@ Provide specific feedback on strengths and areas for improvement."""
             report_parts.append(f"\n🔧 Recommended Revisions: {len(feedback.suggested_revisions)}")
 
             # Group by priority
-            priorities = {"high": [], "medium": [], "low": []}
+            priorities: dict[str, list[RevisionSuggestion]] = {"high": [], "medium": [], "low": []}
             for revision in feedback.suggested_revisions:
                 priorities[revision.priority].append(revision)
 

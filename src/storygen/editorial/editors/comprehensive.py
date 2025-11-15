@@ -4,7 +4,7 @@ import asyncio
 from datetime import datetime
 from typing import Any
 
-from ..base import BaseEditor, EditorialFeedback, EditorialIssue, StoryContext
+from ..base import BaseEditor, EditorialFeedback, EditorialIssue, RevisionSuggestion, StoryContext
 
 
 class ComprehensiveEditor(BaseEditor):
@@ -193,7 +193,7 @@ class ComprehensiveEditor(BaseEditor):
             report_parts.append("\n⚠️ Issues by Category:")
 
             # Group issues by category
-            categories = {}
+            categories: dict[str, list[EditorialIssue]] = {}
             for issue in feedback.issues:
                 if issue.category not in categories:
                     categories[issue.category] = []
@@ -232,7 +232,7 @@ class ComprehensiveEditor(BaseEditor):
             )
 
             # Group by priority
-            priorities = {"high": [], "medium": [], "low": []}
+            priorities: dict[str, list[RevisionSuggestion]] = {"high": [], "medium": [], "low": []}
             for revision in feedback.suggested_revisions:
                 priorities[revision.priority].append(revision)
 
