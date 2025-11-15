@@ -147,3 +147,123 @@ class TestIterativeWorkflow:
             # Verify scene_2 is unchanged
             scene_2 = next(scene for scene in result["scene_sequels"] if scene["id"] == "scene_2")
             assert scene_2["content"] == "Original scene 2"
+
+
+class TestCLIAnalysisCommands:
+    """Test CLI analysis commands."""
+
+    @pytest.fixture
+    def config(self):
+        """Test configuration."""
+        return {
+            "default_model": "ollama/qwen3:30b",
+            "models": {"ollama": {"base_url": "http://localhost:11434", "timeout": 120}},
+        }
+
+    @pytest.fixture
+    def model_manager(self, config):
+        """Create a model manager for testing."""
+        return ModelManager(config)
+
+    @pytest.mark.asyncio
+    async def test_load_story_context_from_prose_file(self, tmp_path, model_manager):
+        """Test loading story context from a prose file."""
+        from storygen.editorial.cli.commands import _load_story_context_from_prose_file
+
+        # Create a temporary JSON prose file
+        prose_content = {
+            "scene_sequels": [
+                {"id": "scene_1", "content": "Scene one content", "type": "scene"},
+                {"id": "scene_2", "content": "Scene two content", "type": "scene"},
+            ]
+        }
+        prose_file = tmp_path / "test_prose.json"
+        prose_file.write_text(json.dumps(prose_content))
+
+        context = await _load_story_context_from_prose_file(str(prose_file))
+
+        assert context is not None
+        assert hasattr(context, "prose")
+        assert context.prose is not None
+        assert len(context.prose.scenes) == 2
+
+    @pytest.mark.asyncio
+    async def test_save_feedback(self, tmp_path):
+        """Test saving feedback to a file."""
+        from storygen.editorial.base import EditorialFeedback
+        from storygen.editorial.cli.commands import _save_feedback
+
+        # Create mock feedback
+        feedback = EditorialFeedback(
+            editor_type="test",
+            overall_assessment="Test assessment",
+            issues=[],
+            suggested_revisions=[],
+            strengths=["Test strength"],
+            human_report="Test report",
+            metadata={"test": True},
+        )
+
+        output_file = tmp_path / "feedback.json"
+
+        await _save_feedback(feedback, str(output_file))
+
+        # Verify file was created and contains expected content
+        assert output_file.exists()
+        content = output_file.read_text()
+        assert "Test assessment" in content
+        assert "Test strength" in content
+
+    @pytest.mark.asyncio
+    async def test_generate_initial_story(self, model_manager):
+        """Test generating initial story from prompt."""
+        from storygen.editorial.cli.commands import _generate_initial_story
+
+        with patch.object(model_manager, "call_model", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = '{"title": "Test Story", "scenes": [{"id": "scene_1", "content": "Generated content"}]}'
+
+            result = await _generate_initial_story("Test prompt", model_manager, False)
+
+            assert result["title"] == "Test Story"
+            assert len(result["scenes"]) == 1
+            mock_call.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_analyze_story_quality(self, model_manager):
+        """Test analyzing story quality."""
+        from storygen.editorial.cli.commands import _analyze_story_quality
+
+        story_data = {"content": "Test story content"}
+
+        with patch.object(model_manager, "call_model", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = '{"quality_score": 8.5, "overall_assessment": "Good story"}'
+
+            result = await _analyze_story_quality(story_data, model_manager, False)
+
+            assert result["quality_score"] == 8.5
+            assert result["overall_assessment"] == "Good story"
+            mock_call.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_revise_story(self, model_manager):
+        """Test revising a story."""
+        from storygen.editorial.cli.commands import _revise_story
+
+        story_data = {"content": "Original content"}
+        feedback_data = {
+            "suggested_revisions": [
+                {
+                    "priority": "high",
+                    "reason": "Make it better",
+                    "instruction": "Improve the content",
+                }
+            ]
+        }
+
+        with patch.object(model_manager, "call_model", new_callable=AsyncMock) as mock_call:
+            mock_call.return_value = '{"content": "Improved content"}'
+
+            result = await _revise_story(story_data, feedback_data, model_manager, False)
+
+            assert result["content"] == "Improved content"
+            mock_call.assert_called_once()
