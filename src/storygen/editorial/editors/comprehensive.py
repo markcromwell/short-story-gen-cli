@@ -121,15 +121,20 @@ class ComprehensiveEditor(BaseEditor):
             "total_strengths": len(unique_strengths),
         }
 
-        return EditorialFeedback(
+        # Create the feedback object first
+        feedback = EditorialFeedback(
             editor_type="comprehensive",
             overall_assessment=overall_assessment,
             issues=all_issues,
             suggested_revisions=all_revisions,
             strengths=unique_strengths,
             metadata=combined_metadata,
-            human_report=self._generate_human_report(feedback, feedbacks),
         )
+
+        # Now generate the human report with the created feedback object
+        feedback.human_report = self._generate_human_report(feedback, feedbacks)
+
+        return feedback
 
     def _generate_human_report(
         self, feedback: EditorialFeedback, feedbacks: list[EditorialFeedback]
