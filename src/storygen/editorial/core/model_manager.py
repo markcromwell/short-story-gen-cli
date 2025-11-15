@@ -148,6 +148,34 @@ class ModelManager:
             self.logger.error(f"Model call failed: {e}")
             raise ModelError(f"Model call failed: {e}") from e
 
+    def call_model_sync(
+        self,
+        prompt: str,
+        temperature: float = 0.7,
+        max_tokens: int = 1000,
+        model: str | None = None,
+    ) -> str:
+        """Synchronous wrapper for model calls."""
+        try:
+            # Try to get the current event loop
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # If loop is running, we need to use run_until_complete in a thread
+                import concurrent.futures
+
+                with concurrent.futures.ThreadPoolExecutor() as executor:
+                    future = executor.submit(
+                        asyncio.run, self.call_model(prompt, temperature, max_tokens, model)
+                    )
+                    return future.result()
+            else:
+                return loop.run_until_complete(
+                    self.call_model(prompt, temperature, max_tokens, model)
+                )
+        except RuntimeError:
+            # No event loop, create a new one
+            return asyncio.run(self.call_model(prompt, temperature, max_tokens, model))
+
     async def _wait_if_needed(self, model: str):
         """Wait if rate limit would be exceeded."""
         if model not in self.rate_limits:
@@ -185,27 +213,37 @@ class ModelManager:
         self, model: str, prompt: str, temperature: float, max_tokens: int
     ) -> str:
         """Call local Ollama model."""
-        # Placeholder - will implement actual Ollama API call
-        self.logger.info(f"Calling Ollama model {model} with prompt length {len(prompt)}")
+        try:
+            import litellm
 
-        # Simulate API delay
-        await asyncio.sleep(0.1)
-
-        # Return mock response for now
-        return f"Mock response from {model} for prompt: {prompt[:100]}..."
+            response = await litellm.acompletion(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            return response.choices[0].message.content  # type: ignore[no-any-return]
+        except Exception as e:
+            self.logger.error(f"Ollama API call failed: {e}")
+            raise ModelError(f"Ollama API call failed: {e}") from e
 
     async def _call_openai(
         self, model: str, prompt: str, temperature: float, max_tokens: int
     ) -> str:
         """Call OpenAI API."""
-        # Placeholder - will implement actual OpenAI API call
-        self.logger.info(f"Calling OpenAI model {model} with prompt length {len(prompt)}")
+        try:
+            import litellm
 
-        # Simulate API delay
-        await asyncio.sleep(0.2)
-
-        # Return mock response for now
-        return f"Mock response from {model} for prompt: {prompt[:100]}..."
+            response = await litellm.acompletion(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=temperature,
+                max_tokens=max_tokens,
+            )
+            return response.choices[0].message.content  # type: ignore[no-any-return]
+        except Exception as e:
+            self.logger.error(f"OpenAI API call failed: {e}")
+            raise ModelError(f"OpenAI API call failed: {e}") from e
 
     async def _call_xai(self, model: str, prompt: str, temperature: float, max_tokens: int) -> str:
         """Call xAI API using litellm."""
